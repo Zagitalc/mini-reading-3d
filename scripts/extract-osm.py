@@ -22,7 +22,7 @@ class Extract(osmium.SimpleHandler):
    try:add(w,json.loads(factory.create_linestring(w)),'way')
    except (RuntimeError,osmium.InvalidLocationError):pass
  def area(self,a):
-  if any(k in a.tags for k in ['building','landuse','leisure']) or a.tags.get('natural') in ['water','wood','scrub','wetland']:
+  if any(k in a.tags for k in ['building','building:part','landuse','leisure']) or a.tags.get('railway')=='platform' or a.tags.get('natural') in ['water','wood','scrub','wetland']:
    try:add(a,json.loads(factory.create_multipolygon(a)),'area')
    except (RuntimeError,osmium.InvalidLocationError):pass
 Extract().apply_file(sys.argv[1],locations=True,idx='flex_mem')

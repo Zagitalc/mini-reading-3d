@@ -61,9 +61,11 @@ npm run data:download
 .geo-venv/bin/python scripts/extract-osm.py raw/berkshire.osm.pbf
 npm run data:build
 npm run data:gtfs
+npm run data:routes
+GEOGRAPHY_OUTPUT=raw/staging npm test
 ```
 
-Downloads are build-time only. `raw/`, `.env`, the Python environment and the SQLite store are excluded from Git. `public/data` contains the derived, versioned OSM database and bundled bus-network data; it is intentionally included for a reproducible local first run. Build into a separate checkout before switching a running installation to a new snapshot, because tile generation replaces local chunks.
+Downloads are build-time only. `raw/`, `.env`, the Python environment and the SQLite store are excluded from Git. `public/data` contains the derived, versioned OSM database and bundled bus-network data; it is intentionally included for a reproducible local first run. Geography and static route generation now default to `raw/staging`. Validate it in the browser before copying staged files into `public/data`; see [routes and landmark release](docs/next-phase.md). The optional GTFS rebuild still updates the bundled matching network directly, so use a separate checkout when refreshing that snapshot.
 
 ## Attribution and licensing
 

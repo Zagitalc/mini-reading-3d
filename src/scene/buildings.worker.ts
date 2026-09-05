@@ -2,7 +2,7 @@ import {ShapeUtils,Vector2}from'three';import{toLocal}from'../../shared/geo';imp
 const palette=[[.68,.39,.27],[.73,.54,.40],[.84,.77,.63],[.50,.60,.61],[.66,.43,.36],[.77,.66,.49],[.48,.54,.49],[.80,.61,.50]];
 export type MeshData={position:Float32Array;uv:Float32Array;color:Float32Array};
 function build(buildings:Building[]){const pos:number[]=[],uv:number[]=[],colors:number[]=[],roof:number[]=[],roofColors:number[]=[];
- for(const b of buildings){if(b.landmark)continue;const rings=b.rings.map(r=>r.slice(0,-1).map(toLocal));const outer=rings[0];if(outer.length<3)continue;const col=palette[b.colour],top=Math.max(b.height,b.minHeight+2),bottom=b.minHeight;
+ for(const b of buildings){if(b.landmark)continue;const rings=b.rings.map(r=>r.slice(0,-1).map(toLocal));const outer=rings[0];if(outer.length<3)continue;const col=palette[b.colour],top=Math.max(b.height,b.minHeight+(b.kind==='roof'?.1:2)),bottom=b.minHeight;
   const triangle=(a:number[],bb:number[],c:number[],dest=pos,cs=colors,color=col)=>{dest.push(...a,...bb,...c);cs.push(...color,...color,...color);};
   for(const ring of rings){for(let i=0;i<ring.length;i++){const a=ring[i],c=ring[(i+1)%ring.length],w=Math.hypot(a[0]-c[0],a[1]-c[1])/8,h=(top-bottom)/8;triangle([a[0],a[1],bottom],[c[0],c[1],bottom],[c[0],c[1],top]);triangle([a[0],a[1],bottom],[c[0],c[1],top],[a[0],a[1],top]);uv.push(0,0,w,0,w,h,0,0,w,h,0,h);}}
   const holes=rings.slice(1).map(r=>r.map(p=>new Vector2(...p))),contour=outer.map(p=>new Vector2(...p)),all=rings.flat();const faces=ShapeUtils.triangulateShape(contour,holes);

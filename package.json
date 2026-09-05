@@ -20,6 +20,8 @@
     "data:fetch": "node scripts/fetch-osm.mjs",
     "data:build": "node --import tsx scripts/build-geography.ts",
     "data:gtfs": "node --import tsx scripts/build-gtfs.ts",
+    "data:routes": "node --import tsx scripts/build-routes.ts",
+    "test:phase-browser": "node tests/phase-browser.mjs",
     "data:roadworks": "node --import tsx scripts/import-roadworks.ts",
     "check": "npm run test && npm run build",
     "data:download": "node scripts/download-data.mjs",

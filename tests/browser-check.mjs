@@ -7,7 +7,7 @@ try {
  page.on('pageerror',e=>errors.push(e.message));
  await page.goto(process.env.APP_URL??'http://127.0.0.1:5174/');
  await page.locator('#loading').waitFor({state:'hidden',timeout:30000});
- await page.getByRole('searchbox').fill('Caversham');
+ await page.getByRole('searchbox',{name:'Search Reading places'}).fill('Caversham');
  await page.locator('#search-results').getByRole('button',{name:'Caversham suburb',exact:true}).click();
  await page.locator('[data-layer="buildings"]').uncheck();
  await page.locator('[data-layer="buildings"]').check();
