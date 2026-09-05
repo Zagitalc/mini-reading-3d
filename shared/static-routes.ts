@@ -26,3 +26,5 @@ const palette=['#396ea6','#9c486e','#167d79','#a46925','#6b58a0','#b04b40','#587
 export function fallbackColour(id:string){let h=2166136261;for(const c of id)h=Math.imul(h^c.charCodeAt(0),16777619)>>>0;return palette[h%palette.length];}
 export function routeMatches(r:StaticRoute,q:string){return [r.label,r.operator,...r.destinations].join(' ').toLowerCase().includes(q.trim().toLowerCase());}
 export function uniqueRoutes(ids:string[]){return [...new Set(ids)];}
+// The bundled map font contains Latin-1. Keep typographic punctuation in HTML details.
+export function mapRouteLabel(label:string){return label.replace(/[–—]/g,'-');}

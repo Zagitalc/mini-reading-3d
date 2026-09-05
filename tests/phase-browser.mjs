@@ -5,7 +5,7 @@ const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTAB
 const results={};
 try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
- page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
+ page.on('pageerror',e=>errors.push(e.message));page.on('console',m=>{if(m.type()==='error')errors.push(`${m.text()} ${m.location().url}`);});page.on('response',r=>{if(r.status()>=400)errors.push(`${r.status()} ${r.url()}`);});
  await page.addInitScript(()=>{window.readingTools={};Object.defineProperty(document,'modelContext',{value:{registerTool(t){window.readingTools[t.name]=t.execute;}}});});
  if(process.env.STAGING_DATA)await page.route('**/data/**',async route=>{const rel=new URL(route.request().url()).pathname.slice('/data/'.length),file=path.resolve(process.env.STAGING_DATA,rel);if(!file.startsWith(path.resolve(process.env.STAGING_DATA)+path.sep))return route.abort();try{await access(file);await route.fulfill({path:file,contentType:file.endsWith('.json')?'application/json':'application/x-protobuf'});}catch{await route.continue();}});
  await mkdir('test-results',{recursive:true});

@@ -1,6 +1,6 @@
 import type {Map,ExpressionSpecification} from 'maplibre-gl';
 import {detail,escape} from '../ui/shell';
-import {routeMatches,uniqueRoutes,type StaticRoute} from '../../shared/static-routes';
+import {routeMatches,uniqueRoutes,mapRouteLabel,type StaticRoute} from '../../shared/static-routes';
 export async function connectRouteLayers(map:Map){
  const groups:{mode:string;routes:StaticRoute[];selected:string;enabled:boolean}[]=[];
  for(const [mode,title,file] of [['bus','Bus routes','bus-routes'],['rail','Train routes','rail-corridors']]){
@@ -11,7 +11,7 @@ export async function connectRouteLayers(map:Map){
    const response=await fetch(`/data/${file}.json`);if(!response.ok)throw Error('Missing snapshot');
    const routes:StaticRoute[]=await response.json();routes.sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}));
    const group={mode,routes,selected:'',enabled:false};groups.push(group);
-   map.addSource(`${mode}-routes`,{type:'geojson',data:{type:'FeatureCollection',features:routes.map(r=>({type:'Feature',geometry:{type:'MultiLineString',coordinates:r.coordinates},properties:{id:r.id,label:r.label,colour:r.colour}}))}});
+   map.addSource(`${mode}-routes`,{type:'geojson',data:{type:'FeatureCollection',features:routes.map(r=>({type:'Feature',geometry:{type:'MultiLineString',coordinates:r.coordinates},properties:{id:r.id,label:mapRouteLabel(r.label),colour:r.colour}}))}});
    const before='traffic-lines';
    map.addLayer({id:`${mode}-route-outline`,type:'line',source:`${mode}-routes`,layout:{visibility:'none','line-cap':'round','line-join':'round'},paint:{'line-color':'#fbfaf4','line-width':7,'line-opacity':.9}},before);
    map.addLayer({id:`${mode}-route-lines`,type:'line',source:`${mode}-routes`,layout:{visibility:'none','line-cap':'round','line-join':'round'},paint:{'line-color':['get','colour'],'line-width':3.5,'line-opacity':.9}},before);

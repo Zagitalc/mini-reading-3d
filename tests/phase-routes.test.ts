@@ -1,6 +1,6 @@
 import test from 'node:test';import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {clipLine,deduplicate,fallbackColour,routeMatches,uniqueRoutes,type StaticRoute} from '../shared/static-routes';
+import {clipLine,deduplicate,fallbackColour,routeMatches,uniqueRoutes,mapRouteLabel,type StaticRoute} from '../shared/static-routes';
 import {speedLimit,surveyedLimit,STANDARD_LIMITS} from '../shared/speed-limits';
 import {replacementLandmark,STATION_BUILDINGS,STATION_PLATFORMS} from '../shared/landmark-components';
 import {RailNetwork} from '../server/rail-network';
@@ -34,6 +34,7 @@ test('rail corridors use connected source edges; no fabricated connectors',async
  const geo=JSON.parse(await readFile(`${dest}/railways.json`,'utf8')),graph=new RailNetwork(geo.features);
  const edges=[...graph.nodes.values()].flatMap(n=>n.edges.map(e=>[n.p,graph.nodes.get(e.id)!.p] as LngLat[]));
  assert.equal(routes.length,7);
+ for(const r of routes)assert.ok([...mapRouteLabel(r.label)].every(c=>c.charCodeAt(0)<256),'route labels must use bundled glyphs');
  for(const r of routes){assert.equal(r.kind,'rail');assert.equal(r.operator,undefined);for(const line of r.coordinates){for(let i=1;i<line.length;i++){
   assert.ok(inBounds(line[i]));assert.ok(edges.some(e=>nearestOnLine(line[i-1],e).distance<.1&&nearestOnLine(line[i],e).distance<.1),`non-source edge in ${r.id}`);
  }}}
