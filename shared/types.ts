@@ -1,0 +1,15 @@
+export type LngLat = [number, number];
+export type Bounds = [number, number, number, number];
+export type Provenance = { source: string; sourceUrl?: string; observedAt: string };
+export type VehicleObservation = Provenance & { id: string; kind: 'bus'|'train'; position: LngLat; bearing?: number; speed?: number; routeId?: string; tripId?: string; label: string; destination?: string; cancelled?: boolean; status: 'observed'|'estimated'; elevation?: number; stopUntil?: string };
+export type VehicleTrack = { current: VehicleObservation; previous?: VehicleObservation; route?: LngLat[]; receivedAt: number };
+export type RoadEvent = Provenance & { id: string; title: string; description: string; organisation: string; geometry: {type:'Point';coordinates:LngLat}|{type:'LineString';coordinates:LngLat[]}; kind:'closure'|'works'; status:'planned'|'active'|'completed'|'cancelled'; plannedStart?:string; plannedEnd?:string; actualStart?:string; actualEnd?:string; version:number; trafficManagement?:string; datePrecision?:'date'|'datetime' };
+export type TrafficSegment = Provenance & {id:string; coordinates:LngLat[]; currentSpeed:number; freeFlowSpeed:number; confidence:number};
+export type RoadSign = Provenance & {id:string; position:LngLat; limit:'20'|'30'|'NSL'|string; placement:'surveyed'|'road-limit'; bearing?:number; road?:string};
+export type CameraLocation = Provenance & {id:string; position:LngLat; kind:'speed'|'red-light'|'unknown'; bearing?:number};
+export type FeedStatus = {id:'buses'|'trains'|'roadworks'|'traffic'; label:string; state:'live'|'stale'|'unavailable'|'connecting'; message:string; lastSuccess?:string; lastAttempt?:string; count:number; intervalMs:number};
+export type Building = {id:string; rings:LngLat[][]; height:number; heightSource:'measured'|'levels'|'estimated'; minHeight:number; kind:string; name?:string; roof:string; colour:number; landmark?:string};
+export type Place = {id:string; name:string; position:LngLat; kind:string};
+export type GeographyManifest = {version:string; bounds:Bounds; generatedAt:string; sourceTimestamp:string; sourceUrl:string; attribution:string; tiles:string; chunks:{id:string; bounds:Bounds; url:string; count:number}[]; stats:Record<string,number>};
+export type StaticFeatures = {places:Place[]; signs:RoadSign[]; cameras:CameraLocation[]};
+export type Snapshot<T> = {version:1; generatedAt:string; data:T[]};

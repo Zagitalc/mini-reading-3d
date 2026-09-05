@@ -1,0 +1,4 @@
+import type { RoadEvent } from './types';
+export function eventIsVisible(event:RoadEvent,now=Date.now()){if(event.status==='cancelled'||event.status==='completed')return false;const end=event.actualEnd||event.plannedEnd;return !end||Date.parse(end)>=now;}
+export function eventDuration(event:RoadEvent){const start=event.actualStart||event.plannedStart,end=event.actualEnd||event.plannedEnd;if(!start||!end)return null;const ms=Date.parse(end)-Date.parse(start);return Number.isFinite(ms)&&ms>=0?ms:null;}
+export function formatDate(value?:string,dateOnly=false){if(!value)return 'Unknown';const d=new Date(value);if(!Number.isFinite(d.getTime()))return 'Unknown';return new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',year:'numeric',...(!dateOnly?{hour:'2-digit',minute:'2-digit'} as const:{})}).format(d);}

@@ -1,0 +1,7 @@
+import type{FeedStatus}from'../shared/types';
+export class Poller<T>{data:T[]=[];status:FeedStatus;timer?:ReturnType<typeof setTimeout>;running=false;stopped=false;failures=0;
+ constructor(id:FeedStatus['id'],label:string,intervalMs:number,public fetcher:(()=>Promise<T[]>)|undefined,message:string){this.status={id,label,intervalMs,state:fetcher?'connecting':'unavailable',message,count:0};}
+ async tick(){if(this.running||this.stopped||!this.fetcher)return;this.running=true;this.status.lastAttempt=new Date().toISOString();try{this.data=await this.fetcher();this.status.lastSuccess=new Date().toISOString();this.status.state='live';this.status.message=this.data.length?'Connected':'Connected; no current observations in this area';this.status.count=this.data.length;this.failures=0;}catch{this.failures++;this.status.state=this.status.lastSuccess?'stale':'unavailable';this.status.message=this.status.lastSuccess?'Updates delayed; last observations retained briefly':'Provider could not be reached or credentials were rejected';}finally{this.running=false;if(!this.stopped)this.timer=setTimeout(()=>void this.tick(),Math.min(120000,this.status.intervalMs*2**Math.min(this.failures,3)));}}
+ start(){void this.tick();}stop(){this.stopped=true;clearTimeout(this.timer);}
+ health(now=Date.now()):FeedStatus{const copy={...this.status};if(copy.lastSuccess&&now-Date.parse(copy.lastSuccess)>copy.intervalMs*2){copy.state='stale';copy.message='Updates delayed';}return copy;}
+}
