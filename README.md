@@ -24,6 +24,8 @@ Then open **http://127.0.0.1:8787/**. Development uses Vite; production serves t
 
 ## Live data setup
 
+For hosting the whole application on Cloudflare Workers with persistent D1 storage, see [Cloudflare deployment](docs/cloudflare.md). Cloudflare feed updates run every minute; local Node polling retains its original intervals.
+
 Copy `.env.example` to `.env`, enter your registered provider credentials locally, and restart the API:
 
 - `BODS_API_KEY`: Bus Open Data Service vehicle monitoring. Reading Buses publishes route geometry separately; 53 routes and 320 shapes are bundled.

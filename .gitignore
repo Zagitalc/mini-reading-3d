@@ -10,3 +10,7 @@ test-results/
 playwright-report/
 .DS_Store
 .geo-venv/
+.wrangler/
+.dev.vars
+.dev.vars.*
+dist-worker/

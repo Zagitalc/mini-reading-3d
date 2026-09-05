@@ -1,0 +1,4 @@
+{
+  "extends": "./tsconfig.json",
+  "include": ["worker", "server/providers", "server/rail-network.ts", "server/route-matcher.ts", "shared"]
+}
