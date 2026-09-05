@@ -36,6 +36,8 @@ npx wrangler secret put TRAFFIC_FEED_TOKEN
 
 Only configure feeds you have credentials for. Darwin still requires an OpenLDBWS SOAP token; the migration does not add Rail Data Marketplace JSON support. Street Manager uses signed subscriptions, not an API key. Never prefix credentials with `VITE_`.
 
+After adding or changing a secret, run `npm run cf:deploy`. Wrangler creates a secret-only Worker version, and a full deployment ensures the cron trigger invokes the application bundle containing that secret.
+
 ## Local Cloudflare runtime
 
 ```sh
