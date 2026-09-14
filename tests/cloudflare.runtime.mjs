@@ -30,7 +30,7 @@ try {
   for (const statement of sql.split(';').map(x=>x.trim()).filter(Boolean)) await db.prepare(statement).run();
   const get = async path => (await mf.dispatchFetch(`http://local${path}`)).json();
   const health = await get('/api/v1/health');
-  assert.equal(health.data.length,4);
+  assert.equal(health.data.length,6);
   assert.equal(health.data[0].state,'connecting');
   assert.equal(health.data[1].state,'unavailable');
   assert.deepEqual((await get('/api/v1/vehicles')).data,[]);
@@ -56,6 +56,9 @@ try {
   await post(envelope('old-test',raw));
   assert.equal((await get('/api/v1/road-events')).data.length,0,'older event must not revive cancellation');
   assert.equal((await get('/api/v1/health')).data[2].state,'live');
+  const beforeIgnored=(await db.prepare('SELECT count(*) AS n FROM sns_messages').first()).n;
+  assert.deepEqual(await (await post(envelope('outside',{...raw,object_data:{...raw.object_data,works_location_coordinates:'POINT(100000 100000)'}}))).json(),{accepted:true,ignored:true});
+  assert.equal((await db.prepare('SELECT count(*) AS n FROM sns_messages').first()).n,beforeIgnored,'out-of-area notifications must not write dedup rows');
   const oversized = await mf.dispatchFetch('http://local/api/v1/ingest/street-manager',{method:'POST',body:'x'.repeat(1048577)});
   assert.equal(oversized.status,413);
   assert.equal((await mf.dispatchFetch('http://local/api/missing')).status,404);

@@ -1,3 +1,7 @@
+import {CADENCE} from '../shared/feed-policy';
+import {TrafficTiles,trafficBudget,trafficPeriod} from '../server/providers/tomtom';
+import type {Weather,FuelStation} from '../shared/types';
+import type {CacheStorage as CFCacheStorage} from '@cloudflare/workers-types';
 import type { ScheduledController, ExecutionContext } from '@cloudflare/workers-types';
 import type { FeedStatus, LngLat, TrafficSegment, VehicleObservation } from '../shared/types';
 import { validateSns, confirmSns } from '../server/providers/sns';
@@ -17,16 +21,19 @@ export async function feedHealth(store: CloudStore, env: Env): Promise<FeedStatu
   const definitions = [
     ['buses','Buses',env.BODS_API_KEY,'BODS registration required'],
     ['trains','Trains',env.DARWIN_TOKEN,'OpenLDBWS SOAP token required; positions are estimates'],
-    ['traffic','Road traffic',env.TRAFFIC_FEED_URL,'No verified traffic feed configured'],
+    ['traffic','Road traffic',env.TOMTOM_API_KEY||env.TRAFFIC_FEED_URL,'No verified traffic feed configured'],
+    ['weather','Estimated weather',env.WEATHER_ENABLED==='true','Weather disabled'],
+    ['fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true','Fuel prices disabled'],
   ] as const;
   const feeds: FeedStatus[] = [];
   for (const [id,label,configured,message] of definitions) {
     const saved = configured ? await store.state<FeedStatus>(id) : undefined;
-    const health: FeedStatus = saved ?? {id,label,state:configured?'connecting':'unavailable',message:configured?'Waiting for first scheduled update':message,count:0,intervalMs:60000};
-    if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>120000) {
+    const health: FeedStatus = saved ?? {id,label,state:configured?'connecting':'unavailable',message:configured?'Waiting for first scheduled update':message,count:0,intervalMs:CADENCE[id]};
+    if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>CADENCE[id]*2) {
       health.state='stale'; health.message='Scheduled updates delayed';
     }
-    if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>300000) health.count=0;
+    if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>(id==='weather'?3600000:id==='fuel'?48*3600000:300000)) health.count=0;
+    if(id==='traffic'&&env.TOMTOM_API_KEY){health.state='connecting';health.message='Tiles load on demand; five-minute cache and monthly request cap';}
     feeds.push(health);
   }
   const road = await store.state<{confirmed:boolean;lastSuccess:string}>('roadworks');
@@ -60,12 +67,16 @@ async function ingest(request: Request, env: Env, store: CloudStore) {
       await store.accept(message.MessageId);
     }else{
       const event=parseStreetManager(JSON.parse(message.Message));
-      await store.accept(message.MessageId,event??undefined);
+      // Verified but irrelevant nationwide deliveries need an ACK, not D1 writes.
+      // There is no local side effect to deduplicate for these messages.
+      if(!event)return json({accepted:true,ignored:true});
+      await store.accept(message.MessageId,event);
     }
     return json({accepted:true});
   }catch{return json({error:'Invalid or unverified Street Manager message'},400);}
 }
 
+const tileServices=new WeakMap<object,TrafficTiles>();
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const path=new URL(request.url).pathname;
@@ -77,13 +88,27 @@ export default {
         return json({error:'Use POST for signed Street Manager notifications'},405);
       }
       if(request.method!=='GET')return json({error:'Method not allowed'},405);
+      if(path==='/api/v1/config')return json({tomtom:!!env.TOMTOM_API_KEY,trafficRefreshMs:CADENCE.traffic,weather:env.WEATHER_ENABLED==='true',fuel:env.FUEL_ENABLED==='true'});
+      if(path.startsWith('/api/v1/traffic-tiles/')){
+        const match=path.match(/^\/api\/v1\/traffic-tiles\/(\d+)\/(\d+)\/(\d+)$/);if(!match)return json({error:'Invalid tile'},404);
+        let service=tileServices.get(env.DB);
+        if(!service){const cache=(caches as unknown as CFCacheStorage).default;service=new TrafficTiles({match:async key=>(await cache.match(key)) as unknown as Response|undefined,put:async(key,response)=>cache.put(key,response as never)},async()=>!!await env.DB.prepare("INSERT INTO state VALUES(?,?) ON CONFLICT(id) DO UPDATE SET body=json_set(state.body,'$.count',json_extract(state.body,'$.count')+1) WHERE json_extract(state.body,'$.count')<? RETURNING body").bind('traffic-usage:'+trafficPeriod(),'{"count":1}',trafficBudget(env.TOMTOM_MONTHLY_TILE_LIMIT)).first());tileServices.set(env.DB,service);}
+        return service.get(env.TOMTOM_API_KEY,Number(match[1]),Number(match[2]),Number(match[3]));
+      }
+      if(path==='/api/v1/weather')return json(snapshot(env.WEATHER_ENABLED==='true'?(await store.items<Weather>('weather')).filter(w=>Date.now()-Date.parse(w.observedAt)<3600000):[]));
+      if(path==='/api/v1/fuel')return json(snapshot(env.FUEL_ENABLED==='true'?(await store.items<FuelStation>('fuel')).filter(f=>Date.now()-Date.parse(f.observedAt)<48*3600000):[]));
+      if(path==='/api/v1/usage')return json({period:trafficPeriod(),trafficTileRequests:(await store.state<{count:number}>('traffic-usage:'+trafficPeriod()))?.count??0,trafficTileLimit:trafficBudget(env.TOMTOM_MONTHLY_TILE_LIMIT),providerIntervalsMs:CADENCE,streetManager:'push only; no polling'});
       if(path==='/api/v1/health')return json(snapshot(await feedHealth(store,env)));
       if(path==='/api/v1/road-events')return json(snapshot(await store.active()));
       if(path==='/api/v1/traffic')return json(snapshot(env.TRAFFIC_FEED_URL?(await store.items<TrafficSegment>('traffic')).filter(fresh):[]));
-      if(path==='/api/v1/vehicles') {
+      if(path==='/api/v1/vehicles'||path==='/api/v1/vehicle-state') {
         const buses=env.BODS_API_KEY?await store.items<VehicleObservation>('buses'):[];
         const trains=env.DARWIN_TOKEN?await store.items<VehicleObservation>('trains'):[];
-        return json(snapshot([...buses,...trains].filter(fresh)));
+        const data=snapshot([...buses,...trains].filter(fresh));
+        if(path==='/api/v1/vehicles')return json(data);
+        const routes:Record<string,LngLat[]>={};
+        for(const feed of ['buses','trains'] as const){if(!(feed==='buses'?env.BODS_API_KEY:env.DARWIN_TOKEN))continue;for(const row of await store.items<{id:string;route:LngLat[]}>(`${feed}:routes`))routes[row.id]=row.route;}
+        return json({...data,routes});
       }
       if(path==='/api/v1/vehicle-routes') {
         const routes: Record<string,LngLat[]>={};

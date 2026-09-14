@@ -7,3 +7,5 @@
 /* Keep the map usable on small screens; layers expand on demand. */
 @media(max-width:680px){.explore-panel #layers{display:none}.explore-panel.mobile-open #layers:not([hidden]){display:block;max-height:calc(100dvh - 310px);overflow:auto}.panel-foot{font-size:12px}.places-dock #landmark-buttons button{font-size:13px}.explore-panel{width:245px}.search-wrap input{font-size:14px}.layer-row{font-size:14px}}
 .details-panel p{font-size:16px}.layer-title,.dock-label,.panel-heading,.eyebrow,.panel-foot,.bottom-note,#view-coordinates{font-size:12px}.map-label{font-size:12px}
+
+.environment-control{border-top:1px solid #ddd;padding:8px 0}.environment-summary{display:block;width:100%;text-align:left;border:0;background:#edf0eb;border-radius:6px;padding:9px;margin-bottom:8px;color:#365548;cursor:pointer}.environment-control small{display:block;padding:0 8px 8px;font-size:11px;color:#66716a}dd small{display:block;font-size:11px;color:#66716a}

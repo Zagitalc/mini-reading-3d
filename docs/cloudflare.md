@@ -57,3 +57,37 @@ Free Workers currently allow 100,000 requests/day and 10 ms CPU per invocation. 
 Sources: [Workers limits](https://developers.cloudflare.com/workers/platform/limits/), [D1 pricing](https://developers.cloudflare.com/d1/platform/pricing/).
 
 Keep one deployment writing each D1 database. D1 batches publish each feed snapshot atomically and preserve road-event ordering/cancellation tombstones. SNS delivery IDs are retained for seven days. Back up D1 before schema changes; this deployment starts with a fresh cloud database and does not import the local SQLite history.
+
+## New feed configuration and call budgets
+
+For Node (`npm run dev` / `npm start`), add the traffic key to the ignored `.env`:
+
+```dotenv
+TOMTOM_API_KEY=
+TOMTOM_MONTHLY_TILE_LIMIT=150000
+WEATHER_ENABLED=true
+FUEL_ENABLED=true
+```
+
+Weather and fuel use keyless endpoints. Existing BODS/rail credentials are preserved. `TRAFFIC_FEED_URL` is the older optional custom JSON bridge; leave it blank when using TomTom. The bridge is not polled when TomTom is enabled.
+
+**`.env` is not uploaded to Cloudflare.** For the deployed Worker, run `npx wrangler secret put TOMTOM_API_KEY` and enter the key at the prompt, then deploy the tested bundle. Use `.dev.vars` for Wrangler local development. Non-secret weather/fuel switches and the traffic cap are in `wrangler.jsonc`. This implementation does not migrate the existing SOAP rail adapter to RDM JSON; its token contract remains unchanged.
+
+| Work | Cadence / bound |
+| --- | --- |
+| BODS bounding-box request | Once per minute (1,440/day if continuously enabled), independent of viewers |
+| Rail boards | Once per minute per configured station; no per-viewer provider calls |
+| Optional JSON traffic bridge | Five minutes (288/day), only without TomTom |
+| TomTom | Visible Reading tiles only; five-minute cache; 150,000 upstream attempts/month hard cap by default |
+| Open-Meteo | 15 minutes (96/day) |
+| Reading fuel mirror | Six hours (4/day) |
+| Street Manager | Push notifications only; zero polling calls |
+| Browser vehicle state and health | Two requests/minute total while visible |
+| Browser roadworks snapshot | Once per five minutes (95% fewer reads than the old 15-second refresh) |
+| Browser weather / fuel snapshot | 15 minutes / six hours when healthy; bounded earlier retry while unavailable |
+
+Provider failures use exponential backoff. Scheduled polling uses persistent atomic leases to avoid overlapping cron calls; this also suppresses premature manual local ticks. Immutable network assets are cached per isolate. Fresh buses are persisted before optional route-geometry work, so missing geometry cannot erase a working position feed. Five-minute vehicle expiry remains unchanged.
+
+Street Manager verifies every notification before handling it. Out-of-area/unsupported notifications are acknowledged without writing per-message records; there is no local side effect to deduplicate. Relevant notifications retain deduplication and version ordering. This reduces D1 writes, **not inbound nationwide SNS delivery volume**. Narrowing that volume would require a supported change to the DfT subscription. Never drop relevant lifecycle updates to reduce traffic. Node prunes deduplication history at most hourly; Worker cleanup runs daily.
+
+Run `APP_URL=http://127.0.0.1:8787 npm run check:feeds` after adding keys and restarting the app. Set `APP_URL` to the deployed URL to audit its cached status instead. This reads only the app's cache, prints no credentials and reports the persistent TomTom counter and cap. `/api/v1/usage` exposes the same budget/cadences. Node and Cloudflare counters are separate; other consumers of the same TomTom key are outside this cap. Production free-Worker CPU limits still need validation with the account's metrics; local runtime tests do not emulate CPU enforcement.

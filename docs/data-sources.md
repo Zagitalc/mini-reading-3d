@@ -71,3 +71,19 @@ An event stream is not a complete snapshot: events predating the subscription ma
 ```
 
 Speeds are mph, coordinates WGS84, confidence 0–1. This is a schema example, not an actual traffic observation and is never loaded as application data. Schema-invalid responses fail the feed; observations older than five minutes are omitted. The bridge token, if supplied, is transmitted only by the server in a Bearer header. No commercial provider is purchased or enabled by default.
+
+## Traffic, weather and fuel (September 2026)
+
+- **TomTom Orbis v2 vector flow tiles**: `TOMTOM_API_KEY` stays on the server. MapLibre reads the bounded `/api/v1/traffic-tiles/:z/:x/:y` proxy. Relative speed colours congestion; it is not inferred from OSM speed limits. Visible tiles only, zoom 10–14 (overzoom above 14), five-minute shared and browser caches, same-tile request coalescing and a persistent monthly upstream-request cap. Every upstream attempt, including an error, spends the local cap. Failed credentials/provider requests back off for five minutes per running instance. The cap applies to this deployment, not other apps sharing the key. Default 150,000 leaves headroom below the 200,000 monthly vector tile allowance listed when implemented. Verify your account plan. Map viewers can still exhaust the configured allowance; they cannot bypass it with other coordinates or arbitrary upstream URLs.
+  - https://docs.tomtom.com/traffic-api/documentation/tomtom-orbis-maps/v2/traffic-flow/vector-flow-tiles
+  - https://docs.tomtom.com/pricing
+- **Open-Meteo**: keyless non-commercial endpoint, one Reading coordinate every 15 minutes. Commercial deployments need an appropriate service licence. Current conditions are model estimates. Rain plus showers is an accumulated amount over the supplied interval, normalized for animation intensity; probability does not create rain. Weather is removed after one hour without a usable model timestamp. Clouds and precipitation are illustrative, not geolocated observations. Effects have a switch and honour reduced motion. Attribution: Open-Meteo, CC BY 4.0.
+  - https://open-meteo.com/en/docs
+  - https://open-meteo.com/en/pricing
+- **Fuel Finder via Cheap Fuel Near Me**: a third-party keyless OGL mirror, **not a direct government API connection**. The Reading town file avoids downloading the UK dataset. The publisher updates twice daily; the backend fetches every six hours. Each grade retains its retailer submission time; the source snapshot time is separate. Snapshots older than 48 hours are rejected, quiet sites are labelled, and district-centre coordinate approximations are excluded. These are snapshot prices, not live prices. Available grades use the source codes (E10/E5 petrol, B7S standard diesel, B7P premium diesel). No fuel API key is needed. Contains public sector information licensed under OGL v3.0.
+  - https://cheapfuelnearme.uk/api/
+  - https://cheapfuelnearme.uk/api/v1/towns/reading.json
+  - Direct government alternative, requiring OAuth registration: https://www.gov.uk/guidance/access-the-latest-fuel-prices-and-forecourt-data-via-api-or-email
+  - TomTom Fuel Prices is marked automotive-only, so it is not used by this app: https://docs.tomtom.com/fuel-prices-api/documentation/fuel-prices-api/fuel-price
+
+Bus colours and line selection use the same static route IDs/palette as the route overlays. Route identity is distinct from an exact journey geometry match. Ambiguous paths retain their reported GPS position; matching is not required for display. Provider/operator identity prevents another operator's same-numbered route inheriting a Reading Buses line.

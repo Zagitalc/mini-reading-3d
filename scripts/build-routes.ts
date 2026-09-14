@@ -1,3 +1,4 @@
+import {busBrands} from '../shared/bus-style';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {clipLine,deduplicate,fallbackColour,type StaticRoute} from '../shared/static-routes';
 import {RailNetwork,STATIONS} from '../server/rail-network';
@@ -6,7 +7,7 @@ const dest=process.env.GEOGRAPHY_OUTPUT??'raw/staging';await mkdir(dest,{recursi
 const bus=JSON.parse(await readFile('public/data/bus-network.json','utf8'));
 // Operator colour names verified against Reading Buses' current route pages/network map.
 // Hex values are miniature-palette approximations, not official brand specifications.
-const branded:Record<string,[string,string]>={'5':['#00876d','emerald'],'6':['#00876d','emerald'],'6a':['#00876d','emerald'],'13':['#db761c','orange'],'14':['#db761c','orange'],'15':['#4098c5','sky blue'],'15a':['#4098c5','sky blue'],'17':['#784699','purple']};
+const branded=busBrands;
 const buses:StaticRoute[]=bus.routes.map((r:Record<string,string>)=>{
  const trips=bus.trips.filter((t:Record<string,string>)=>t.route_id===r.route_id),brand=branded[r.route_short_name];
  return {id:r.route_id,label:r.route_short_name,operator:bus.source,destinations:[...new Set(trips.map((t:Record<string,string>)=>t.trip_headsign).filter(Boolean))].sort(),

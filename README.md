@@ -72,3 +72,5 @@ Downloads are build-time only. `raw/`, `.env`, the Python environment and the SQ
 Application code: MIT. Geography: © OpenStreetMap contributors, ODbL 1.0, distributed via Geofabrik. Reading Buses network data: Open Government Licence 3.0. Noto Sans glyphs: SIL Open Font License. Data licensing is separate from the code licence; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md).
 
 Mini London / Mini Tokyo informed the separation of rendering and movement concerns. This is a fresh implementation; no London application source or TfL credentials were copied.
+
+Traffic/weather/fuel: enter `TOMTOM_API_KEY` in `.env` for local development. Keyless weather effects and Reading fuel snapshots are enabled there; see [feed sources](docs/data-sources.md#traffic-weather-and-fuel-september-2026) and [deployment/call budgets](docs/cloudflare.md#new-feed-configuration-and-call-budgets). Buses have route-coloured labels and selectable line matching. Use `npm run check:feeds` against the running local server (`APP_URL` overrides the URL) to audit cached feed status and the traffic request budget without calling providers directly.

@@ -1,3 +1,6 @@
+import {CADENCE,due} from '../shared/feed-policy';
+import {fetchWeather} from '../server/providers/weather';
+import {fetchFuel} from '../server/providers/fuel';
 import { fetchBuses } from '../server/providers/buses';
 import { fetchRailBoard, estimateBoard } from '../server/providers/trains';
 import { fetchTraffic } from '../server/providers/traffic';
@@ -7,36 +10,51 @@ import type { FeedStatus, LngLat, VehicleObservation } from '../shared/types';
 import type { Env } from './env';
 import { CloudStore } from './store';
 
+const assets=new Map<string,unknown>();
 async function asset<T>(env: Env, name: string): Promise<T> {
+  if(assets.has(name))return assets.get(name) as T;
   const response = await env.ASSETS.fetch(`https://assets.internal/data/${name}`);
   if (!response.ok) throw Error('Bundled network unavailable');
-  return response.json() as Promise<T>;
+  const data=await response.json();assets.set(name,data);return data as T;
 }
 
 export async function pollFeeds(env: Env) {
   const store = new CloudStore(env.DB);
   async function update(id: FeedStatus['id'], label: string, fetcher?: () => Promise<{items: {id:string}[]; routes?: Record<string, LngLat[]>}>) {
     if (!fetcher) return;
+    const previous=await store.state<FeedStatus>(id);
+    const intervalMs=CADENCE[id];
+    if(!due(previous?.lastAttempt,intervalMs,previous?.failures))return;
+    // Atomic lease prevents overlapping cron invocations from calling a provider twice.
+    const now=Date.now();
+    const lease=await env.DB.prepare("INSERT INTO state VALUES(?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body WHERE CAST(state.body AS INTEGER)<=? RETURNING body")
+      .bind(`poll-lease:${id}`,String(now+intervalMs),now).first();
+    if(!lease)return;
     const lastAttempt = new Date().toISOString();
     try {
       const {items, routes} = await fetcher();
       // A partial rail response can repeat a service across station boards.
       const unique = [...new Map(items.map(item => [item.id, item])).values()];
-      const health: FeedStatus = {id,label,intervalMs:60000,state:'live',lastAttempt,lastSuccess:new Date().toISOString(),count:unique.length,
-        message:unique.length?'Connected; refreshed every minute':'Connected; no current observations in this area'};
+      const health: FeedStatus = {id,label,intervalMs,state:'live',lastAttempt,lastSuccess:new Date().toISOString(),count:unique.length,
+        message:unique.length?`Connected; refresh interval ${intervalMs/60000} minutes`:'Connected; no current observations in this area'};
       await store.saveFeed(id, unique, health, routes);
     } catch {
-      const previous = await store.state<FeedStatus>(id);
-      await store.stateStatement(id, {id,label,intervalMs:60000,count:previous?.count??0,lastAttempt,lastSuccess:previous?.lastSuccess,
+      await store.stateStatement(id, {id,label,intervalMs,count:previous?.count??0,failures:(previous?.failures??0)+1,lastAttempt,lastSuccess:previous?.lastSuccess,
         state:previous?.lastSuccess?'stale':'unavailable',message:'Provider update failed; check credentials and Cloudflare execution limits'}).run();
     }
   }
   // Sequential provider groups keep concurrent outbound connections bounded.
   await update('buses','Buses',env.BODS_API_KEY ? async () => {
-    const [rows, network] = await Promise.all([fetchBuses(env.BODS_API_KEY!), asset<BusNetwork>(env,'bus-network.json')]);
+    const rows=await fetchBuses(env.BODS_API_KEY!);
+    // Preserve actual observations BEFORE optional geometry work. Asset/matching failures
+    // (including Worker CPU termination) must not prevent the next map read seeing buses.
+    const time=new Date().toISOString();
+    await store.saveFeed('buses',rows,{id:'buses',label:'Buses',intervalMs:CADENCE.buses,state:'live',lastAttempt:time,lastSuccess:time,count:rows.length,message:'GPS observations available; route matching pending'});
+    let network:BusNetwork;
+    try{network=await asset<BusNetwork>(env,'bus-network.json');}catch{return {items:rows};}
     const routes: Record<string, LngLat[]> = {};
     const items = rows.map(row => {
-      const match = matchBusRoute(row,network);
+      let match;try{match=matchBusRoute(row,network);}catch{return row;}
       if (match.route && match.observation.tripId) routes[match.observation.tripId] = match.route;
       return match.observation;
     });
@@ -63,6 +81,8 @@ export async function pollFeeds(env: Env) {
     if (!successes) throw Error('Rail unavailable');
     return {items:[...items.values()],routes};
   } : undefined);
-  await update('traffic','Road traffic',env.TRAFFIC_FEED_URL ? async () => ({items:await fetchTraffic(env.TRAFFIC_FEED_URL!,env.TRAFFIC_FEED_TOKEN)}) : undefined);
-  await env.DB.prepare('DELETE FROM sns_messages WHERE received_at < ?').bind(Date.now()-7*86400000).run();
+  await update('traffic','Road traffic',!env.TOMTOM_API_KEY&&env.TRAFFIC_FEED_URL ? async () => ({items:await fetchTraffic(env.TRAFFIC_FEED_URL!,env.TRAFFIC_FEED_TOKEN)}) : undefined);
+  await update('weather','Estimated weather',env.WEATHER_ENABLED==='true'?async()=>({items:await fetchWeather()}):undefined);
+  await update('fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true'?async()=>({items:await fetchFuel()}):undefined);
+  if(new Date().getUTCHours()===0&&new Date().getUTCMinutes()===0)await env.DB.prepare('DELETE FROM sns_messages WHERE received_at < ?').bind(Date.now()-7*86400000).run();
 }

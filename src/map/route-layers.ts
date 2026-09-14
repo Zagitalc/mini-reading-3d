@@ -19,7 +19,7 @@ export async function connectRouteLayers(map:Map){
    const select=section.querySelector('select')!,search=section.querySelector<HTMLInputElement>('input[type=search]')!,toggle=section.querySelector<HTMLInputElement>('input[type=checkbox]')!;
    const list=()=>{select.replaceChildren();const all=new Option('All routes','');select.append(all);for(const r of routes.filter(r=>routeMatches(r,search.value)))select.append(new Option(`${r.label}${r.operator?' · '+r.operator:''}`,r.id));select.value=group.selected;};
    const choose=(id:string)=>{
-    group.selected=id;select.value=id;
+    group.selected=id;select.value=id;if(mode==='bus')document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:group.enabled?id:''}));
     const opacity:ExpressionSpecification=['case',['any',['literal',!id],['==',['get','id'],id]],.95,.13];
     for(const part of ['outline','lines'])map.setPaintProperty(`${mode}-route-${part}`,'line-opacity',opacity);
     map.setPaintProperty(`${mode}-route-labels`,'text-opacity',opacity);
@@ -27,8 +27,9 @@ export async function connectRouteLayers(map:Map){
     detail(`<span class="pill">${mode==='bus'?'Bus route':'Railway infrastructure corridor'}</span><h2>${escape(r.label)}</h2>${mode==='rail'?'<p>Physical railway corridor. This does not establish passenger services or operator coverage.</p>':''}<dl>${r.operator?`<dt>Operator</dt><dd>${escape(r.operator)}</dd>`:''}<dt>${mode==='bus'?'Available destinations':'Mapped endpoints'}</dt><dd>${r.destinations.map(escape).join('<br>')||'Not supplied'}</dd><dt>Source</dt><dd><a href="${escape(r.sourceUrl)}" target="_blank" rel="noopener">${escape(r.source)}</a></dd><dt>Snapshot</dt><dd>${escape(r.snapshot.slice(0,10))}</dd><dt>Colour</dt><dd>${escape(r.colourSource)}</dd></dl>`);
    };
    Object.assign(group,{choose});
+   if(mode==='bus'){const show=(e:Event)=>{toggle.checked=true;toggle.dispatchEvent(new Event('change'));choose((e as CustomEvent<string>).detail);};document.addEventListener('reading-show-bus-route',show);map.on('remove',()=>document.removeEventListener('reading-show-bus-route',show));}
    search.addEventListener('input',list);select.addEventListener('change',()=>choose(select.value));section.querySelector('button')!.addEventListener('click',()=>{search.value='';list();choose('');});list();
-   toggle.disabled=false;section.querySelector('.route-loading')!.remove();toggle.addEventListener('change',()=>{group.enabled=toggle.checked;section.querySelector<HTMLElement>('.route-options')!.hidden=!toggle.checked;for(const part of ['outline','lines','labels'])map.setLayoutProperty(`${mode}-route-${part}`,'visibility',toggle.checked?'visible':'none');});
+   toggle.disabled=false;section.querySelector('.route-loading')!.remove();toggle.addEventListener('change',()=>{group.enabled=toggle.checked;if(mode==='bus')document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:group.enabled?group.selected:''}));section.querySelector<HTMLElement>('.route-options')!.hidden=!toggle.checked;for(const part of ['outline','lines','labels'])map.setLayoutProperty(`${mode}-route-${part}`,'visibility',toggle.checked?'visible':'none');});
   }catch{section.querySelector('.route-loading')!.textContent='Route snapshot unavailable';}
  }
  map.on('click',e=>{

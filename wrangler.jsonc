@@ -7,7 +7,7 @@
   "workers_dev": true,
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
   "triggers": { "crons": ["* * * * *"] },
-  "vars": { "STREET_MANAGER_ENABLED": "true" },
+  "vars": { "STREET_MANAGER_ENABLED": "true", "WEATHER_ENABLED": "true", "FUEL_ENABLED": "true", "TOMTOM_MONTHLY_TILE_LIMIT": "150000" },
   "d1_databases": [{
     "binding": "DB",
     "database_name": "mini-reading-3d",

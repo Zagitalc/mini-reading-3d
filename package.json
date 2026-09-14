@@ -10,7 +10,7 @@
     "dev": "concurrently -k -n api,map \"tsx watch --env-file-if-exists=.env server/index.ts\" \"vite --host 127.0.0.1\"",
     "build": "tsc --noEmit && tsc -p tsconfig.worker.json && vite build",
     "cf:dev": "wrangler dev --test-scheduled",
-    "test:cloudflare": "node tests/cloudflare.runtime.mjs",
+    "test:cloudflare": "node tests/cloudflare.runtime.mjs && node tests/cloudflare-feeds.runtime.mjs",
     "cf:check": "npm run build && wrangler deploy --dry-run --outdir dist-worker",
     "cf:migrate:local": "wrangler d1 migrations apply DB --local",
     "cf:migrate": "wrangler d1 migrations apply DB --remote",
@@ -25,10 +25,14 @@
     "data:roadworks": "node --import tsx scripts/import-roadworks.ts",
     "check": "npm run test && npm run build",
     "data:download": "node scripts/download-data.mjs",
-    "test:browser": "node tests/browser-check.mjs"
+    "test:browser": "node tests/browser-check.mjs",
+    "check:feeds": "node scripts/check-feeds.mjs",
+    "test:environment-browser": "node tests/environment-browser.mjs"
   },
   "overrides": {
-    "miniflare": { "undici": "^7.29.0" }
+    "miniflare": {
+      "undici": "^7.29.0"
+    }
   },
   "dependencies": {
     "compression": "^1.8.1",
