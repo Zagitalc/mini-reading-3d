@@ -3,9 +3,9 @@ import {feedFailureReason} from '../shared/feed-errors';
 import {fetchWeather} from '../server/providers/weather';
 import {fetchFuel} from '../server/providers/fuel';
 import { fetchBuses } from '../server/providers/buses';
-import { fetchRailBoard, estimateBoard } from '../server/providers/trains';
+import { fetchRailSnapshot } from '../server/providers/trains';
 import { fetchTraffic } from '../server/providers/traffic';
-import { RailNetwork, STATIONS } from '../server/rail-network';
+import { RailNetwork } from '../server/rail-network';
 import { matchBusRoute, type BusNetwork } from '../server/route-matcher';
 import type { FeedStatus, LngLat, VehicleObservation } from '../shared/types';
 import type { Env } from './env';
@@ -63,26 +63,10 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
     });
     return {items,routes};
   } : undefined);
-  await update('trains','Trains',env.DARWIN_TOKEN ? async () => {
+  await update('trains','Trains',(env.RDM_API_KEY||env.DARWIN_TOKEN) ? async () => {
     const geo = await asset<{features: unknown[]}>(env,'railways.json');
     const rail = new RailNetwork(geo.features);
-    const items = new Map<string,VehicleObservation>();
-    const routes: Record<string,LngLat[]> = {};
-    let successes = 0;
-    for (const station of Object.keys(STATIONS)) {
-      try {
-        const result = estimateBoard(await fetchRailBoard(env.DARWIN_TOKEN!,station),station,rail);
-        successes++;
-        for (const observation of result.observations) {
-          const previous = items.get(observation.id);
-          if (!previous || Date.parse(observation.observedAt)>Date.parse(previous.observedAt) ||
-              (observation.observedAt===previous.observedAt && observation.cancelled)) items.set(observation.id,observation);
-        }
-        Object.assign(routes,result.routes);
-      } catch { /* Preserve usable station boards when another station fails. */ }
-    }
-    if (!successes) throw Error('Rail unavailable');
-    return {items:[...items.values()],routes};
+    return fetchRailSnapshot({rdmKey:env.RDM_API_KEY,soapToken:env.DARWIN_TOKEN},rail);
   } : undefined);
   await update('traffic','Road traffic',!env.TOMTOM_API_KEY&&env.TRAFFIC_FEED_URL ? async () => ({items:await fetchTraffic(env.TRAFFIC_FEED_URL!,env.TRAFFIC_FEED_TOKEN)}) : undefined);
   await update('weather','Estimated weather',env.WEATHER_ENABLED==='true'?async()=>({items:await fetchWeather()}):undefined);

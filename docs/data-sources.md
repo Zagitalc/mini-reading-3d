@@ -8,7 +8,7 @@ Checked 5 September 2026. No provider credentials were supplied or read from oth
 | Reading Buses GTFS | Current public ZIP downloaded successfully | 320 route shapes, 6,042 trips, 53 routes, 1,105 local stops (16 September refresh), verified serving routes and scheduled stop departures |
 | Reading r2p open data | Public portal lists live vehicle APIs; registration required | Documented alternative; live adapter uses BODS SIRI-VM instead |
 | BODS | DfT documents registered SIRI-VM access | Verified live Reading coverage on 16 September; London-placed, shared on-demand refresh avoids global-cron geographic blocking |
-| National Rail OpenLDBWS | Current WSDL and imported SOAP binding checked | Registered SOAP board adapter, timed rail estimates, cancellation and dwell handling; authenticated feed not tested |
+| National Rail Darwin via RDM / legacy OpenLDBWS | RDM detailed JSON board and official schema checked; Reading authenticated successfully on 16 September 2026 | Timed rail estimates, cancellation and dwell handling; only services with usable known calling points and connected track can be placed |
 | Street Manager | Official event/SNS documentation checked | Signed HTTPS receiver and SQLite lifecycle store; subscription/backfill not available locally |
 | Congestion | No complete free area-wide source established | Optional validated `TrafficSegment[]` bridge; unavailable by default |
 
@@ -19,6 +19,8 @@ Source pages:
 - https://reading-opendata.r2p.com/
 - https://www.bus-data.dft.gov.uk/
 - https://github.com/department-for-transport-BODS/bods-data-extractor
+- https://raildata.org.uk/dashboard/dataProduct/P-d81d6eaf-8060-4467-a339-1c833e50cbbe/specification
+- https://realtime.nationalrail.co.uk/LDBWS/static/ldbws.json
 - https://lite.realtime.nationalrail.co.uk/OpenLDBWS/documentation.aspx
 - https://lite.realtime.nationalrail.co.uk/OpenLDBWS/wsdl.aspx?ver=2021-11-01
 - https://www.nationalrail.co.uk/developers/darwin-data-feeds/
@@ -28,9 +30,11 @@ Source pages:
 
 ## Live transport
 
-Put credentials in `.env` using the names in `.env.example`. BODS is used for buses because its published SIRI-VM contract is accessible without guessing a private r2p endpoint. Do not substitute a Reading r2p key for a BODS key. The National Rail adapter expects the OpenLDBWS SOAP token; some Rail Data Marketplace products use different authentication and are not interchangeable.
+Put credentials in `.env` using the names in `.env.example`. BODS is used for buses because its published SIRI-VM contract is accessible without guessing a private r2p endpoint. Do not substitute a Reading r2p key for a BODS key. Use `RDM_API_KEY` for the Consumer key of the subscribed Live Departure Board product. Requests use its `x-apikey` header, not the Consumer secret. The optional `DARWIN_TOKEN` remains for existing OpenLDBWS SOAP credentials; RDM is preferred when both are configured.
 
-The rail request uses the 2021-11-01 request namespace and the 2015-05-14 SOAPAction specified by the current WSDL. It requests ten services per local station and uses a non-negative time offset compatible with ordinary tokens. Coverage is limited by station-board availability and known railway geometry; freight, non-stopping services, detailed platform assignments and precise train GPS are not provided.
+The RDM adapter uses `GetDepBoardWithDetails` with ten rows, a verified five-minute lookback and a 120-minute window. Calling points are included in that response, avoiding per-train detail calls. JSON arrays are normalized for the existing estimator. Cancelled services remain cancellation events; replacement buses, ferries and connecting services requiring a change are excluded. Delayed services without usable times are not assigned invented positions. Boards are fetched sequentially once per minute for the eleven configured stations (at most 15,840 provider requests/day with continuous polling), shared across viewers. Authentication and quota failures stop the remaining station requests and invoke existing backoff. Individual transient station failures retain usable boards from other stations.
+
+The legacy SOAP request uses the 2021-11-01 request namespace and the 2015-05-14 SOAPAction specified by the current WSDL. It requests ten services per local station and uses a non-negative time offset compatible with ordinary tokens. Coverage is limited by station-board availability and known railway geometry; freight, non-stopping services, detailed platform assignments and precise train GPS are not provided.
 
 Trains without two known timed calls or a verified station dwell are not placed. Live end-to-end validation requires credentials. No timetable-only train is labelled live.
 

@@ -29,12 +29,14 @@ Set credentials as Worker secrets; `.env` is not uploaded or used by the deploye
 
 ```sh
 npx wrangler secret put BODS_API_KEY
-npx wrangler secret put DARWIN_TOKEN
+npx wrangler secret put RDM_API_KEY
+# Optional, only for an existing legacy SOAP credential:
+# npx wrangler secret put DARWIN_TOKEN
 npx wrangler secret put TRAFFIC_FEED_URL
 npx wrangler secret put TRAFFIC_FEED_TOKEN
 ```
 
-Only configure feeds you have credentials for. Darwin still requires an OpenLDBWS SOAP token; the migration does not add Rail Data Marketplace JSON support. Street Manager uses signed subscriptions, not an API key. Never prefix credentials with `VITE_`.
+Only configure feeds you have credentials for. Rail uses the RDM Live Departure Board Consumer key via `RDM_API_KEY`, or a legacy OpenLDBWS SOAP token via `DARWIN_TOKEN`. Street Manager uses signed subscriptions, not an API key. Never prefix credentials with `VITE_`.
 
 After adding or changing a secret, run `npm run cf:deploy`. Wrangler creates a secret-only Worker version, and a full deployment ensures the cron trigger invokes the application bundle containing that secret.
 
@@ -71,12 +73,12 @@ FUEL_ENABLED=true
 
 Weather and fuel use keyless endpoints. Existing BODS/rail credentials are preserved. `TRAFFIC_FEED_URL` is the older optional custom JSON bridge; leave it blank when using TomTom. The bridge is not polled when TomTom is enabled.
 
-**`.env` is not uploaded to Cloudflare.** For the deployed Worker, run `npx wrangler secret put TOMTOM_API_KEY` and enter the key at the prompt, then deploy the tested bundle. Use `.dev.vars` for Wrangler local development. Non-secret weather/fuel switches and the traffic cap are in `wrangler.jsonc`. This implementation does not migrate the existing SOAP rail adapter to RDM JSON; its token contract remains unchanged.
+**`.env` is not uploaded to Cloudflare.** For the deployed Worker, run `npx wrangler secret put TOMTOM_API_KEY` and enter the key at the prompt, then deploy the tested bundle. Use `.dev.vars` for Wrangler local development. Non-secret weather/fuel switches and the traffic cap are in `wrangler.jsonc`. RDM JSON is supported through `RDM_API_KEY`; `DARWIN_TOKEN` remains a separate optional SOAP credential. Keys stay server-side and are not returned by the configuration API.
 
 | Work | Cadence / bound |
 | --- | --- |
 | BODS bounding-box request | On demand, at most once per minute shared across all viewers (maximum 1,440/day); no idle cron calls |
-| Rail boards | Once per minute per configured station; no per-viewer provider calls |
+| Rail boards | Once per minute per configured station (11 stations; at most 15,840/day); no per-viewer or per-train detail calls |
 | Optional JSON traffic bridge | Five minutes (288/day), only without TomTom |
 | TomTom | Visible Reading tiles only; five-minute cache; 150,000 upstream attempts/month hard cap by default |
 | Open-Meteo | 15 minutes (96/day) |

@@ -3,6 +3,7 @@ export function feedFailureReason(error:unknown):string {
  const message=error instanceof Error?error.message:'',name=error instanceof Error?error.name:'';
  const status=/^Bus provider returned HTTP (\d{3})(?: \((credential rejected|geographic restriction|gateway rejection|HTML response|JSON response)\))?$/.exec(message);
  if(status)return `Bus provider returned HTTP ${status[1]}${status[2]?` (${status[2]})`:''}`;
+ if(/^Rail provider returned HTTP \d{3}$/.test(message)||message==='Rail provider returned an unrecognised response')return message;
  if(name==='TimeoutError'||name==='AbortError')return 'Provider request timed out';
  if(message==='Bus provider returned an unrecognised response')return message;
  if(message==='Feed item exceeds storage budget'||message==='Feed snapshot exceeds free-plan storage budget')return message;

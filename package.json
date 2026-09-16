@@ -10,7 +10,7 @@
     "dev": "concurrently -k -n api,map \"tsx watch --env-file-if-exists=.env server/index.ts\" \"vite --host 127.0.0.1\"",
     "build": "tsc --noEmit && tsc -p tsconfig.worker.json && vite build",
     "cf:dev": "wrangler dev --test-scheduled",
-    "test:cloudflare": "node tests/cloudflare.runtime.mjs && node tests/cloudflare-feeds.runtime.mjs",
+    "test:cloudflare": "node tests/cloudflare.runtime.mjs && node tests/cloudflare-feeds.runtime.mjs && node tests/cloudflare-rail.runtime.mjs",
     "cf:check": "npm run build && wrangler deploy --dry-run --outdir dist-worker",
     "cf:migrate:local": "wrangler d1 migrations apply DB --local",
     "cf:migrate": "wrangler d1 migrations apply DB --remote",

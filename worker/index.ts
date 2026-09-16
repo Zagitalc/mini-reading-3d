@@ -20,7 +20,7 @@ const fresh = (item: {observedAt:string}) => {
 export async function feedHealth(store: CloudStore, env: Env): Promise<FeedStatus[]> {
   const definitions = [
     ['buses','Buses',env.BODS_API_KEY,'BODS registration required'],
-    ['trains','Trains',env.DARWIN_TOKEN,'OpenLDBWS SOAP token required; positions are estimates'],
+    ['trains','Trains',env.RDM_API_KEY||env.DARWIN_TOKEN,'RDM API key required; train positions are estimates'],
     ['traffic','Road traffic',env.TOMTOM_API_KEY||env.TRAFFIC_FEED_URL,'No verified traffic feed configured'],
     ['weather','Estimated weather',env.WEATHER_ENABLED==='true','Weather disabled'],
     ['fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true','Fuel prices disabled'],
@@ -106,17 +106,17 @@ export default {
         // use London placement; the shared D1 lease keeps all viewers to one refresh.
         await pollFeeds(env,['buses']);
         const buses=env.BODS_API_KEY?await store.items<VehicleObservation>('buses'):[];
-        const trains=env.DARWIN_TOKEN?await store.items<VehicleObservation>('trains'):[];
+        const trains=(env.RDM_API_KEY||env.DARWIN_TOKEN)?await store.items<VehicleObservation>('trains'):[];
         const data=snapshot([...buses,...trains].filter(fresh));
         if(path==='/api/v1/vehicles')return json(data);
         const routes:Record<string,LngLat[]>={};
-        for(const feed of ['buses','trains'] as const){if(!(feed==='buses'?env.BODS_API_KEY:env.DARWIN_TOKEN))continue;for(const row of await store.items<{id:string;route:LngLat[]}>(`${feed}:routes`))routes[row.id]=row.route;}
+        for(const feed of ['buses','trains'] as const){if(!(feed==='buses'?env.BODS_API_KEY:(env.RDM_API_KEY||env.DARWIN_TOKEN)))continue;for(const row of await store.items<{id:string;route:LngLat[]}>(`${feed}:routes`))routes[row.id]=row.route;}
         return json({...data,routes});
       }
       if(path==='/api/v1/vehicle-routes') {
         const routes: Record<string,LngLat[]>={};
         for(const feed of ['buses','trains'] as const) {
-          if(!(feed==='buses'?env.BODS_API_KEY:env.DARWIN_TOKEN))continue;
+          if(!(feed==='buses'?env.BODS_API_KEY:(env.RDM_API_KEY||env.DARWIN_TOKEN)))continue;
           const health=await store.state<FeedStatus>(feed);
           if(!health?.lastSuccess||Date.now()-Date.parse(health.lastSuccess)>300000)continue;
           for(const row of await store.items<{id:string;route:LngLat[]}>(`${feed}:routes`))routes[row.id]=row.route;

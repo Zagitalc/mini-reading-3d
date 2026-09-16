@@ -39,7 +39,8 @@ For hosting the whole application on Cloudflare Workers with persistent D1 stora
 Copy `.env.example` to `.env`, enter your registered provider credentials locally, and restart the API:
 
 - `BODS_API_KEY`: Bus Open Data Service vehicle monitoring. Reading Buses publishes route geometry separately; 53 routes and 320 shapes are bundled.
-- `DARWIN_TOKEN`: National Rail OpenLDBWS SOAP token. Train markers are estimates between timed calling points on connected OSM railway geometry, not GPS observations.
+- `RDM_API_KEY`: Consumer key for Rail Data Marketplace’s **Live Departure Board** product (Specification → API access credentials). Uses the detailed JSON board via `x-apikey`; no consumer secret is needed.
+- `DARWIN_TOKEN`: Optional legacy National Rail OpenLDBWS SOAP token; `RDM_API_KEY` takes precedence. Train markers are estimates between timed calling points on connected OSM railway geometry, not GPS observations.
 - `STREET_MANAGER_ENABLED=true`: enables the signed AWS SNS receiver at `/api/v1/ingest/street-manager`. DfT must register a publicly reachable HTTPS receiver before live roadworks can arrive. Local-only operation does not provide that public endpoint.
 - `TRAFFIC_FEED_URL`: optional authorised bridge returning the documented traffic schema. No complete free Reading traffic feed is bundled or claimed.
 
