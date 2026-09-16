@@ -7,7 +7,7 @@ Checked 5 September 2026. No provider credentials were supplied or read from oth
 | Geofabrik Berkshire OSM | Public PBF downloaded, snapshot 4 September 2026 20:21 UTC | Real bounded roads, buildings, parks/water, railway geometry, places, maxspeed and cameras |
 | Reading Buses GTFS | Current public ZIP downloaded successfully | 320 route shapes, 6,042 trips, 53 routes, 1,105 local stops (16 September refresh), verified serving routes and scheduled stop departures |
 | Reading r2p open data | Public portal lists live vehicle APIs; registration required | Documented alternative; live adapter uses BODS SIRI-VM instead |
-| BODS | DfT documents registered SIRI-VM access | Parser and bounded polling implemented; authenticated availability/Reading coverage not verified |
+| BODS | DfT documents registered SIRI-VM access | Verified live Reading coverage on 16 September; London-placed, shared on-demand refresh avoids global-cron geographic blocking |
 | National Rail OpenLDBWS | Current WSDL and imported SOAP binding checked | Registered SOAP board adapter, timed rail estimates, cancellation and dwell handling; authenticated feed not tested |
 | Street Manager | Official event/SNS documentation checked | Signed HTTPS receiver and SQLite lifecycle store; subscription/backfill not available locally |
 | Congestion | No complete free area-wide source established | Optional validated `TrafficSegment[]` bridge; unavailable by default |

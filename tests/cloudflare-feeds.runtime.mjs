@@ -13,7 +13,7 @@ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{modules:true,scriptP
 try{
  const db=await mf.getD1Database('DB');for(const s of (await readFile('migrations/0001_initial.sql','utf8')).split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  const get=path=>mf.dispatchFetch('http://local'+path);
- const worker=await mf.getWorker();const tick=await worker.scheduled({cron:'* * * * *'});assert.equal(tick.outcome,'ok');
+ const worker=await mf.getWorker();const tick=await worker.scheduled({cron:'* * * * *'});assert.equal(tick.outcome,'ok');assert.equal(calls.bus,0,'global cron must not call the geo-restricted BODS API');
  assert.equal((await (await get('/api/v1/vehicle-state')).json()).data.length,1,'bus survives unavailable route geometry');
  assert.equal((await (await get('/api/v1/weather')).json()).data.length,1);
  assert.equal((await (await get('/api/v1/fuel')).json()).data.length,1);
@@ -26,9 +26,9 @@ try{
  const weatherHealth=JSON.parse((await db.prepare('SELECT body FROM state WHERE id=?').bind('weather').first()).body);weatherHealth.lastSuccess=new Date(Date.now()-600000).toISOString();await db.prepare('UPDATE state SET body=? WHERE id=?').bind(JSON.stringify(weatherHealth),'weather').run();assert.equal((await (await get('/api/v1/health')).json()).data.find(f=>f.id==='weather').count,1,'slow feeds must not expire after the five-minute vehicle TTL');
  const busHealth=JSON.parse((await db.prepare('SELECT body FROM state WHERE id=?').bind('buses').first()).body);
  const allowBusRetry=async()=>{await db.prepare('UPDATE state SET body=? WHERE id=?').bind(JSON.stringify({...busHealth,lastAttempt:new Date(Date.now()-3600000).toISOString(),lastSuccess:new Date(Date.now()-180000).toISOString()}),'buses').run();await db.prepare('UPDATE state SET body=? WHERE id=?').bind('0','poll-lease:buses').run();};
- busStatus=503;await allowBusRetry();await worker.scheduled({cron:'* * * * *'});
+ busStatus=503;await allowBusRetry();await get('/api/v1/vehicle-state');
  const failedHealth=(await(await get('/api/v1/health')).json()).data.find(f=>f.id==='buses');assert.equal(failedHealth.state,'stale');assert.equal(failedHealth.message,'Bus provider returned HTTP 503');assert.equal(failedHealth.failures,1);
- const failedCalls=calls.bus;await worker.scheduled({cron:'* * * * *'});assert.equal(calls.bus,failedCalls,'provider errors must retain retry backoff');
- busStatus=200;await allowBusRetry();await worker.scheduled({cron:'* * * * *'});const recovered=(await(await get('/api/v1/health')).json()).data.find(f=>f.id==='buses');assert.equal(recovered.state,'live');assert.equal(recovered.failures,undefined);
+ const failedCalls=calls.bus;await get('/api/v1/vehicle-state');assert.equal(calls.bus,failedCalls,'provider errors must retain retry backoff');
+ busStatus=200;await allowBusRetry();const beforeRecovery=calls.bus;await Promise.all([get('/api/v1/vehicle-state'),get('/api/v1/vehicles'),get('/api/v1/vehicle-state')]);assert.equal(calls.bus,beforeRecovery+1,'concurrent viewers share a single provider request');const recovered=(await(await get('/api/v1/health')).json()).data.find(f=>f.id==='buses');assert.equal(recovered.state,'live');assert.equal(recovered.failures,undefined);
  console.log('Worker feeds: durable buses without geometry, weather/fuel, cron deduplication, tile cache, quota and geographic limits passed.',calls);
 }finally{await mf.dispose();}

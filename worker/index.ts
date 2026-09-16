@@ -28,9 +28,9 @@ export async function feedHealth(store: CloudStore, env: Env): Promise<FeedStatu
   const feeds: FeedStatus[] = [];
   for (const [id,label,configured,message] of definitions) {
     const saved = configured ? await store.state<FeedStatus>(id) : undefined;
-    const health: FeedStatus = saved ?? {id,label,state:configured?'connecting':'unavailable',message:configured?'Waiting for first scheduled update':message,count:0,intervalMs:CADENCE[id]};
+    const health: FeedStatus = saved ?? {id,label,state:configured?'connecting':'unavailable',message:configured?(id==='buses'?'Waiting for first map refresh':'Waiting for first scheduled update'):message,count:0,intervalMs:CADENCE[id]};
     if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>CADENCE[id]*2) {
-      health.state='stale'; if(!health.failures)health.message='Scheduled updates delayed';
+      health.state='stale'; if(!health.failures)health.message=id==='buses'?'No recent map-triggered bus refresh':'Scheduled updates delayed';
     }
     if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>(id==='weather'?3600000:id==='fuel'?48*3600000:300000)) health.count=0;
     if(id==='traffic'&&env.TOMTOM_API_KEY){health.state='connecting';health.message='Tiles load on demand; five-minute cache and monthly request cap';}
@@ -97,11 +97,14 @@ export default {
       }
       if(path==='/api/v1/weather')return json(snapshot(env.WEATHER_ENABLED==='true'?(await store.items<Weather>('weather')).filter(w=>Date.now()-Date.parse(w.observedAt)<3600000):[]));
       if(path==='/api/v1/fuel')return json(snapshot(env.FUEL_ENABLED==='true'?(await store.items<FuelStation>('fuel')).filter(f=>Date.now()-Date.parse(f.observedAt)<48*3600000):[]));
-      if(path==='/api/v1/usage')return json({period:trafficPeriod(),trafficTileRequests:(await store.state<{count:number}>('traffic-usage:'+trafficPeriod()))?.count??0,trafficTileLimit:trafficBudget(env.TOMTOM_MONTHLY_TILE_LIMIT),providerIntervalsMs:CADENCE,streetManager:'push only; no polling'});
+      if(path==='/api/v1/usage')return json({period:trafficPeriod(),trafficTileRequests:(await store.state<{count:number}>('traffic-usage:'+trafficPeriod()))?.count??0,trafficTileLimit:trafficBudget(env.TOMTOM_MONTHLY_TILE_LIMIT),providerIntervalsMs:CADENCE,busRefreshMode:'shared-on-demand',streetManager:'push only; no polling'});
       if(path==='/api/v1/health')return json(snapshot(await feedHealth(store,env)));
       if(path==='/api/v1/road-events')return json(snapshot(await store.active()));
       if(path==='/api/v1/traffic')return json(snapshot(env.TRAFFIC_FEED_URL?(await store.items<TrafficSegment>('traffic')).filter(fresh):[]));
       if(path==='/api/v1/vehicles'||path==='/api/v1/vehicle-state') {
+        // BODS rejects some countries used by global cron execution. Fetch handlers
+        // use London placement; the shared D1 lease keeps all viewers to one refresh.
+        await pollFeeds(env,['buses']);
         const buses=env.BODS_API_KEY?await store.items<VehicleObservation>('buses'):[];
         const trains=env.DARWIN_TOKEN?await store.items<VehicleObservation>('trains'):[];
         const data=snapshot([...buses,...trains].filter(fresh));
@@ -124,6 +127,6 @@ export default {
     }catch{return json({error:'Data service unavailable'},503);}
   },
   async scheduled(_event: ScheduledController, env: Env, _ctx: ExecutionContext) {
-    await pollFeeds(env);
+    await pollFeeds(env,['trains','traffic','weather','fuel']);
   },
 };

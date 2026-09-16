@@ -34,7 +34,7 @@ Cloudflare Worker deployment.
 
 ## Live data setup
 
-For hosting the whole application on Cloudflare Workers with persistent D1 storage, see [Cloudflare deployment](docs/cloudflare.md). Cloudflare feed updates run every minute; local Node polling retains its original intervals.
+For hosting the whole application on Cloudflare Workers with persistent D1 storage, see [Cloudflare deployment](docs/cloudflare.md). Cloudflare buses refresh on demand through London-placed API requests, shared across viewers at most once per minute. Other feeds use the minute cron with their own cadences; local Node polling retains its original intervals.
 
 Copy `.env.example` to `.env`, enter your registered provider credentials locally, and restart the API:
 

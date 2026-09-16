@@ -20,6 +20,7 @@ const mf = new Miniflare(convertV4MiniflareOptions({workers:[{
   bindings: {STREET_MANAGER_ENABLED: 'true', BODS_API_KEY: 'test-only'},
   serviceBindings: {ASSETS: () => new Response('static asset')},
   outboundService: request => {
+    if(new URL(request.url).hostname==='data.bus-data.dft.gov.uk')return new Response('Unavailable',{status:503});
     assert.equal(new URL(request.url).hostname,'sns.eu-west-2.amazonaws.com');
     return new Response(pem);
   },
@@ -38,7 +39,7 @@ try {
   const vehicle = {id:'test',observedAt:now};
   await db.prepare('INSERT INTO feed_items VALUES(?,?,?)').bind('buses','0',JSON.stringify([vehicle,{id:'old',observedAt:'2020-01-01T00:00:00Z'}])).run();
   assert.deepEqual((await get('/api/v1/vehicles')).data,[vehicle]);
-  await db.prepare('INSERT INTO state VALUES(?,?)').bind('buses',JSON.stringify({id:'buses',label:'Buses',lastSuccess:'2020-01-01T00:00:00Z',state:'live',count:2,intervalMs:60000})).run();
+  await db.prepare('INSERT OR REPLACE INTO state VALUES(?,?)').bind('buses',JSON.stringify({id:'buses',label:'Buses',lastSuccess:'2020-01-01T00:00:00Z',state:'live',count:2,intervalMs:60000})).run();
   const stale = (await get('/api/v1/health')).data[0];
   assert.equal(stale.state,'stale'); assert.equal(stale.count,0);
   const response = await mf.dispatchFetch('http://local/api/v1/ingest/street-manager',{method:'POST',body:JSON.stringify({Type:'Notification',TopicArn:'untrusted'})});

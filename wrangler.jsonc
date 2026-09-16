@@ -5,6 +5,7 @@
   "compatibility_date": "2026-08-06",
   "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
+  "placement": { "region": "aws:eu-west-2" },
   "assets": { "directory": "./dist", "binding": "ASSETS", "run_worker_first": ["/api/*"] },
   "triggers": { "crons": ["* * * * *"] },
   "vars": { "STREET_MANAGER_ENABLED": "true", "WEATHER_ENABLED": "true", "FUEL_ENABLED": "true", "TOMTOM_MONTHLY_TILE_LIMIT": "150000" },

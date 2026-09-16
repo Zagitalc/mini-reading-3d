@@ -19,10 +19,10 @@ async function asset<T>(env: Env, name: string): Promise<T> {
   const data=await response.json();assets.set(name,data);return data as T;
 }
 
-export async function pollFeeds(env: Env) {
+export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','trains','traffic','weather','fuel']) {
   const store = new CloudStore(env.DB);
   async function update(id: FeedStatus['id'], label: string, fetcher?: () => Promise<{items: {id:string}[]; routes?: Record<string, LngLat[]>}>) {
-    if (!fetcher) return;
+    if (!fetcher || !feeds.includes(id)) return;
     const previous=await store.state<FeedStatus>(id);
     const intervalMs=CADENCE[id];
     if(!due(previous?.lastAttempt,intervalMs,previous?.failures))return;
@@ -37,7 +37,7 @@ export async function pollFeeds(env: Env) {
       // A partial rail response can repeat a service across station boards.
       const unique = [...new Map(items.map(item => [item.id, item])).values()];
       const health: FeedStatus = {id,label,intervalMs,state:'live',lastAttempt,lastSuccess:new Date().toISOString(),count:unique.length,
-        message:unique.length?`Connected; refresh interval ${intervalMs/60000} minutes`:'Connected; no current observations in this area'};
+        message:unique.length?(id==='buses'?'Connected; shared refresh at most once per minute while the map is open':`Connected; refresh interval ${intervalMs/60000} minutes`):'Connected; no current observations in this area'};
       await store.saveFeed(id, unique, health, routes);
     } catch (error) {
       const reason=feedFailureReason(error);
@@ -87,5 +87,5 @@ export async function pollFeeds(env: Env) {
   await update('traffic','Road traffic',!env.TOMTOM_API_KEY&&env.TRAFFIC_FEED_URL ? async () => ({items:await fetchTraffic(env.TRAFFIC_FEED_URL!,env.TRAFFIC_FEED_TOKEN)}) : undefined);
   await update('weather','Estimated weather',env.WEATHER_ENABLED==='true'?async()=>({items:await fetchWeather()}):undefined);
   await update('fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true'?async()=>({items:await fetchFuel()}):undefined);
-  if(new Date().getUTCHours()===0&&new Date().getUTCMinutes()===0)await env.DB.prepare('DELETE FROM sns_messages WHERE received_at < ?').bind(Date.now()-7*86400000).run();
+  if(feeds.includes('fuel')&&new Date().getUTCHours()===0&&new Date().getUTCMinutes()===0)await env.DB.prepare('DELETE FROM sns_messages WHERE received_at < ?').bind(Date.now()-7*86400000).run();
 }

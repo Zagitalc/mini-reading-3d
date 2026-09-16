@@ -1,4 +1,4 @@
-// Reads this app's cached endpoints only; never calls providers directly or prints keys.
+// Reads this app’s endpoints; the vehicle request may trigger one shared, due BODS refresh. Never calls providers directly or prints keys.
 const base=process.env.APP_URL??'http://127.0.0.1:8787';
 const get=async path=>{const r=await fetch(new URL('/api/v1/'+path,base),{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error(`${path}: HTTP ${r.status}`);return r.json();};
 const [health,usage,vehicles]=await Promise.all(['health','usage','vehicle-state'].map(get));
