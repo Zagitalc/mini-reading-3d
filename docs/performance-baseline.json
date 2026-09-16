@@ -1,0 +1,64 @@
+{
+  "schema": 1,
+  "camera": {
+    "center": [
+      -0.9718,
+      51.4589
+    ],
+    "zoom": 17,
+    "pitch": 60,
+    "bearing": -24
+  },
+  "warmupSeconds": 20,
+  "sampleSeconds": 20,
+  "fixture": "Static town; live feeds, weather and traffic disabled; route and stop overlays off",
+  "browser": "152.0.7977.83",
+  "samples": [
+    {
+      "label": "desktop",
+      "viewport": {
+        "width": 1440,
+        "height": 1000
+      },
+      "timing": {
+        "frames": 1202,
+        "medianMs": 16.69999999999709,
+        "p95Ms": 16.700000000004366
+      },
+      "rendering": {
+        "fps": 61,
+        "chunks": 26,
+        "failedChunks": 0,
+        "geometries": 128,
+        "drawCalls": 102,
+        "trackedVehicles": 0,
+        "visibleVehicles": 0,
+        "busInstances": 0
+      }
+    },
+    {
+      "label": "mobile",
+      "viewport": {
+        "width": 390,
+        "height": 844
+      },
+      "timing": {
+        "frames": 1202,
+        "medianMs": 16.69999999999709,
+        "p95Ms": 16.799999999995634
+      },
+      "rendering": {
+        "fps": 61,
+        "chunks": 10,
+        "failedChunks": 0,
+        "geometries": 82,
+        "drawCalls": 68,
+        "trackedVehicles": 0,
+        "visibleVehicles": 0,
+        "busInstances": 0
+      }
+    }
+  ],
+  "sourceRevision": "c8906b0",
+  "sourceUrl": "https://mini-reading-3d.reading-maps.workers.dev"
+}

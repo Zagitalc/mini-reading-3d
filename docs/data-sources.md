@@ -5,7 +5,7 @@ Checked 5 September 2026. No provider credentials were supplied or read from oth
 | Source | Access verified | Current implementation |
 |---|---|---|
 | Geofabrik Berkshire OSM | Public PBF downloaded, snapshot 4 September 2026 20:21 UTC | Real bounded roads, buildings, parks/water, railway geometry, places, maxspeed and cameras |
-| Reading Buses GTFS | Current public ZIP downloaded successfully | 320 route shapes, 6,042 trips, 53 routes, 1,107 local stops |
+| Reading Buses GTFS | Current public ZIP downloaded successfully | 320 route shapes, 6,042 trips, 53 routes, 1,105 local stops (16 September refresh), verified serving routes and scheduled stop departures |
 | Reading r2p open data | Public portal lists live vehicle APIs; registration required | Documented alternative; live adapter uses BODS SIRI-VM instead |
 | BODS | DfT documents registered SIRI-VM access | Parser and bounded polling implemented; authenticated availability/Reading coverage not verified |
 | National Rail OpenLDBWS | Current WSDL and imported SOAP binding checked | Registered SOAP board adapter, timed rail estimates, cancellation and dwell handling; authenticated feed not tested |
@@ -36,7 +36,7 @@ Trains without two known timed calls or a verified station dwell are not placed.
 
 ## Speed signs and cameras
 
-The bundled OSM snapshot has mapped road limits and 78 speed-camera nodes. Physical 20/30/NSL sign nodes and red-light camera locations were not found by this bounded extraction. Road-limit badges for 20 mph, 30 mph and NSL appear on mapped road sections; NSL requires an explicit national-speed-limit tag, not an assumption that every 60/70 mph road is NSL.
+The bundled OSM snapshot has mapped road limits and 78 speed-camera nodes. Physical 20/30/NSL sign nodes and red-light camera locations were not found by this bounded extraction. Road-limit badges support explicit 20/30/40/50/60/70 mph and GB zone variants; conflicting directional and conditional restrictions open information badges. NSL requires an explicit national-speed-limit tag, not an assumption that every 60/70 mph road is NSL.
 
 The UI distinguishes these dashed road-limit badges from surveyed solid signs, for which the renderer and schema are ready. Cameras indicate a mapped location only. No claim of camera operation, current enforcement or completeness is made.
 
@@ -87,3 +87,7 @@ Speeds are mph, coordinates WGS84, confidence 0–1. This is a schema example, n
   - TomTom Fuel Prices is marked automotive-only, so it is not used by this app: https://docs.tomtom.com/fuel-prices-api/documentation/fuel-prices-api/fuel-price
 
 Bus colours and line selection use the same static route IDs/palette as the route overlays. Route identity is distinct from an exact journey geometry match. Ambiguous paths retain their reported GPS position; matching is not required for display. Provider/operator identity prevents another operator's same-numbered route inheriting a Reading Buses line.
+
+## Scheduled bus departures (16 September 2026)
+
+Clickable stops use Reading Buses GTFS stop-to-trip relationships and per-stop static timetable files. Calendar exceptions and overnight services are applied in Europe/London; approximate timetable points remain labelled. No live prediction is inferred from bus positions. The current snapshot covers 7–18 September and must be refreshed before expiry. See [rebuild, validation and caching details](timetables-and-validation.md).

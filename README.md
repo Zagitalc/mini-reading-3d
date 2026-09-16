@@ -75,7 +75,7 @@ npm run data:routes
 GEOGRAPHY_OUTPUT=raw/staging npm test
 ```
 
-Downloads are build-time only. `raw/`, `.env`, the Python environment and the SQLite store are excluded from Git. `public/data` contains the derived, versioned OSM database and bundled bus-network data; it is intentionally included for a reproducible local first run. Geography and static route generation now default to `raw/staging`. Validate it in the browser before copying staged files into `public/data`; see [routes and landmark release](docs/next-phase.md). The optional GTFS rebuild still updates the bundled matching network directly, so use a separate checkout when refreshing that snapshot.
+Downloads are build-time only. `raw/`, `.env`, the Python environment and the SQLite store are excluded from Git. `public/data` contains the derived, versioned OSM database and bundled bus-network data; it is intentionally included for a reproducible local first run. Geography and static route generation now default to `raw/staging`. Validate it in the browser before copying staged files into `public/data`; see [routes and landmark release](docs/next-phase.md). The GTFS rebuild includes clickable stops and scheduled departures; use `GTFS_OUTPUT=raw/gtfs-staging` to stage a refresh. See [timetable updates, speed parsing, landmark validation and the benchmark](docs/timetables-and-validation.md).
 
 ## Attribution and licensing
 

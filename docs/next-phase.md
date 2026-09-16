@@ -38,3 +38,5 @@ Validation before promotion: 34 regression tests passed with staged assets; desk
 4. A separate simulation mode: road closures, bus frequency changes and estimated accessibility impacts, with visible assumptions and uncertainty. Assess computation budgets independently.
 
 Rankings must name the measured criterion, such as frequency or food hygiene. Do not call these popularity, ridership or customer satisfaction without corresponding evidence. No historical storage or simulation is implemented in this release.
+
+The September 16 follow-up adds strict landmark footprint validation, GB/directional/conditional speed handling, a repeatable benchmark, and scheduled stop departures. See [the refresh and verification guide](timetables-and-validation.md).

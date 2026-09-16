@@ -27,7 +27,10 @@
     "data:download": "node scripts/download-data.mjs",
     "test:browser": "node tests/browser-check.mjs",
     "check:feeds": "node scripts/check-feeds.mjs",
-    "test:environment-browser": "node tests/environment-browser.mjs"
+    "test:environment-browser": "node tests/environment-browser.mjs",
+    "test:performance": "node tests/render-performance.mjs",
+    "test:stops-browser": "node tests/stops-browser.mjs",
+    "data:gtfs:fetch": "node scripts/download-data.mjs --gtfs-only"
   },
   "overrides": {
     "miniflare": {

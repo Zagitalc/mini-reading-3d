@@ -5,10 +5,12 @@ import type {Feature,FeatureCollection,Polygon,MultiPolygon,LineString,Point} fr
 import {BOUNDS,LANDMARKS} from '../shared/config';
 import {boundsOf,distance,inBounds,intersects} from '../shared/geo';
 import type {Building,LngLat,GeographyManifest,StaticFeatures} from '../shared/types';
-import {speedLimit as limitOf,surveyedLimit} from '../shared/speed-limits';
+import {roadSpeedLimit,surveyedLimit} from '../shared/speed-limits';
 import {replacementLandmark,STATION_PLATFORMS,type LandmarkComponent} from '../shared/landmark-components';
+import {validateLandmarks} from './landmark-validation';
 const input:FeatureCollection=JSON.parse(await readFile('raw/geography.geojson','utf8'));
 const source=JSON.parse(await readFile('raw/osm-source.json','utf8'));
+validateLandmarks(input,JSON.parse(await readFile('scripts/landmark-footprints.json','utf8')));
 const dest=process.env.GEOGRAPHY_OUTPUT??'raw/staging';await mkdir(dest,{recursive:true});
 await rm(`${dest}/chunks`,{recursive:true,force:true});await mkdir(`${dest}/chunks`);
 const chunks=new Map<string,Building[]>(), map:Feature[]=[], rails:Feature[]=[];
@@ -46,7 +48,7 @@ for(const f of input.features){const p=f.properties??{},g=f.geometry,id=String(p
   if(p.highway==='speed_camera'||p.enforcement==='traffic_signals')features.cameras.push({id,position:pos,kind:p.enforcement==='traffic_signals'?'red-light':'speed',source:'OpenStreetMap',sourceUrl:`https://www.openstreetmap.org/${id}`,observedAt:source.timestamp||source.retrievedAt});
   continue;
  }
- let kind='';if(p.highway){kind='road';counters.roads++;const limit=limitOf(String(p['maxspeed:type']??''))??limitOf(String(p.maxspeed??''));if(limit&&g.type==='LineString'){const coords=g.coordinates as LngLat[],pos=coords[Math.floor(coords.length/2)],cell=`${Math.floor(pos[0]*250)}:${Math.floor(pos[1]*400)}:${limit}`;if(inBounds(pos)&&!badgeCells.has(cell)){badgeCells.add(cell);features.signs.push({id,position:pos,limit,placement:'road-limit',road:p.name,source:'OpenStreetMap road maxspeed',sourceUrl:`https://www.openstreetmap.org/${id}`,observedAt:source.timestamp||source.retrievedAt});}}}
+ let kind='';if(p.highway){kind='road';counters.roads++;const speed=roadSpeedLimit(p);if(speed&&g.type==='LineString'){const coords=g.coordinates as LngLat[],pos=coords[Math.floor(coords.length/2)],cell=`${Math.floor(pos[0]*250)}:${Math.floor(pos[1]*400)}:${JSON.stringify(speed)}`;if(inBounds(pos)&&!badgeCells.has(cell)){badgeCells.add(cell);features.signs.push({id,position:pos,...speed,placement:'road-limit',road:p.name,source:'OpenStreetMap road maxspeed',sourceUrl:`https://www.openstreetmap.org/${id}`,observedAt:source.timestamp||source.retrievedAt});}}}
  else if(p.railway&&g.type==='LineString'){kind='rail';counters.railways++;if(p.railway==='rail')rails.push(f);}
  else if(p.waterway||p.natural==='water')kind='water';else if(p.landuse||p.leisure||p.natural)kind='land';
  if(kind)map.push({type:'Feature',geometry:g,properties:{...p,kind}});
