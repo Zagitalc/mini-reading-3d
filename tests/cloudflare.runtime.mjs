@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { Miniflare } from 'miniflare';
+import { Miniflare, convertV4MiniflareOptions } from 'miniflare';
 import { generateKeyPairSync, sign } from 'node:crypto';
 
 const {privateKey,publicKey} = generateKeyPairSync('rsa',{modulusLength:2048});
@@ -13,7 +13,7 @@ function envelope(id, raw) {
   return {...message,Signature:sign('RSA-SHA256',Buffer.from(canonical),privateKey).toString('base64')};
 }
 
-const mf = new Miniflare({workers:[{
+const mf = new Miniflare(convertV4MiniflareOptions({workers:[{
   modules: true, scriptPath: 'dist-worker/index.js',
   compatibilityDate: '2026-08-06', compatibilityFlags: ['nodejs_compat'],
   d1Databases: {DB: 'test-db'},
@@ -23,7 +23,7 @@ const mf = new Miniflare({workers:[{
     assert.equal(new URL(request.url).hostname,'sns.eu-west-2.amazonaws.com');
     return new Response(pem);
   },
-}]});
+}]}));
 try {
   const db = await mf.getD1Database('DB');
   const sql = await readFile('migrations/0001_initial.sql','utf8');

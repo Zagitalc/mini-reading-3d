@@ -22,6 +22,16 @@ npm start
 
 Then open **http://127.0.0.1:8787/**. Development uses Vite; production serves the application and API from one Node process.
 
+The Node server limits each client to 1,200 requests per minute across all routes,
+including static map files, with a tighter shared limit of 300 API requests per
+minute. Limits run before file/database access, upstream requests and Street
+Manager body parsing; excess requests return HTTP 429 with `Retry-After`.
+Forwarded IP headers are ignored because this server binds directly to loopback
+by default. If hosting Node behind a proxy, configure explicitly trusted proxy
+addresses and a shared limiter store for multiple processes. The default counters
+are in memory per process; these Express limits do not apply to the separate
+Cloudflare Worker deployment.
+
 ## Live data setup
 
 For hosting the whole application on Cloudflare Workers with persistent D1 storage, see [Cloudflare deployment](docs/cloudflare.md). Cloudflare feed updates run every minute; local Node polling retains its original intervals.

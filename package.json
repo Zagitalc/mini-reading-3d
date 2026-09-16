@@ -38,6 +38,7 @@
     "compression": "^1.8.1",
     "csv-parse": "^7.0.2",
     "express": "^5.1.0",
+    "express-rate-limit": "^8.7.0",
     "fast-xml-parser": "^5.3.4",
     "fflate": "^0.8.2",
     "geojson-vt": "^4.0.2",

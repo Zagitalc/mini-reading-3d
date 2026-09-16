@@ -1,15 +1,15 @@
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
-import {Miniflare} from 'miniflare';
+import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 const calls={bus:0,weather:0,fuel:0,traffic:0};
-const mf=new Miniflare({workers:[{modules:true,scriptPath:'dist-worker/index.js',compatibilityDate:'2026-08-06',compatibilityFlags:['nodejs_compat'],d1Databases:{DB:'feeds-test'},bindings:{BODS_API_KEY:'fixture',TOMTOM_API_KEY:'fixture',TOMTOM_MONTHLY_TILE_LIMIT:'2',WEATHER_ENABLED:'true',FUEL_ENABLED:'true'},serviceBindings:{ASSETS:()=>new Response('missing asset',{status:503})},outboundService:request=>{
+const mf=new Miniflare(convertV4MiniflareOptions({workers:[{modules:true,scriptPath:'dist-worker/index.js',compatibilityDate:'2026-08-06',compatibilityFlags:['nodejs_compat'],d1Databases:{DB:'feeds-test'},bindings:{BODS_API_KEY:'fixture',TOMTOM_API_KEY:'fixture',TOMTOM_MONTHLY_TILE_LIMIT:'2',WEATHER_ENABLED:'true',FUEL_ENABLED:'true'},serviceBindings:{ASSETS:()=>new Response('missing asset',{status:503})},outboundService:request=>{
  const url=new URL(request.url),now=new Date().toISOString();
  if(url.hostname==='data.bus-data.dft.gov.uk'){calls.bus++;return new Response(`<Siri><ServiceDelivery><VehicleMonitoringDelivery><VehicleActivity><RecordedAtTime>${now}</RecordedAtTime><MonitoredVehicleJourney><VehicleRef>701</VehicleRef><OperatorRef>RBUS</OperatorRef><PublishedLineName>17</PublishedLineName><VehicleLocation><Longitude>-0.97</Longitude><Latitude>51.455</Latitude></VehicleLocation></MonitoredVehicleJourney></VehicleActivity></VehicleMonitoringDelivery></ServiceDelivery></Siri>`);}
  if(url.hostname==='api.open-meteo.com'){calls.weather++;return Response.json({current:{time:Math.floor(Date.now()/1000),interval:900,temperature_2m:15,cloud_cover:80,rain:.2,showers:0,snowfall:0,weather_code:61,wind_speed_10m:12,wind_direction_10m:180,is_day:1}});}
  if(url.hostname==='cheapfuelnearme.uk'){calls.fuel++;return Response.json({source_generated_at:now,stations:[{id:'f',name:'Test fuel',brand:'Test',postcode:'RG1',lat:51.45,lon:-.97,site_quiet:false,prices:{E10:{pence_per_litre:140.9,submitted_at:now}}}]});}
  if(url.hostname==='api.tomtom.com'){calls.traffic++;assert.equal(request.headers.get('TomTom-Api-Key'),'fixture');return new Response(new Uint8Array([1,2]));}
  throw Error('Unexpected outbound request '+url.hostname);
-}}]});
+}}]}));
 try{
  const db=await mf.getD1Database('DB');for(const s of (await readFile('migrations/0001_initial.sql','utf8')).split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  const get=path=>mf.dispatchFetch('http://local'+path);
