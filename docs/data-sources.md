@@ -91,3 +91,7 @@ Bus colours and line selection use the same static route IDs/palette as the rout
 ## Scheduled bus departures (16 September 2026)
 
 Clickable stops use Reading Buses GTFS stop-to-trip relationships and per-stop static timetable files. Calendar exceptions and overnight services are applied in Europe/London; approximate timetable points remain labelled. No live prediction is inferred from bus positions. The current snapshot covers 7–18 September and must be refreshed before expiry. See [rebuild, validation and caching details](timetables-and-validation.md).
+
+### Bus request diagnostics
+
+The BODS adapter uses the canonical trailing-slash datafeed URL, an explicit MiniReading3D User-Agent and `Accept: text/xml`. Unexpected redirects are rejected rather than forwarding credentials to another location. Cloudflare feed health preserves a safe HTTP status or timeout/storage category through stale-state handling; raw exceptions and credential-bearing URLs are never published. Provider failures still use the existing exponential backoff, and successful updates clear it. Worker tests cover request headers, failure visibility, retry suppression and recovery.

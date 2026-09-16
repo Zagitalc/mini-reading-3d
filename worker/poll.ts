@@ -1,4 +1,5 @@
 import {CADENCE,due} from '../shared/feed-policy';
+import {feedFailureReason} from '../shared/feed-errors';
 import {fetchWeather} from '../server/providers/weather';
 import {fetchFuel} from '../server/providers/fuel';
 import { fetchBuses } from '../server/providers/buses';
@@ -38,9 +39,11 @@ export async function pollFeeds(env: Env) {
       const health: FeedStatus = {id,label,intervalMs,state:'live',lastAttempt,lastSuccess:new Date().toISOString(),count:unique.length,
         message:unique.length?`Connected; refresh interval ${intervalMs/60000} minutes`:'Connected; no current observations in this area'};
       await store.saveFeed(id, unique, health, routes);
-    } catch {
+    } catch (error) {
+      const reason=feedFailureReason(error);
+      console.warn('Feed update failed', {feed:id,reason});
       await store.stateStatement(id, {id,label,intervalMs,count:previous?.count??0,failures:(previous?.failures??0)+1,lastAttempt,lastSuccess:previous?.lastSuccess,
-        state:previous?.lastSuccess?'stale':'unavailable',message:'Provider update failed; check credentials and Cloudflare execution limits'}).run();
+        state:previous?.lastSuccess?'stale':'unavailable',message:reason}).run();
     }
   }
   // Sequential provider groups keep concurrent outbound connections bounded.

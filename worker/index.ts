@@ -30,7 +30,7 @@ export async function feedHealth(store: CloudStore, env: Env): Promise<FeedStatu
     const saved = configured ? await store.state<FeedStatus>(id) : undefined;
     const health: FeedStatus = saved ?? {id,label,state:configured?'connecting':'unavailable',message:configured?'Waiting for first scheduled update':message,count:0,intervalMs:CADENCE[id]};
     if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>CADENCE[id]*2) {
-      health.state='stale'; health.message='Scheduled updates delayed';
+      health.state='stale'; if(!health.failures)health.message='Scheduled updates delayed';
     }
     if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>(id==='weather'?3600000:id==='fuel'?48*3600000:300000)) health.count=0;
     if(id==='traffic'&&env.TOMTOM_API_KEY){health.state='connecting';health.message='Tiles load on demand; five-minute cache and monthly request cap';}
