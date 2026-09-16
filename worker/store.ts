@@ -1,5 +1,6 @@
 import type { D1Database } from '@cloudflare/workers-types';
 import type { RoadEvent } from '../shared/types';
+import { eventIsVisible } from '../shared/road-events';
 
 export class CloudStore {
   constructor(public db: D1Database) {}
@@ -46,7 +47,7 @@ export class CloudStore {
   async active(now = Date.now()): Promise<RoadEvent[]> {
     const result = await this.db.prepare("SELECT body FROM road_events WHERE status IN ('active','planned') AND (end_at IS NULL OR julianday(end_at)>=julianday(?)) ORDER BY observed_at DESC")
       .bind(new Date(now).toISOString()).all<{body:string}>();
-    return result.results.map(row => JSON.parse(row.body));
+    return result.results.map(row => JSON.parse(row.body)).filter(event => eventIsVisible(event, now));
   }
 
   async seen(id: string) {

@@ -56,6 +56,10 @@ try {
   await post(envelope('old-test',raw));
   assert.equal((await get('/api/v1/road-events')).data.length,0,'older event must not revive cancellation');
   assert.equal((await get('/api/v1/health')).data[2].state,'live');
+  const future={...raw,object_reference:'future',event_type:'PERMIT_GRANTED',object_data:{...raw.object_data,work_reference_number:'future',actual_start_date_time:undefined,proposed_start_date:'2099-09-23T07:00:00Z'}};
+  assert.equal((await post(envelope('future-test',future))).status,200);
+  assert.equal((await get('/api/v1/road-events')).data.length,0,'future works must stay off the current map');
+  assert.equal((await get('/api/v1/health')).data[2].count,0,'feed count must exclude future works');
   const beforeIgnored=(await db.prepare('SELECT count(*) AS n FROM sns_messages').first()).n;
   assert.deepEqual(await (await post(envelope('outside',{...raw,object_data:{...raw.object_data,works_location_coordinates:'POINT(100000 100000)'}}))).json(),{accepted:true,ignored:true});
   assert.equal((await db.prepare('SELECT count(*) AS n FROM sns_messages').first()).n,beforeIgnored,'out-of-area notifications must not write dedup rows');
