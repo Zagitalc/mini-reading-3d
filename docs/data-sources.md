@@ -5,7 +5,7 @@ Checked 5 September 2026. No provider credentials were supplied or read from oth
 | Source | Access verified | Current implementation |
 |---|---|---|
 | Geofabrik Berkshire OSM | Public PBF downloaded, snapshot 4 September 2026 20:21 UTC | Real bounded roads, buildings, parks/water, railway geometry, places, maxspeed and cameras |
-| Reading Buses GTFS | Current public ZIP downloaded successfully | 320 route shapes, 6,042 trips, 53 routes, 1,105 local stops (16 September refresh), verified serving routes and scheduled stop departures |
+| Reading Buses GTFS | Current public ZIP downloaded successfully | 323 route shapes, 6,279 trips, 54 routes, 1,107 local stops (26 September refresh), verified serving routes and scheduled stop departures |
 | Reading r2p open data | Public portal lists live vehicle APIs; registration required | Documented alternative; live adapter uses BODS SIRI-VM instead |
 | BODS | DfT documents registered SIRI-VM access | Verified live Reading coverage on 16 September; London-placed, shared on-demand refresh avoids global-cron geographic blocking |
 | National Rail Darwin via RDM / legacy OpenLDBWS | RDM detailed JSON board and official schema checked; Reading authenticated successfully on 16 September 2026 | Timed rail estimates, cancellation and dwell handling; only services with usable known calling points and connected track can be placed |
@@ -94,7 +94,7 @@ Bus colours and line selection use the same static route IDs/palette as the rout
 
 ## Scheduled bus departures (16 September 2026)
 
-Clickable stops use Reading Buses GTFS stop-to-trip relationships and per-stop static timetable files. Calendar exceptions and overnight services are applied in Europe/London; approximate timetable points remain labelled. No live prediction is inferred from bus positions. The current snapshot covers 7–18 September and must be refreshed before expiry. See [rebuild, validation and caching details](timetables-and-validation.md).
+Clickable stops use Reading Buses GTFS stop-to-trip relationships and per-stop static timetable files. Calendar exceptions and overnight services are applied in Europe/London; approximate timetable points remain labelled. No live prediction is inferred from bus positions. The current snapshot covers 19 September–25 October. The daily GitHub refresh workflow checks the publisher for changed content and validates it before deployment. See [rebuild, validation and caching details](timetables-and-validation.md).
 
 ### Bus request diagnostics
 
