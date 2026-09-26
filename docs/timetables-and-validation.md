@@ -53,3 +53,5 @@ Use a local server with polling disabled or the deployed site; the benchmark int
 [Updated measurements](performance-stop-release.json): median frame time 16.7 ms on both viewports. Desktop: 26 chunks, 102 draw calls (unchanged), 134 geometries versus 128. Mobile: 10 chunks, 68 draw calls and 82 geometries (unchanged). No failed chunks. These observations are from this Chrome host with provider fixtures; they do not establish performance on every device.
 
 All 50 unit tests, Worker runtime checks, desktop/mobile stop interactions and existing route/landmark browser checks passed. All 1,103 timetable asset hashes and stop/route/service references were checked; the snapshot contains 152,385 non-terminal stop-time records.
+
+Manual runs of the refresh workflow also run the complete validation and deployment path when the feed is unchanged, so deployment credentials can be verified without waiting for a timetable change. Scheduled runs continue to skip unchanged builds and deployments.
