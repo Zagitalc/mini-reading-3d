@@ -1,0 +1,790 @@
+{
+  "dataset": "0c89b6b084c9669f",
+  "coverage": [
+    "20260919",
+    "20261025"
+  ],
+  "sources": {
+    "14": {
+      "filename": "14-timetable-20260601-16d56667.pdf",
+      "sha256": "552903e352b1e5360ff9120d0b8e90fc1a8cc7146919fa8153b340fad83e52b5",
+      "effectiveDate": "Not established from document contents; filename date is not treated as validity proof."
+    },
+    "17": {
+      "filename": "17-timetable-20260901-b93a75d4.pdf",
+      "sha256": "472421607043e4368a0833b4c05efcdae4da783dc08f0197479df432724946e8",
+      "effectiveDate": "Not established from document contents; filename date is not treated as validity proof."
+    },
+    "21": {
+      "filename": "21-timetable-20250901-6b3c0712.pdf",
+      "sha256": "c3ec6a956f452891a37de07b34037555dc97a1e592aaba4c13143e97a17e209c",
+      "effectiveDate": "Not established from document contents; filename date is not treated as validity proof."
+    }
+  },
+  "summary": {
+    "cases": 20,
+    "matching": 14,
+    "discrepant": 6,
+    "expectedDepartures": 132,
+    "rawChecks": 20,
+    "rawFailures": 0
+  },
+  "results": [
+    {
+      "id": "14-20260924-039028150003-05:00",
+      "routeId": "RBUS:14",
+      "serviceDate": "20260924",
+      "pdf": "14",
+      "page": 4,
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street EM clockwise",
+      "fromTime": "05:00",
+      "toTime": "07:00",
+      "expected": [
+        "05:00",
+        "05:30",
+        "06:00",
+        "06:20",
+        "06:45"
+      ],
+      "note": "",
+      "actual": [
+        "05:00",
+        "05:30",
+        "06:00",
+        "06:20",
+        "06:45"
+      ],
+      "approximateDepartures": 5,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "14-20260924-039028150003-20:00",
+      "routeId": "RBUS:14",
+      "serviceDate": "20260924",
+      "pdf": "14",
+      "page": 4,
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street EM clockwise",
+      "fromTime": "20:00",
+      "toTime": "28:00",
+      "expected": [
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "note": "Use route 14 pages 4–6, not the route 13 pages at the beginning.",
+      "actual": [
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "approximateDepartures": 4,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "14-20260926-039028150003-05:00",
+      "routeId": "RBUS:14",
+      "serviceDate": "20260926",
+      "pdf": "14",
+      "page": 5,
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street EM clockwise",
+      "fromTime": "05:00",
+      "toTime": "08:00",
+      "expected": [
+        "05:30",
+        "06:30",
+        "07:30"
+      ],
+      "note": "",
+      "actual": [
+        "05:30",
+        "06:30",
+        "07:30"
+      ],
+      "approximateDepartures": 3,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "14-20260926-039028150003-20:00",
+      "routeId": "RBUS:14",
+      "serviceDate": "20260926",
+      "pdf": "14",
+      "page": 5,
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street EM clockwise",
+      "fromTime": "20:00",
+      "toTime": "28:00",
+      "expected": [
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "note": "Use route 14 pages 4–6, not the route 13 pages at the beginning.",
+      "actual": [
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "approximateDepartures": 4,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "14-20260927-039028150003-05:00",
+      "routeId": "RBUS:14",
+      "serviceDate": "20260927",
+      "pdf": "14",
+      "page": 6,
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street EM clockwise",
+      "fromTime": "05:00",
+      "toTime": "10:00",
+      "expected": [
+        "08:00",
+        "09:00"
+      ],
+      "note": "",
+      "actual": [
+        "08:00",
+        "09:00"
+      ],
+      "approximateDepartures": 2,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "14-20260927-039028150003-20:00",
+      "routeId": "RBUS:14",
+      "serviceDate": "20260927",
+      "pdf": "14",
+      "page": 6,
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street EM clockwise",
+      "fromTime": "20:00",
+      "toTime": "28:00",
+      "expected": [
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "note": "Use route 14 pages 4–6, not the route 13 pages at the beginning.",
+      "actual": [
+        "20:00",
+        "21:00",
+        "22:00",
+        "23:00"
+      ],
+      "approximateDepartures": 4,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "17-20260924-039028150002-23:00",
+      "routeId": "RBUS:17",
+      "serviceDate": "20260924",
+      "pdf": "17",
+      "page": 1,
+      "stopId": "039028150002",
+      "stopLabel": "Blagrave Street EO to Wokingham Road",
+      "fromTime": "23:00",
+      "toTime": "28:00",
+      "expected": [
+        "23:14",
+        "23:29",
+        "23:44",
+        "24:12",
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "note": "Omit terminal-only calls with no continuation to Three Tuns. Page 1 blue columns are Monday–Thursday; pink columns Friday.",
+      "actual": [
+        "23:14",
+        "23:29",
+        "23:44",
+        "24:12",
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "approximateDepartures": 8,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "17-20260925-039028150002-23:00",
+      "routeId": "RBUS:17",
+      "serviceDate": "20260925",
+      "pdf": "17",
+      "page": 1,
+      "stopId": "039028150002",
+      "stopLabel": "Blagrave Street EO to Wokingham Road",
+      "fromTime": "23:00",
+      "toTime": "28:00",
+      "expected": [
+        "23:14",
+        "23:29",
+        "23:44",
+        "24:14",
+        "25:02",
+        "25:42",
+        "26:22",
+        "27:02",
+        "27:42"
+      ],
+      "note": "Omit terminal-only calls with no continuation to Three Tuns. Page 1 blue columns are Monday–Thursday; pink columns Friday.",
+      "actual": [
+        "23:14",
+        "23:29",
+        "23:44",
+        "24:14",
+        "25:02",
+        "25:42",
+        "26:22",
+        "27:02",
+        "27:42"
+      ],
+      "approximateDepartures": 9,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "17-20260926-039028150002-23:00",
+      "routeId": "RBUS:17",
+      "serviceDate": "20260926",
+      "pdf": "17",
+      "page": 2,
+      "stopId": "039028150002",
+      "stopLabel": "Blagrave Street EO to Wokingham Road",
+      "fromTime": "23:00",
+      "toTime": "28:00",
+      "expected": [
+        "23:14",
+        "23:29",
+        "23:44",
+        "24:22",
+        "25:02",
+        "25:42",
+        "26:22",
+        "27:02",
+        "27:42"
+      ],
+      "note": "Omit terminal-only calls with no continuation to Three Tuns. Page 1 blue columns are Monday–Thursday; pink columns Friday.",
+      "actual": [
+        "23:14",
+        "23:29",
+        "23:44",
+        "24:22",
+        "25:02",
+        "25:42",
+        "26:22",
+        "27:02",
+        "27:42"
+      ],
+      "approximateDepartures": 9,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "17-20260927-039028150002-23:00",
+      "routeId": "RBUS:17",
+      "serviceDate": "20260927",
+      "pdf": "17",
+      "page": 3,
+      "stopId": "039028150002",
+      "stopLabel": "Blagrave Street EO to Wokingham Road",
+      "fromTime": "23:00",
+      "toTime": "28:00",
+      "expected": [
+        "23:02",
+        "23:22",
+        "23:42",
+        "23:57",
+        "24:49",
+        "25:49",
+        "26:49",
+        "27:49"
+      ],
+      "note": "Omit terminal-only calls with no continuation to Three Tuns. Page 1 blue columns are Monday–Thursday; pink columns Friday.",
+      "actual": [
+        "23:02",
+        "23:22",
+        "23:42",
+        "23:57",
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "approximateDepartures": 8,
+      "missing": [
+        "24:49",
+        "25:49",
+        "26:49",
+        "27:49"
+      ],
+      "additional": [
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "match": false,
+      "rawMatches": true
+    },
+    {
+      "id": "17-20260924-039025530003-23:30",
+      "routeId": "RBUS:17",
+      "serviceDate": "20260924",
+      "pdf": "17",
+      "page": 4,
+      "stopId": "039025530003",
+      "stopLabel": "Cheapside CW to Tilehurst",
+      "fromTime": "23:30",
+      "toTime": "28:00",
+      "expected": [
+        "23:33",
+        "23:48",
+        "24:14",
+        "24:44",
+        "25:14",
+        "26:14",
+        "27:14"
+      ],
+      "note": "Page 4 blue columns are Monday–Thursday; pink columns Friday. Include 23:33 from the printed every-15-minutes sequence ending 23:48.",
+      "actual": [
+        "23:33",
+        "23:48",
+        "24:14",
+        "24:44",
+        "25:14",
+        "26:14",
+        "27:14"
+      ],
+      "approximateDepartures": 7,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "17-20260925-039025530003-23:30",
+      "routeId": "RBUS:17",
+      "serviceDate": "20260925",
+      "pdf": "17",
+      "page": 4,
+      "stopId": "039025530003",
+      "stopLabel": "Cheapside CW to Tilehurst",
+      "fromTime": "23:30",
+      "toTime": "28:00",
+      "expected": [
+        "23:33",
+        "23:48",
+        "24:16",
+        "24:56",
+        "25:36",
+        "26:16",
+        "26:56",
+        "27:36"
+      ],
+      "note": "Page 4 blue columns are Monday–Thursday; pink columns Friday. Include 23:33 from the printed every-15-minutes sequence ending 23:48.",
+      "actual": [
+        "23:33",
+        "23:48",
+        "24:16",
+        "24:56",
+        "25:36",
+        "26:16",
+        "26:56",
+        "27:36"
+      ],
+      "approximateDepartures": 8,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "17-20260926-039025530003-23:30",
+      "routeId": "RBUS:17",
+      "serviceDate": "20260926",
+      "pdf": "17",
+      "page": 5,
+      "stopId": "039025530003",
+      "stopLabel": "Cheapside CW to Tilehurst",
+      "fromTime": "23:30",
+      "toTime": "28:00",
+      "expected": [
+        "23:33",
+        "23:48",
+        "24:16",
+        "24:56",
+        "25:36",
+        "26:16",
+        "26:56",
+        "27:36"
+      ],
+      "note": "Page 4 blue columns are Monday–Thursday; pink columns Friday. Include 23:33 from the printed every-15-minutes sequence ending 23:48.",
+      "actual": [
+        "23:33",
+        "23:48",
+        "24:16",
+        "24:56",
+        "25:36",
+        "26:16",
+        "26:56",
+        "27:36"
+      ],
+      "approximateDepartures": 8,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "17-20260927-039025530003-23:30",
+      "routeId": "RBUS:17",
+      "serviceDate": "20260927",
+      "pdf": "17",
+      "page": 6,
+      "stopId": "039025530003",
+      "stopLabel": "Cheapside CW to Tilehurst",
+      "fromTime": "23:30",
+      "toTime": "28:00",
+      "expected": [
+        "23:37",
+        "24:14",
+        "25:14",
+        "26:14",
+        "27:14"
+      ],
+      "note": "Page 4 blue columns are Monday–Thursday; pink columns Friday.",
+      "actual": [
+        "23:37",
+        "24:14",
+        "25:14",
+        "26:14",
+        "27:14"
+      ],
+      "approximateDepartures": 5,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    },
+    {
+      "id": "21-20260924-039026610001-22:00",
+      "routeId": "RBUS:21",
+      "serviceDate": "20260924",
+      "pdf": "21",
+      "page": 7,
+      "stopId": "039026610001",
+      "stopLabel": "Kendrick Student Village to Lower Earley",
+      "fromTime": "22:00",
+      "toTime": "28:00",
+      "expected": [
+        "22:02",
+        "22:32",
+        "23:02",
+        "23:32",
+        "24:02",
+        "25:02",
+        "26:02",
+        "27:02"
+      ],
+      "note": "Intermediate stop avoids terminal arrival/departure ambiguity; filename bears 2025, current validity unconfirmed.",
+      "actual": [
+        "22:04",
+        "22:34",
+        "23:04",
+        "23:34",
+        "24:04",
+        "25:04",
+        "26:04",
+        "27:04"
+      ],
+      "approximateDepartures": 8,
+      "missing": [
+        "22:02",
+        "22:32",
+        "23:02",
+        "23:32",
+        "24:02",
+        "25:02",
+        "26:02",
+        "27:02"
+      ],
+      "additional": [
+        "22:04",
+        "22:34",
+        "23:04",
+        "23:34",
+        "24:04",
+        "25:04",
+        "26:04",
+        "27:04"
+      ],
+      "match": false,
+      "rawMatches": true
+    },
+    {
+      "id": "21-20260924-039026610002-22:00",
+      "routeId": "RBUS:21",
+      "serviceDate": "20260924",
+      "pdf": "21",
+      "page": 2,
+      "stopId": "039026610002",
+      "stopLabel": "Kendrick Student Village to Central Reading",
+      "fromTime": "22:00",
+      "toTime": "28:00",
+      "expected": [
+        "22:16",
+        "22:46",
+        "23:16",
+        "23:46",
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "note": "Compare both Central Reading/Reading Station headsigns in the inbound direction.",
+      "actual": [
+        "22:19",
+        "22:49",
+        "23:19",
+        "23:46",
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "approximateDepartures": 8,
+      "missing": [
+        "22:16",
+        "22:46",
+        "23:16"
+      ],
+      "additional": [
+        "22:19",
+        "22:49",
+        "23:19"
+      ],
+      "match": false,
+      "rawMatches": true
+    },
+    {
+      "id": "21-20260926-039026610001-22:00",
+      "routeId": "RBUS:21",
+      "serviceDate": "20260926",
+      "pdf": "21",
+      "page": 9,
+      "stopId": "039026610001",
+      "stopLabel": "Kendrick Student Village to Lower Earley",
+      "fromTime": "22:00",
+      "toTime": "28:00",
+      "expected": [
+        "22:02",
+        "22:32",
+        "23:02",
+        "23:32",
+        "24:02",
+        "25:02",
+        "26:02",
+        "27:02"
+      ],
+      "note": "Intermediate stop avoids terminal arrival/departure ambiguity; filename bears 2025, current validity unconfirmed.",
+      "actual": [
+        "22:04",
+        "22:34",
+        "23:04",
+        "23:34",
+        "24:04",
+        "25:04",
+        "26:04",
+        "27:04"
+      ],
+      "approximateDepartures": 8,
+      "missing": [
+        "22:02",
+        "22:32",
+        "23:02",
+        "23:32",
+        "24:02",
+        "25:02",
+        "26:02",
+        "27:02"
+      ],
+      "additional": [
+        "22:04",
+        "22:34",
+        "23:04",
+        "23:34",
+        "24:04",
+        "25:04",
+        "26:04",
+        "27:04"
+      ],
+      "match": false,
+      "rawMatches": true
+    },
+    {
+      "id": "21-20260926-039026610002-22:00",
+      "routeId": "RBUS:21",
+      "serviceDate": "20260926",
+      "pdf": "21",
+      "page": 4,
+      "stopId": "039026610002",
+      "stopLabel": "Kendrick Student Village to Central Reading",
+      "fromTime": "22:00",
+      "toTime": "28:00",
+      "expected": [
+        "22:16",
+        "22:46",
+        "23:16",
+        "23:46",
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "note": "Compare both Central Reading/Reading Station headsigns in the inbound direction.",
+      "actual": [
+        "22:19",
+        "22:49",
+        "23:19",
+        "23:46",
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "approximateDepartures": 8,
+      "missing": [
+        "22:16",
+        "22:46",
+        "23:16"
+      ],
+      "additional": [
+        "22:19",
+        "22:49",
+        "23:19"
+      ],
+      "match": false,
+      "rawMatches": true
+    },
+    {
+      "id": "21-20260927-039026610001-22:00",
+      "routeId": "RBUS:21",
+      "serviceDate": "20260927",
+      "pdf": "21",
+      "page": 11,
+      "stopId": "039026610001",
+      "stopLabel": "Kendrick Student Village to Lower Earley",
+      "fromTime": "22:00",
+      "toTime": "28:00",
+      "expected": [
+        "22:02",
+        "22:32",
+        "23:02",
+        "23:32",
+        "24:02",
+        "25:02",
+        "26:02",
+        "27:02"
+      ],
+      "note": "Intermediate stop avoids terminal arrival/departure ambiguity; filename bears 2025, current validity unconfirmed.",
+      "actual": [
+        "22:02",
+        "22:32",
+        "23:02",
+        "23:32",
+        "24:04",
+        "25:04",
+        "26:04",
+        "27:04"
+      ],
+      "approximateDepartures": 8,
+      "missing": [
+        "24:02",
+        "25:02",
+        "26:02",
+        "27:02"
+      ],
+      "additional": [
+        "24:04",
+        "25:04",
+        "26:04",
+        "27:04"
+      ],
+      "match": false,
+      "rawMatches": true
+    },
+    {
+      "id": "21-20260927-039026610002-22:00",
+      "routeId": "RBUS:21",
+      "serviceDate": "20260927",
+      "pdf": "21",
+      "page": 5,
+      "stopId": "039026610002",
+      "stopLabel": "Kendrick Student Village to Central Reading",
+      "fromTime": "22:00",
+      "toTime": "28:00",
+      "expected": [
+        "22:16",
+        "22:46",
+        "23:16",
+        "23:46",
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "note": "Compare both Central Reading/Reading Station headsigns in the inbound direction.",
+      "actual": [
+        "22:16",
+        "22:46",
+        "23:16",
+        "23:46",
+        "24:46",
+        "25:46",
+        "26:46",
+        "27:46"
+      ],
+      "approximateDepartures": 8,
+      "missing": [],
+      "additional": [],
+      "match": true,
+      "rawMatches": true
+    }
+  ]
+}

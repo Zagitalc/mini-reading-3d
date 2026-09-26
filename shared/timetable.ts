@@ -37,3 +37,41 @@ export function timetableStatus(index:Pick<StopIndex,'validFrom'|'validUntil'|'t
  const days=Math.round((date(index.validUntil)-date(today))/86400000);
  return {days,state:today<index.validFrom?'future':days<0?'expired':days<=3?'expiring':'current'} as const;
 }
+
+export interface TonightDepartures {
+ start:number;
+ end:number;
+ departures:Departure[];
+ state:'current'|'partial'|'expired'|'future';
+ /** Routes with a departure after midnight in this window; not evidence of an all-night service. */
+ afterMidnightRouteIds:string[];
+}
+
+/** Resolve a civil clock time independently of GTFS's elapsed service-day times. */
+function civilHour(date:string,hour:number,timezone:string){
+ const target=Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8),hour);let result=target;
+ for(let i=0;i<4;i++){
+  const p=parts(result,timezone),represented=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute,+p.second);
+  const correction=target-represented;if(!correction)break;result+=correction;
+ }
+ return result;
+}
+
+/**
+ * Upcoming scheduled departures before the next local 04:00, with an exclusive cutoff.
+ * Before 04:00 this is the remainder of the current night; at 04:00 a new window begins.
+ * Coverage is conservative: an expired/future feed cannot establish today's departures.
+ * Partial coverage keeps known trips (including valid service-day times above 24:00),
+ * but cannot establish whether further trips run on the uncovered calendar date.
+ * The final item is only the final departure in this window, never a last-bus claim.
+ */
+export function tonightDepartures(data:StopTimetable,index:Pick<StopIndex,'validFrom'|'validUntil'|'timezone'>,now=Date.now()):TonightDepartures{
+ const today=localDate(now,index.timezone),hour=+parts(now,index.timezone).hour;
+ const cutoffDate=hour<4?today:addDays(today,1),end=civilHour(cutoffDate,4,index.timezone);
+ const state:TonightDepartures['state']=today<index.validFrom?'future':today>index.validUntil?'expired':localDate(end-1,index.timezone)>index.validUntil?'partial':'current';
+ if(state==='future'||state==='expired')return {start:now,end,departures:[],state,afterMidnightRouteIds:[]};
+ const departures=scheduledDepartures(data,now,(end-now)/3600000,Infinity)
+  .filter(departure=>departure.serviceDate>=index.validFrom&&departure.serviceDate<=index.validUntil);
+ const afterMidnightRouteIds=[...new Set(departures.filter(departure=>localDate(departure.time,index.timezone)===cutoffDate).map(departure=>departure.routeId))];
+ return {start:now,end,departures,state,afterMidnightRouteIds};
+}

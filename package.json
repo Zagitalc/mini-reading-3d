@@ -17,6 +17,7 @@
     "cf:deploy": "npm run build && wrangler deploy",
     "start": "node --env-file-if-exists=.env --import tsx server/index.ts",
     "test": "node --import tsx --test tests/*.test.ts",
+    "audit:timetable": "node --import tsx scripts/audit-timetable.ts",
     "data:fetch": "node scripts/fetch-osm.mjs",
     "data:build": "node --import tsx scripts/build-geography.ts",
     "data:gtfs": "node --import tsx scripts/build-gtfs.ts",
@@ -30,6 +31,7 @@
     "test:environment-browser": "node tests/environment-browser.mjs",
     "test:performance": "node tests/render-performance.mjs",
     "test:stops-browser": "node tests/stops-browser.mjs",
+    "test:tonight-browser": "node tests/tonight-stops-browser.mjs",
     "data:gtfs:fetch": "node scripts/download-data.mjs --gtfs-only",
     "data:gtfs:refresh": "node --import tsx scripts/refresh-gtfs.mjs"
   },

@@ -27,6 +27,16 @@ Weekly calendars and added/removed service exceptions are applied in Europe/Lond
 
 Reference: [GTFS Schedule](https://gtfs.org/documentation/schedule/reference/). Source and licence: [Reading Buses open data](https://www.reading-buses.co.uk/open-data), OGL 3.0.
 
+### Tonight / overnight departures
+
+The stop details panel offers **Next departures** (the existing next-12 view) and **Tonight / overnight**. The latter lists scheduled departures from now until the next 04:00 in Europe/London. Before 04:00 it shows the remainder of the current night; at 04:00 a new window begins. The civil cutoff is resolved separately from the GTFS service-day origin so both UK clock changes work correctly.
+
+The panel shows the window's dates and cutoff, marks following-calendar-day departures “Tomorrow”, and preserves the original service date, destination, approximate-time and pickup-arrangement labels. Thirty rows appear initially; **Show more departures** reveals subsequent rows from the same cached calculation. The count states how many are visible and how many fall in the window. This cutoff does not identify the last bus or establish a viable journey home. Post-midnight route labels require actual scheduled departures in that window, and do not claim uninterrupted all-night operation.
+
+Expired and future-only snapshots show unavailable states rather than implying that buses have stopped running. A window extending beyond the dataset's final date warns of partial coverage; known overnight calls from covered service dates can still appear. No times are inferred for missing or frequency-based records. Switching views, revealing more rows and minute-by-minute refresh use the existing stop cache: there are no additional provider calls or D1 writes.
+
+`tests/tonight-timetable.test.ts` covers midnight, the 04:00 boundary, both DST transitions, service exceptions, coverage states and untruncated results. `npm run test:tonight-browser` exercises the panel using deterministic timetable fixtures with provider requests intercepted. The [PDF source audit](timetable-audit-2026-09-26.md) remains separate: the sampled route 21 PDF/GTFS differences are unresolved and have not been hard-coded into this feature.
+
 ## Speed limits
 
 The parser accepts explicit 20/30/40/50/60/70 mph, whitespace/case variants, GB:zone20/30 and explicit national-limit tags. Numeric 60/70 remain numeric unless an explicit compatible NSL tag is supplied. Conflicting directional values, incomplete directional information, conflicting base/type tags and conditional restrictions produce a rectangular information badge. Its details preserve the original tags; the map does not evaluate conditional restrictions or assert one convenient speed. Forward/backward refers to the OSM way direction, not a compass bearing.
