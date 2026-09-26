@@ -1,0 +1,59 @@
+name: Refresh Reading timetable
+on:
+  schedule:
+    - cron: '23 4 * * *'
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: reading-timetable-production
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          ref: main
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Download, compare content and validate timetable
+        id: refresh
+        run: npm run data:gtfs:refresh
+      - name: Check deployed version and expiry
+        id: deployed
+        run: node scripts/check-timetable.mjs
+      - name: Test and build changed or not-yet-deployed data
+        if: steps.refresh.outputs.changed == 'true' || steps.deployed.outputs.needs_deploy == 'true'
+        run: npm run check && npm run cf:check && npm run test:cloudflare
+      - name: Verify deployment credentials
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+            echo '::error::Set the repository secret CLOUDFLARE_API_TOKEN with Workers deployment permission.'
+            exit 1
+          fi
+      - name: Commit validated dataset
+        if: steps.refresh.outputs.changed == 'true'
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add public/data/bus-network.json public/data/bus-stops.json public/data/bus-routes.json public/data/gtfs-metadata.json public/data/timetables
+          git commit -m 'Refresh Reading Buses timetable'
+          git push origin HEAD:main
+      - name: Deploy validated version
+        if: steps.refresh.outputs.changed == 'true' || steps.deployed.outputs.needs_deploy == 'true'
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '4160ba018475163db86db8d32cb5af86'
+        run: |
+          git fetch origin main
+          test "$(git rev-parse HEAD)" = "$(git rev-parse origin/main)"
+          npx wrangler deploy
+      - name: Verify production timetable
+        run: node scripts/check-timetable.mjs --verify

@@ -5,7 +5,7 @@ export interface TimetableTrip {id:string;service:number;routeId:string;headsign
 export type StopTime=[number,number,number,0|1,number,string?];
 export interface StopTimetable {schema:1;stopId:string;timezone:string;services:TimetableService[];trips:TimetableTrip[];times:StopTime[]}
 export interface BusStop {id:string;name:string;code:string;position:LngLat;routeIds:string[];timetableUrl?:string}
-export interface StopIndex {schema:1;source:string;sourceUrl:string;licence:string;retrievedAt:string;generatedAt:string;timezone:string;validFrom:string;validUntil:string;routes:Record<string,{label:string;colour:string}>;stops:BusStop[];omitted:{missingTimes:number;frequencyTrips:number}}
+export interface StopIndex {schema:1;version?:string;feedInfo?:{version?:string;startDate?:string;endDate?:string};source:string;sourceUrl:string;licence:string;retrievedAt:string;generatedAt:string;timezone:string;validFrom:string;validUntil:string;routes:Record<string,{label:string;colour:string}>;stops:BusStop[];omitted:{missingTimes:number;frequencyTrips:number}}
 export interface Departure {tripId:string;routeId:string;headsign:string;direction:string;sequence:number;time:number;serviceDate:string;approximate:boolean;pickupType:number}
 const formatters=new Map<string,Intl.DateTimeFormat>();
 function formatter(timezone:string){let f=formatters.get(timezone);if(!f){f=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});formatters.set(timezone,f);}return f;}
@@ -30,3 +30,10 @@ export function scheduledDepartures(data:StopTimetable,now=Date.now(),hours=24,l
  return result.sort((a,b)=>a.time-b.time||a.tripId.localeCompare(b.tripId)||a.sequence-b.sequence).slice(0,limit);
 }
 export function timetableExpired(index:Pick<StopIndex,'validUntil'|'timezone'>,now=Date.now()){return localDate(now,index.timezone)>index.validUntil;}
+
+export function timetableStatus(index:Pick<StopIndex,'validFrom'|'validUntil'|'timezone'>,now=Date.now()){
+ const today=localDate(now,index.timezone);
+ const date=(s:string)=>Date.UTC(+s.slice(0,4),+s.slice(4,6)-1,+s.slice(6,8));
+ const days=Math.round((date(index.validUntil)-date(today))/86400000);
+ return {days,state:today<index.validFrom?'future':days<0?'expired':days<=3?'expiring':'current'} as const;
+}

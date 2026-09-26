@@ -20,6 +20,8 @@ export function nearestOnLine(p:LngLat,line:LngLat[]){
  for(let i=1;i<points.length;i++){const a=points[i-1],b=points[i],dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy),t=len?Math.max(0,Math.min(1,((q[0]-a[0])*dx+(q[1]-a[1])*dy)/(len*len))):0,d=Math.hypot(q[0]-a[0]-dx*t,q[1]-a[1]-dy*t);if(d<best.distance)best={position:interpolate(line[i-1],line[i],t),distance:d,along:run+len*t,segment:i-1};run+=len;}
  return best;
 }
-export function alongLine(line:LngLat[],metres:number):LngLat{let run=0;for(let i=1;i<line.length;i++){const d=distance(line[i-1],line[i]);if(run+d>=metres&&d)return interpolate(line[i-1],line[i],Math.max(0,(metres-run)/d));run+=d;}return line.at(-1)!;}
-export function lineLength(line:LngLat[]){return line.slice(1).reduce((sum,p,i)=>sum+distance(line[i],p),0);}
+const lengths=new WeakMap<LngLat[],number[]>();
+function cumulative(line:LngLat[]){let values=lengths.get(line);if(!values){values=[0];for(let i=1;i<line.length;i++)values.push(values[i-1]+distance(line[i-1],line[i]));lengths.set(line,values);}return values;}
+export function alongLine(line:LngLat[],metres:number):LngLat{const sums=cumulative(line);if(metres<=0)return line[0];if(metres>=sums.at(-1)!)return line.at(-1)!;let lo=1,hi=line.length-1;while(lo<hi){const mid=(lo+hi)>>1;if(sums[mid]<metres)lo=mid+1;else hi=mid;}const length=sums[lo]-sums[lo-1];return interpolate(line[lo-1],line[lo],length?(metres-sums[lo-1])/length:0);}
+export function lineLength(line:LngLat[]){return cumulative(line).at(-1)??0;}
 export function geometryIntersects(points:LngLat[],b:Bounds=BOUNDS){if(points.some(p=>inBounds(p,b)))return true;for(let i=1;i<points.length;i++){let t0=0,t1=1;const [x,y]=points[i-1],dx=points[i][0]-x,dy=points[i][1]-y;let hit=true;for(const [p,q] of [[-dx,x-b[0]],[dx,b[2]-x],[-dy,y-b[1]],[dy,b[3]-y]]){if(p===0){if(q<0){hit=false;break;}}else {const r=q/p;if(p<0)t0=Math.max(t0,r);else t1=Math.min(t1,r);if(t0>t1){hit=false;break;}}}if(hit)return true;}return false;}

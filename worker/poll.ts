@@ -49,6 +49,7 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
   // Sequential provider groups keep concurrent outbound connections bounded.
   await update('buses','Buses',env.BODS_API_KEY ? async () => {
     const rows=await fetchBuses(env.BODS_API_KEY!);
+    const previous=new Map((await store.items<VehicleObservation>('buses')).map(o=>[o.id,o]));
     // Preserve actual observations BEFORE optional geometry work. Asset/matching failures
     // (including Worker CPU termination) must not prevent the next map read seeing buses.
     const time=new Date().toISOString();
@@ -57,7 +58,7 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
     try{network=await asset<BusNetwork>(env,'bus-network.json');}catch{return {items:rows};}
     const routes: Record<string, LngLat[]> = {};
     const items = rows.map(row => {
-      let match;try{match=matchBusRoute(row,network);}catch{return row;}
+      let match;try{match=matchBusRoute(row,network,previous.get(row.id));}catch{return row;}
       if (match.route && match.observation.tripId) routes[match.observation.tripId] = match.route;
       return match.observation;
     });

@@ -24,11 +24,11 @@ The initial renderer uses WebGL2. Hardware fallback and full terrain are not imp
 
 ## Live data flow
 
-One server poller per feed serves all browsers. Bus refresh: 15 seconds. Rail refresh: 30 seconds. Traffic: 60 seconds. Requests have timeouts, do not overlap, and back off up to 120 seconds. Errors are reduced to non-secret status messages.
+One shared provider snapshot serves all browsers. Buses refresh at most once per minute through London-placed Worker requests; other feeds use the cron and their configured cadences. See `shared/feed-policy.ts` and `docs/cloudflare.md`. Atomic leases suppress overlapping requests and failures back off. Errors are reduced to non-secret status messages.
 
-The browser fetches cached snapshots every 15 seconds. Observations older than five minutes are removed; stale status starts after two normal provider intervals. Interpolation never crosses a large observation jump. Extrapolation requires a matching journey path, stops at station holds, and is limited to one refresh interval. Anchors outside the fixed map boundary are omitted, with no wrap or edge clamp.
+The browser fetches vehicle snapshots every minute. Observations older than five minutes are removed; stale status starts after two normal provider intervals. Interpolation never crosses a large observation jump. Extrapolation requires a matching journey path, stops at station holds, and is limited to one refresh interval. Anchors outside the fixed map boundary are omitted, with no wrap or edge clamp.
 
-BODS identifiers are matched to GTFS trips when possible. A line/heading/proximity fallback accepts only unambiguous candidates; otherwise the observation stays unbound and is interpolated conservatively. Ambiguous branches do not invent a route. Rail placement requires two known timed stations and a connected path; trains without enough evidence are omitted. OSM graph routing does not establish the actual platform, track assignment or signalling block.
+BODS identifiers are matched to GTFS trips when possible. A line/heading/proximity fallback also checks recent observations from the same journey. Branch variants may expose only their common local geometry, labelled as a shared section. Unmatched vehicles hold their reported location; they are not animated on straight lines through the town. Matched buses align to the route immediately and interpolate along it, with heading derived from the local tangent. New journeys and discontinuities rebind. The source GPS observation is retained separately from the rendered position. Rail placement requires two known timed stations and a connected path; trains without enough evidence are omitted. OSM graph routing does not establish the actual platform, track assignment or signalling block.
 
 ## API v1
 
@@ -44,4 +44,4 @@ Roadworks are geographic, not Reading-authority-only: events anywhere inside the
 
 The health endpoint reports connection state and observation counts. A quiet Street Manager subscription cannot prove completeness or health; stored events after restart are labelled unverified until signed delivery is received. Subscription history/backfill requires a separately authorised export. Import it with `npm run data:roadworks -- file.json`.
 
-The default server is local only. Publishing requires a separate hosting/security configuration and HTTPS, and is intentionally outside this delivery. No account creation, feed subscription or paid purchase is performed automatically.
+The Node server is local by default; production runs on the existing Cloudflare Worker and D1. Daily validated GTFS refresh is defined in `.github/workflows/refresh-gtfs.yml`; see `docs/timetables-and-validation.md` for deployment-secret setup.

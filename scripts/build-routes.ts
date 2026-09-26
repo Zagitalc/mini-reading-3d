@@ -4,7 +4,7 @@ import {clipLine,deduplicate,fallbackColour,type StaticRoute} from '../shared/st
 import {RailNetwork,STATIONS} from '../server/rail-network';
 import type {LngLat} from '../shared/types';
 const dest=process.env.GEOGRAPHY_OUTPUT??'raw/staging';await mkdir(dest,{recursive:true});
-const bus=JSON.parse(await readFile('public/data/bus-network.json','utf8'));
+const bus=JSON.parse(await readFile(process.env.BUS_NETWORK_INPUT??'public/data/bus-network.json','utf8'));
 // Operator colour names verified against Reading Buses' current route pages/network map.
 // Hex values are miniature-palette approximations, not official brand specifications.
 const branded=busBrands;
@@ -16,6 +16,7 @@ const buses:StaticRoute[]=bus.routes.map((r:Record<string,string>)=>{
   coordinates:deduplicate([...new Set<string>(trips.map((t:Record<string,string>)=>t.shape_id))].sort().flatMap(id=>clipLine(bus.shapes[id]))) };
 });
 await writeFile(`${dest}/bus-routes.json`,JSON.stringify(buses));
+if(process.argv.includes('--bus-only'))process.exit(0);
 const geo=JSON.parse(await readFile(`${dest}/railways.json`,'utf8')),manifest=JSON.parse(await readFile(`${dest}/manifest.json`,'utf8'));
 const network=new RailNetwork(geo.features);
 // These anchors select actual graph vertices, never add connecting straight lines.

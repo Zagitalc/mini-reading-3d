@@ -1,10 +1,10 @@
 import type {Map} from 'maplibre-gl';
 import {detail,escape} from '../ui/shell';
-import {localDate,scheduledDepartures,timetableExpired,type BusStop,type StopIndex,type StopTimetable} from '../../shared/timetable';
+import {localDate,scheduledDepartures,timetableExpired,timetableStatus,type BusStop,type StopIndex,type StopTimetable} from '../../shared/timetable';
 const dateLabel=(date:string)=>`${date.slice(6,8)}/${date.slice(4,6)}/${date.slice(0,4)}`;
 export async function connectStopLayers(map:Map){
  const section=document.createElement('section');section.className='route-control stop-control';
- section.innerHTML='<label class="layer-row"><span><i>○</i>Bus stops</span><input type="checkbox" id="bus-stops-toggle" role="switch" checked disabled></label><details><summary>Find a stop</summary><label class="stop-search">Stop name or code<input type="search" aria-label="Find a bus stop" placeholder="Station, Oxford Road…"></label><div class="stop-results" aria-live="polite"></div></details><small class="stop-loading">Loading stop snapshot…</small>';
+ section.innerHTML='<label class="layer-row"><span><i>○</i>Bus stops</span><input type="checkbox" id="bus-stops-toggle" role="switch" checked disabled></label><details><summary>Find a stop</summary><label class="stop-search">Stop name or code<input type="search" aria-label="Find a bus stop" placeholder="Station, Oxford Road…"></label><div class="stop-results" aria-live="polite"></div></details><small class="stop-loading">Loading stop snapshot…</small><small class="timetable-status" role="status"></small>';
  document.querySelector('#layers')!.insertBefore(section,document.querySelector('[data-layer=traffic]')!.closest('label'));
  let disposed=false,timer:ReturnType<typeof setInterval>|undefined,active:{element:HTMLElement;stop:BusStop;data?:StopTimetable}|undefined;
  map.on('remove',()=>{disposed=true;clearInterval(timer);});
@@ -14,7 +14,12 @@ export async function connectStopLayers(map:Map){
  try{
   const response=await fetch('/data/bus-stops.json',{signal:AbortSignal.timeout(10000)});if(!response.ok)throw Error('Stop snapshot unavailable');const index:StopIndex=await response.json();if(disposed)return;
   const byId=new globalThis.Map(index.stops.map(s=>[s.id,s]));
-  const render=()=>{
+  const freshness=()=>{const status=timetableStatus(index),el=section.querySelector<HTMLElement>('.timetable-status')!;
+   el.classList.toggle('schedule-notice',status.state!=='current');
+   const through=dateLabel(index.validUntil);
+   el.textContent=status.state==='expired'?`Timetable expired ${through} · awaiting an updated feed`:status.state==='future'?`Timetable begins ${dateLabel(index.validFrom)}`:`Timetable through ${through}${status.state==='expiring'?` · expires ${status.days===0?'today':`in ${status.days} days`}`:''}`;
+  };
+  const render=()=>{freshness();
    if(disposed||document.hidden||!active?.element.isConnected||document.querySelector<HTMLElement>('#details')!.hidden||!active.data)return;
    const {data,element}=active,now=Date.now(),departures=scheduledDepartures(data,now),expired=timetableExpired(index,now),before=localDate(now,index.timezone)<index.validFrom;
    element.innerHTML=`${expired?'<p class="schedule-notice">This timetable snapshot has expired. Only any remaining overnight services are shown; refresh the dataset for current schedules.</p>':before?'<p class="schedule-notice">This snapshot has not started yet.</p>':''}<p>Next 24 hours · London time. Scheduled times, not live predictions.</p>${departures.length?'<ol class="departures">'+departures.map(d=>`<li><time datetime="${new Date(d.time).toISOString()}">${clock.format(d.time)}<small>${day.format(d.time)}</small></time><div><strong>${escape(index.routes[d.routeId]?.label??d.routeId)}</strong> ${escape(d.headsign)}<small>${d.approximate?'Approximate timetable time':'Scheduled'}${d.pickupType===2?' · Arrange pickup by phone':d.pickupType===3?' · Arrange pickup with driver':''}</small></div></li>`).join('')+'</ol>':`<p>${expired?'No current departures available from this snapshot.':before?'No departures in the next 24 hours from this future snapshot.':'No scheduled departures in the next 24 hours in this snapshot.'}</p>`}`;
@@ -38,7 +43,7 @@ export async function connectStopLayers(map:Map){
   const search=section.querySelector<HTMLInputElement>('input[type=search]')!,results=section.querySelector<HTMLElement>('.stop-results')!;
   search.addEventListener('input',()=>{results.replaceChildren();const q=search.value.trim().toLowerCase();if(q.length<2)return;const matches=index.stops.filter(s=>`${s.name} ${s.code} ${s.id}`.toLowerCase().includes(q)).slice(0,12);if(!matches.length)results.textContent='No matching stops in this snapshot.';for(const stop of matches){const button=document.createElement('button');button.textContent=`${stop.name} · ${stop.code}`;button.addEventListener('click',()=>{toggle.checked=true;toggle.dispatchEvent(new Event('change'));map.flyTo({center:stop.position,zoom:17,pitch:45});void open(stop);});results.append(button);}});
   section.querySelector('.stop-loading')!.textContent=`${index.stops.length.toLocaleString()} stops · visible when zoomed in`;
-  timer=setInterval(render,60_000);document.addEventListener('visibilitychange',render);map.on('remove',()=>document.removeEventListener('visibilitychange',render));
+  freshness();timer=setInterval(render,60_000);document.addEventListener('visibilitychange',render);map.on('remove',()=>document.removeEventListener('visibilitychange',render));
  }catch{section.querySelector('.stop-loading')!.textContent='Stop snapshot unavailable';}
  map.on('remove',()=>{disposed=true;clearInterval(timer);cache.clear();});
 }

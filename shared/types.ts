@@ -1,7 +1,7 @@
 export type LngLat = [number, number];
 export type Bounds = [number, number, number, number];
 export type Provenance = { source: string; sourceUrl?: string; observedAt: string };
-export type VehicleObservation = Provenance & { id: string; kind: 'bus'|'train'; position: LngLat; bearing?: number; speed?: number; routeId?: string; routeGroupId?:string; routeColour?:string; operatorId?:string; tripId?: string; label: string; destination?: string; cancelled?: boolean; status: 'observed'|'estimated'; elevation?: number; stopUntil?: string };
+export type VehicleObservation = Provenance & { id: string; kind: 'bus'|'train'; position: LngLat; bearing?: number; speed?: number; routeId?: string; routeGroupId?:string; routeColour?:string; operatorId?:string; tripId?: string; journeyRef?:string; routeMatch?:'trip'|'direction'|'shared'; label: string; destination?: string; cancelled?: boolean; status: 'observed'|'estimated'; elevation?: number; stopUntil?: string };
 export type VehicleTrack = { current: VehicleObservation; previous?: VehicleObservation; route?: LngLat[]; receivedAt: number };
 export type RoadEvent = Provenance & { id: string; title: string; description: string; organisation: string; geometry: {type:'Point';coordinates:LngLat}|{type:'LineString';coordinates:LngLat[]}; kind:'closure'|'works'; status:'planned'|'active'|'completed'|'cancelled'; plannedStart?:string; plannedEnd?:string; actualStart?:string; actualEnd?:string; version:number; trafficManagement?:string; datePrecision?:'date'|'datetime' };
 export type TrafficSegment = Provenance & {id:string; coordinates:LngLat[]; currentSpeed:number; freeFlowSpeed:number; confidence:number};

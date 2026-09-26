@@ -4,16 +4,24 @@
 
 The stop index is built from Reading Buses GTFS `stops`, `stop_times`, `trips`, `routes`, `calendar` and `calendar_dates`. Serving routes are joined through actual calls, never inferred from nearby route geometry. Direction IDs, headsigns and repeated stop sequences are retained.
 
-The 16 September 2026 download contains 1,105 local stops; its service dates cover 7–18 September. This is a **static timetable snapshot**. Refresh it before expiry; neither the browser nor the minute Worker cron downloads timetables automatically. The UI identifies expired/future snapshots instead of reusing old times as current predictions.
+The 26 September 2026 download contains 1,107 local stops and 54 routes, covering 19 September–25 October. This is a **static scheduled timetable**; BODS remains the independent live-position feed.
 
 ```sh
-npm run data:gtfs:fetch
-GTFS_OUTPUT=raw/gtfs-staging npm run data:gtfs
+npm run data:gtfs:refresh
+npm run check && npm run cf:check && npm run test:cloudflare
 ```
 
-Inspect `raw/gtfs-staging/bus-stops.json` (validity, provenance, omitted data) and the generated timetable files. After reviewing the staged output, promote `bus-network.json`, `bus-stops.json` and the complete `timetables` directory to `public/data`. Remove the previous timetable directory when promoting, so obsolete snapshots do not accumulate. Rebuild route overlays from the same network using `GEOGRAPHY_OUTPUT=public/data npm run data:routes`, then test, build and deploy together. To update directly in an isolated checkout, `npm run data:gtfs` uses `public/data` by default.
+The refresh script downloads once, hashes sorted uncompressed GTFS text files (so ZIP timestamps do not trigger rebuilds), and skips unchanged content. Changed feeds build in `raw/gtfs-staging`; validation rejects expired/future-only data, missing local service today, broken joins, invalid geometry, small datasets and losses exceeding 20% of local stops/routes. It promotes the stop index, timetables, route geometry and overlays together. The deployment workflow only publishes after tests pass. A rejected feed leaves the deployed version unchanged.
 
-Stop timetables use a ZIP-version directory and content-hashed filenames. The index loads once; individual stop files load on demand, with a 32-stop in-memory cache. An open board advances once per minute using cached data, with no provider requests or D1 writes. Typical per-stop files are tens of KB before compression. Only the shared index is loaded when no stop is selected.
+`public/data/gtfs-metadata.json` records the content hash, retrieval date, calendar coverage and publisher `feed_info` version/dates when supplied. The current publisher ZIP omits `feed_info.txt`; coverage is derived from calendars and exceptions and does not promise that every route runs through the final day. The sidebar always shows the coverage date, warns within three days, and identifies expired/future data. Existing calendar filtering continues to suppress out-of-date scheduled services.
+
+The index loads once; individual stop files load on demand with a 32-stop browser cache. An open board advances once per minute using cached data, with no provider calls or D1 writes. Content-addressed timetable directories retain the current and preceding dataset so recently opened panels can finish loading during a deployment.
+
+### Daily GitHub workflow
+
+`.github/workflows/refresh-gtfs.yml` checks daily at 04:23 UTC and supports **Run workflow**. Changed feeds are validated, tested, committed to `main`, then deployed directly in the same job. This does not rely on a second workflow being triggered by `GITHUB_TOKEN` pushes. The job checks the remote branch before deployment; it never force-pushes or deploys over a newer checkout. An unchanged but not-yet-deployed dataset is retried, allowing recovery from a failed deployment. Expiry and production-version checks appear in the run summary; expired data fails visibly.
+
+One-time setup: add a repository Actions secret named `CLOUDFLARE_API_TOKEN`, limited to this Cloudflare account and the permissions needed to deploy Workers and reference the existing D1 binding. The account ID is public workflow configuration. Provider keys stay in Worker secrets; they are not copied to GitHub. Without the deployment secret, the workflow can download/validate but cannot publish changed data. GitHub may delay scheduled runs and may disable schedules after extended repository inactivity; inspect Actions when an expiry warning appears. The workflow cannot extend coverage beyond the publisher's feed.
 
 Weekly calendars and added/removed service exceptions are applied in Europe/London. GTFS times after 24:00 retain their original service day. Daylight-saving transitions use the GTFS “noon minus 12 hours” origin. The board shows up to 12 departures in the next 24 hours. Approximate timetable points and arranged-pickup requirements are labelled. Drop-off-only and terminal calls are excluded from departures even when a feed leaves terminal pickup at its default. Missing times are not invented; frequency-based trips are omitted rather than presented as exact departures. Bus cancellation/delay predictions are unavailable in this static feed.
 
