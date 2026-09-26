@@ -3,6 +3,11 @@ on:
   schedule:
     - cron: '23 4 * * *'
   workflow_dispatch:
+    inputs:
+      refresh_feed:
+        description: Download the current publisher feed before deployment
+        type: boolean
+        default: true
 permissions:
   contents: write
 concurrency:
@@ -23,6 +28,7 @@ jobs:
       - run: npm ci
       - name: Download, compare content and validate timetable
         id: refresh
+        if: github.event_name != 'workflow_dispatch' || inputs.refresh_feed
         run: npm run data:gtfs:refresh
       - name: Check deployed version and expiry
         id: deployed

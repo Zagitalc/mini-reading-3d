@@ -55,3 +55,5 @@ Use a local server with polling disabled or the deployed site; the benchmark int
 All 50 unit tests, Worker runtime checks, desktop/mobile stop interactions and existing route/landmark browser checks passed. All 1,103 timetable asset hashes and stop/route/service references were checked; the snapshot contains 152,385 non-terminal stop-time records.
 
 Manual runs of the refresh workflow also run the complete validation and deployment path when the feed is unchanged, so deployment credentials can be verified without waiting for a timetable change. Scheduled runs continue to skip unchanged builds and deployments.
+
+Deployment verification: on 26 September, the publisher returned HTTP 403 for both its current download and open-data index from GitHub-hosted runners. Local downloads still work. Unattended refresh is therefore blocked until the publisher provides a CI-accessible download or an approved runner is configured. The workflow fails visibly and leaves production intact. A manual run can uncheck `refresh_feed` to validate and deploy the already bundled timetable; this does not refresh timetable coverage.
