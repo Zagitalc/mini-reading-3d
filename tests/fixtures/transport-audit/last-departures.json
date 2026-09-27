@@ -78,7 +78,7 @@
       "stopId": "039028150003",
       "stopLabel": "Blagrave Street (rdgjagw)",
       "routeLabel": "14",
-      "headsign": "Reading Station",
+      "headsign": "Woodley",
       "why": "Sunday evening finish",
       "reference": {
         "time": "23:00",
@@ -87,7 +87,7 @@
         "read": "2026-09-27T17:44:00Z",
         "note": "Complete board (9 departures). The board shows the destination as Woodley, not Reading Station."
       },
-      "note": "GTFS headsign Reading Station; operator board shows Woodley for every 13 and 14 at this stop."
+      "note": "GTFS labels these loop trips Reading Station after their final stop; the loop-route rule in scripts/loop-destinations.ts names the far side, Woodley, as the operator board does. Needs a timetable rebuilt with compiler 2 to match."
     },
     {
       "id": "13-20260927-039028150003",
@@ -95,7 +95,7 @@
       "stopId": "039028150003",
       "stopLabel": "Blagrave Street (rdgjagw)",
       "routeLabel": "13",
-      "headsign": "Reading Station",
+      "headsign": "Woodley",
       "why": "Sunday evening finish",
       "reference": {
         "time": "22:30",
@@ -104,7 +104,7 @@
         "read": "2026-09-27T17:44:00Z",
         "note": "Complete board (9 departures). The board shows the destination as Woodley, not Reading Station."
       },
-      "note": "GTFS headsign Reading Station; operator board shows Woodley for every 13 and 14 at this stop."
+      "note": "GTFS labels these loop trips Reading Station after their final stop; the loop-route rule in scripts/loop-destinations.ts names the far side, Woodley, as the operator board does. Needs a timetable rebuilt with compiler 2 to match."
     },
     {
       "id": "26-20260927-039028150004",

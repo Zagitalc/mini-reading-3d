@@ -3,8 +3,13 @@ import {busBrands} from '../shared/bus-style';
 import {fallbackColour} from '../shared/static-routes';
 import {inBounds} from '../shared/geo';
 import {parseGtfsTime,type BusStop,type StopIndex,type StopTimetable,type TimetableService} from '../shared/timetable';
+import {loopDestination,type LoopDestination} from './loop-destinations';
+import type {LngLat,Place} from '../shared/types';
 type Row=Record<string,string>;
-export function compileTimetable(rows:(file:string)=>Row[],provenance:{source:string;sourceUrl:string;licence:string;retrievedAt:string},version:string){
+/** Bump when compiled output changes for the same feed, so the scheduled refresh rebuilds and redeploys. */
+export const TIMETABLE_COMPILER=2;
+export const timetableVersion=(contentHash:string)=>createHash('sha256').update(`${contentHash}\0compiler ${TIMETABLE_COMPILER}`).digest('hex').slice(0,16);
+export function compileTimetable(rows:(file:string)=>Row[],provenance:{source:string;sourceUrl:string;licence:string;retrievedAt:string},version:string,places:Place[]=[]){
  const agencies=rows('agency.txt'),zones=new Set(agencies.map(a=>a.agency_timezone));if(zones.size!==1||!zones.has('Europe/London'))throw Error('Expected one Europe/London timetable timezone');
  const routes=Object.fromEntries(rows('routes.txt').map(r=>[r.route_id,r]));
  const trips=new Map(rows('trips.txt').map(t=>[t.trip_id,t]));
@@ -16,6 +21,7 @@ export function compileTimetable(rows:(file:string)=>Row[],provenance:{source:st
  for(const s of rows('stops.txt'))if((!s.location_type||s.location_type==='0')&&inBounds([+s.stop_lon,+s.stop_lat]))stops.set(s.stop_id,{id:s.stop_id,name:s.stop_name,code:s.stop_code||s.stop_id,position:[+s.stop_lon,+s.stop_lat],routeIds:[]});
  const stopTimes=rows('stop_times.txt'),lastSequence=new Map<string,number>();
  for(const row of stopTimes){const sequence=Number(row.stop_sequence);if(!Number.isInteger(sequence)||sequence<0)throw Error(`Invalid stop sequence for ${row.trip_id}`);lastSequence.set(row.trip_id,Math.max(lastSequence.get(row.trip_id)??-1,sequence));}
+ const loops=loopDestinations(rows('stops.txt'),stopTimes,places);
  const payloads=new Map<string,StopTimetable>(),tripIndexes=new Map<string,Map<string,number>>(),serviceIndexes=new Map<string,Map<string,number>>();
  let missingTimes=0;const usedServices=new Set<string>();
  for(const row of stopTimes){
@@ -28,7 +34,7 @@ export function compileTimetable(rows:(file:string)=>Row[],provenance:{source:st
   const data=payloads.get(stop.id)!,tripMap=tripIndexes.get(stop.id)!,serviceMap=serviceIndexes.get(stop.id)!;
   if(!serviceMap.has(trip.service_id)){serviceMap.set(trip.service_id,data.services.length);data.services.push(services.get(trip.service_id)!);}
   if(!tripMap.has(trip.trip_id)){tripMap.set(trip.trip_id,data.trips.length);data.trips.push({id:trip.trip_id,service:serviceMap.get(trip.service_id)!,routeId:trip.route_id,headsign:trip.trip_headsign||routes[trip.route_id].route_long_name||'Destination not supplied',direction:trip.direction_id||''});}
-  data.times.push([tripMap.get(trip.trip_id)!,seconds,+row.stop_sequence,row.timepoint==='0'?1:0,+(row.pickup_type||0),...(row.stop_headsign?[row.stop_headsign]:[])] as typeof data.times[number]);
+  data.times.push([tripMap.get(trip.trip_id)!,seconds,+row.stop_sequence,row.timepoint==='0'?1:0,+(row.pickup_type||0),...headsignAt(row,loops.get(row.trip_id))] as typeof data.times[number]);
  }
  const usedRoutes=new Set<string>(),dates:string[]=[];
  for(const id of usedServices){const s=services.get(id)!;if(s.weekdays.includes('1'))dates.push(s.start,s.end);for(const[d,kind]of Object.entries(s.exceptions))if(kind===1)dates.push(d);}
@@ -38,4 +44,17 @@ export function compileTimetable(rows:(file:string)=>Row[],provenance:{source:st
  for(const stop of stops.values()){if(!stop.routeIds.length)continue;stop.routeIds.sort();stop.routeIds.forEach(id=>usedRoutes.add(id));const data=payloads.get(stop.id);if(data){const file=createHash('sha256').update(JSON.stringify(data)).digest('hex').slice(0,20)+'.json';stop.timetableUrl=`/data/timetables/${version}/${file}`;files.set(file,data);}index.stops.push(stop);}
  for(const id of usedRoutes){const r=routes[id];index.routes[id]={label:r.route_short_name||r.route_long_name||id,colour:/^[a-f\d]{6}$/i.test(r.route_color)?`#${r.route_color}`:busBrands[r.route_short_name]?.[0]??fallbackColour(id)};}
  index.stops.sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));return {index,files};
+}
+// A publisher's stop_headsign always wins; otherwise loop trips announce their far side until they turn.
+function headsignAt(row:Row,loop?:LoopDestination):[string]|[]{const headsign=row.stop_headsign||(loop&&+row.stop_sequence<loop.beforeSequence?loop.label:'');return headsign?[headsign]:[];}
+function loopDestinations(stopRows:Row[],stopTimes:Row[],places:Place[]){
+ const result=new Map<string,LoopDestination>();if(!places.length)return result;
+ const positions=new Map<string,LngLat>(stopRows.map(s=>[s.stop_id,[+s.stop_lon,+s.stop_lat]])),calls=new Map<string,{sequence:number;stopId:string}[]>();
+ for(const row of stopTimes){if(!positions.has(row.stop_id))continue;if(!calls.has(row.trip_id))calls.set(row.trip_id,[]);calls.get(row.trip_id)!.push({sequence:+row.stop_sequence,stopId:row.stop_id});}
+ // Trips on one route share a handful of stop patterns; resolve each pattern once.
+ const patterns=new Map<string,LoopDestination|undefined>();
+ for(const [trip,list] of calls){list.sort((a,b)=>a.sequence-b.sequence);const key=list.map(c=>`${c.sequence}:${c.stopId}`).join();
+  if(!patterns.has(key))patterns.set(key,loopDestination(list.map(c=>({sequence:c.sequence,position:positions.get(c.stopId)!})),places));
+  const loop=patterns.get(key);if(loop)result.set(trip,loop);}
+ return result;
 }

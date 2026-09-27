@@ -1,0 +1,758 @@
+{
+ "note": "Stop patterns of Reading Buses 13 and 23 from the bundled BODS timetable (dataset 14449ac53b0d12b4), closed back to their first stop because the timetable files omit the terminal call; area places from features.json (OSM).",
+ "routes": {
+  "13": [
+   {
+    "sequence": 0,
+    "stop": "Blagrave Street",
+    "position": [-0.97203,51.4579]
+   },
+   {
+    "sequence": 1,
+    "stop": "Kings Road",
+    "position": [-0.96832,51.45499]
+   },
+   {
+    "sequence": 2,
+    "stop": "Huntley and Palmers",
+    "position": [-0.96144,51.45506]
+   },
+   {
+    "sequence": 3,
+    "stop": "Eldon Road",
+    "position": [-0.95725,51.45385]
+   },
+   {
+    "sequence": 4,
+    "stop": "Reading College",
+    "position": [-0.95346,51.45345]
+   },
+   {
+    "sequence": 5,
+    "stop": "Cemetery Junction",
+    "position": [-0.94987,51.4531]
+   },
+   {
+    "sequence": 6,
+    "stop": "Cholmeley Road",
+    "position": [-0.94656,51.4537]
+   },
+   {
+    "sequence": 7,
+    "stop": "Liverpool Road",
+    "position": [-0.9407,51.45499]
+   },
+   {
+    "sequence": 8,
+    "stop": "London Road - The Drive",
+    "position": [-0.93463,51.45613]
+   },
+   {
+    "sequence": 9,
+    "stop": "London Road - The Drive",
+    "position": [-0.93454,51.45567]
+   },
+   {
+    "sequence": 10,
+    "stop": "Erleigh Court Drive",
+    "position": [-0.931,51.45444]
+   },
+   {
+    "sequence": 11,
+    "stop": "Whitegates Lane",
+    "position": [-0.92852,51.45337]
+   },
+   {
+    "sequence": 12,
+    "stop": "Culver Lane",
+    "position": [-0.9271,51.45243]
+   },
+   {
+    "sequence": 13,
+    "stop": "Bulmershe Court",
+    "position": [-0.92331,51.45104]
+   },
+   {
+    "sequence": 14,
+    "stop": "Bulmershe Sports Centre",
+    "position": [-0.91655,51.45199]
+   },
+   {
+    "sequence": 15,
+    "stop": "Antrim Road",
+    "position": [-0.91444,51.44952]
+   },
+   {
+    "sequence": 16,
+    "stop": "North Lake",
+    "position": [-0.91375,51.44694]
+   },
+   {
+    "sequence": 17,
+    "stop": "Campbell Road",
+    "position": [-0.91232,51.44588]
+   },
+   {
+    "sequence": 18,
+    "stop": "Thatchers",
+    "position": [-0.90662,51.4442]
+   },
+   {
+    "sequence": 19,
+    "stop": "Livingstone Gardens",
+    "position": [-0.90546,51.44642]
+   },
+   {
+    "sequence": 20,
+    "stop": "Mulberry Close",
+    "position": [-0.90485,51.44786]
+   },
+   {
+    "sequence": 21,
+    "stop": "Drovers Way Top",
+    "position": [-0.90169,51.447]
+   },
+   {
+    "sequence": 22,
+    "stop": "Good Companions",
+    "position": [-0.89916,51.44463]
+   },
+   {
+    "sequence": 23,
+    "stop": "The Ridgeway",
+    "position": [-0.89828,51.44253]
+   },
+   {
+    "sequence": 24,
+    "stop": "Rivermead Road",
+    "position": [-0.89749,51.4408]
+   },
+   {
+    "sequence": 25,
+    "stop": "Colemans Moor Lane Foot",
+    "position": [-0.8934,51.44511]
+   },
+   {
+    "sequence": 26,
+    "stop": "Oak Drive",
+    "position": [-0.88949,51.44724]
+   },
+   {
+    "sequence": 27,
+    "stop": "Dunbar Drive",
+    "position": [-0.88669,51.4495]
+   },
+   {
+    "sequence": 28,
+    "stop": "Herald Way",
+    "position": [-0.88361,51.45143]
+   },
+   {
+    "sequence": 29,
+    "stop": "Sandford Lane",
+    "position": [-0.88025,51.45344]
+   },
+   {
+    "sequence": 30,
+    "stop": "Sunderland Close",
+    "position": [-0.88093,51.45657]
+   },
+   {
+    "sequence": 31,
+    "stop": "Harvard Close",
+    "position": [-0.88347,51.45707]
+   },
+   {
+    "sequence": 32,
+    "stop": "Lysander Close",
+    "position": [-0.88548,51.455]
+   },
+   {
+    "sequence": 33,
+    "stop": "Woodley Piazza",
+    "position": [-0.88879,51.45438]
+   },
+   {
+    "sequence": 34,
+    "stop": "Headley Close",
+    "position": [-0.88774,51.45661]
+   },
+   {
+    "sequence": 35,
+    "stop": "Oakdale Walk",
+    "position": [-0.88884,51.4576]
+   },
+   {
+    "sequence": 36,
+    "stop": "Brandon Avenue",
+    "position": [-0.89197,51.46021]
+   },
+   {
+    "sequence": 37,
+    "stop": "Brecon Road Parade",
+    "position": [-0.89422,51.45937]
+   },
+   {
+    "sequence": 38,
+    "stop": "Ravensbourne Drive",
+    "position": [-0.89898,51.45804]
+   },
+   {
+    "sequence": 39,
+    "stop": "Wilmington Close",
+    "position": [-0.89786,51.456]
+   },
+   {
+    "sequence": 40,
+    "stop": "Headley Road Circle",
+    "position": [-0.89957,51.45418]
+   },
+   {
+    "sequence": 41,
+    "stop": "Chequers",
+    "position": [-0.90734,51.45371]
+   },
+   {
+    "sequence": 42,
+    "stop": "Woodwaye",
+    "position": [-0.90898,51.45377]
+   },
+   {
+    "sequence": 43,
+    "stop": "Beaufield Close",
+    "position": [-0.91306,51.45405]
+   },
+   {
+    "sequence": 44,
+    "stop": "Chequers Way",
+    "position": [-0.91486,51.45512]
+   },
+   {
+    "sequence": 45,
+    "stop": "Howth Drive Top",
+    "position": [-0.91442,51.45815]
+   },
+   {
+    "sequence": 46,
+    "stop": "Shepherds Hill Top",
+    "position": [-0.92039,51.45895]
+   },
+   {
+    "sequence": 47,
+    "stop": "Earley Power Station",
+    "position": [-0.92607,51.45784]
+   },
+   {
+    "sequence": 48,
+    "stop": "Shepherds House Lane",
+    "position": [-0.93093,51.45678]
+   },
+   {
+    "sequence": 49,
+    "stop": "London Road - The Drive",
+    "position": [-0.93629,51.45542]
+   },
+   {
+    "sequence": 50,
+    "stop": "Liverpool Road",
+    "position": [-0.94198,51.45467]
+   },
+   {
+    "sequence": 51,
+    "stop": "Cholmeley Road",
+    "position": [-0.94516,51.45396]
+   },
+   {
+    "sequence": 52,
+    "stop": "Cemetery Junction",
+    "position": [-0.95122,51.45306]
+   },
+   {
+    "sequence": 53,
+    "stop": "Reading College",
+    "position": [-0.95586,51.45354]
+   },
+   {
+    "sequence": 54,
+    "stop": "Eldon Road",
+    "position": [-0.96001,51.45387]
+   },
+   {
+    "sequence": 55,
+    "stop": "Huntley and Palmers",
+    "position": [-0.96295,51.45532]
+   },
+   {
+    "sequence": 56,
+    "stop": "Blagrave Street",
+    "position": [-0.97203,51.4579]
+   }
+  ],
+  "23": [
+   {
+    "sequence": 0,
+    "stop": "Friar Street",
+    "position": [-0.97456,51.45671]
+   },
+   {
+    "sequence": 1,
+    "stop": "Forbury Road",
+    "position": [-0.96985,51.45798]
+   },
+   {
+    "sequence": 2,
+    "stop": "Station North Interchange",
+    "position": [-0.97131,51.46044]
+   },
+   {
+    "sequence": 3,
+    "stop": "Swansea Road",
+    "position": [-0.9755,51.46265]
+   },
+   {
+    "sequence": 4,
+    "stop": "The Moderation",
+    "position": [-0.97755,51.46457]
+   },
+   {
+    "sequence": 5,
+    "stop": "Bridge Street Caversham",
+    "position": [-0.97696,51.46649]
+   },
+   {
+    "sequence": 6,
+    "stop": "Church Street",
+    "position": [-0.97549,51.46776]
+   },
+   {
+    "sequence": 7,
+    "stop": "Westfield Road",
+    "position": [-0.96906,51.46647]
+   },
+   {
+    "sequence": 8,
+    "stop": "Washington Road",
+    "position": [-0.96484,51.46586]
+   },
+   {
+    "sequence": 9,
+    "stop": "St Johns Road",
+    "position": [-0.96185,51.46543]
+   },
+   {
+    "sequence": 10,
+    "stop": "Montague Street",
+    "position": [-0.95938,51.46589]
+   },
+   {
+    "sequence": 11,
+    "stop": "Star Inn",
+    "position": [-0.95935,51.46896]
+   },
+   {
+    "sequence": 12,
+    "stop": "Chiltern Road",
+    "position": [-0.95788,51.47068]
+   },
+   {
+    "sequence": 13,
+    "stop": "Travellers Rest",
+    "position": [-0.95423,51.47064]
+   },
+   {
+    "sequence": 14,
+    "stop": "All Hallows Road",
+    "position": [-0.95158,51.47146]
+   },
+   {
+    "sequence": 15,
+    "stop": "Micklands Road",
+    "position": [-0.94676,51.47334]
+   },
+   {
+    "sequence": 16,
+    "stop": "Henley Road County Boundary",
+    "position": [-0.94246,51.47486]
+   },
+   {
+    "sequence": 17,
+    "stop": "Devon Drive",
+    "position": [-0.94448,51.47779]
+   },
+   {
+    "sequence": 18,
+    "stop": "Dumbarton Way",
+    "position": [-0.94592,51.4803]
+   },
+   {
+    "sequence": 19,
+    "stop": "Littlestead Close",
+    "position": [-0.94576,51.48181]
+   },
+   {
+    "sequence": 20,
+    "stop": "Osterley Drive",
+    "position": [-0.94667,51.48396]
+   },
+   {
+    "sequence": 21,
+    "stop": "Queensway",
+    "position": [-0.95333,51.485]
+   },
+   {
+    "sequence": 22,
+    "stop": "Fraser Avenue",
+    "position": [-0.9572,51.48521]
+   },
+   {
+    "sequence": 23,
+    "stop": "Kiln Road",
+    "position": [-0.96126,51.48703]
+   },
+   {
+    "sequence": 24,
+    "stop": "Courtenay Drive Top",
+    "position": [-0.96258,51.48805]
+   },
+   {
+    "sequence": 25,
+    "stop": "Crawshay Drive",
+    "position": [-0.96648,51.4879]
+   },
+   {
+    "sequence": 26,
+    "stop": "Chalgrove Way",
+    "position": [-0.96496,51.48507]
+   },
+   {
+    "sequence": 27,
+    "stop": "Black Horse",
+    "position": [-0.96469,51.48328]
+   },
+   {
+    "sequence": 28,
+    "stop": "St Barnabas Church",
+    "position": [-0.96957,51.48245]
+   },
+   {
+    "sequence": 29,
+    "stop": "Southdown Road",
+    "position": [-0.96844,51.47962]
+   },
+   {
+    "sequence": 30,
+    "stop": "Rotherfield Way",
+    "position": [-0.97161,51.47762]
+   },
+   {
+    "sequence": 31,
+    "stop": "Grove Hill",
+    "position": [-0.97494,51.47579]
+   },
+   {
+    "sequence": 32,
+    "stop": "Victoria Road",
+    "position": [-0.97432,51.47373]
+   },
+   {
+    "sequence": 33,
+    "stop": "Queen Street",
+    "position": [-0.97467,51.47222]
+   },
+   {
+    "sequence": 34,
+    "stop": "Hemdean Hill",
+    "position": [-0.97359,51.46992]
+   },
+   {
+    "sequence": 35,
+    "stop": "Caversham Library",
+    "position": [-0.97432,51.46791]
+   },
+   {
+    "sequence": 36,
+    "stop": "Bridge Street Caversham",
+    "position": [-0.97672,51.46687]
+   },
+   {
+    "sequence": 37,
+    "stop": "The Moderation",
+    "position": [-0.9769,51.46414]
+   },
+   {
+    "sequence": 38,
+    "stop": "Swansea Road",
+    "position": [-0.9753,51.46265]
+   },
+   {
+    "sequence": 39,
+    "stop": "Caversham Road Fire Station",
+    "position": [-0.97588,51.46023]
+   },
+   {
+    "sequence": 40,
+    "stop": "South West Interchange",
+    "position": [-0.97449,51.45889]
+   },
+   {
+    "sequence": 41,
+    "stop": "Friar Street",
+    "position": [-0.97456,51.45671]
+   }
+  ]
+ },
+ "places": [
+  {
+   "id": "node/14808039",
+   "name": "Reading",
+   "kind": "town",
+   "position": [-0.97007,51.45642]
+  },
+  {
+   "id": "node/16101223",
+   "name": "Earley",
+   "kind": "suburb",
+   "position": [-0.92773,51.44007]
+  },
+  {
+   "id": "node/20930888",
+   "name": "Whitley",
+   "kind": "suburb",
+   "position": [-0.96509,51.4363]
+  },
+  {
+   "id": "node/20930889",
+   "name": "Woodley",
+   "kind": "town",
+   "position": [-0.90469,51.45304]
+  },
+  {
+   "id": "node/20931069",
+   "name": "Lower Earley",
+   "kind": "suburb",
+   "position": [-0.92799,51.43045]
+  },
+  {
+   "id": "node/27460515",
+   "name": "Theale",
+   "kind": "village",
+   "position": [-1.07672,51.43806]
+  },
+  {
+   "id": "node/29357100",
+   "name": "Spencers Wood",
+   "kind": "village",
+   "position": [-0.97142,51.39455]
+  },
+  {
+   "id": "node/29357125",
+   "name": "Shinfield",
+   "kind": "village",
+   "position": [-0.94838,51.4101]
+  },
+  {
+   "id": "node/99184535",
+   "name": "Purley on Thames",
+   "kind": "village",
+   "position": [-1.04495,51.4783]
+  },
+  {
+   "id": "node/146298150",
+   "name": "Tilehurst",
+   "kind": "suburb",
+   "position": [-1.04092,51.45798]
+  },
+  {
+   "id": "node/269788895",
+   "name": "Grazeley",
+   "kind": "village",
+   "position": [-0.99558,51.3965]
+  },
+  {
+   "id": "node/289952609",
+   "name": "Burghfield",
+   "kind": "village",
+   "position": [-1.04571,51.41239]
+  },
+  {
+   "id": "node/289956328",
+   "name": "Burghfield Common",
+   "kind": "village",
+   "position": [-1.06242,51.39721]
+  },
+  {
+   "id": "node/296519932",
+   "name": "Three Mile Cross",
+   "kind": "village",
+   "position": [-0.97356,51.40737]
+  },
+  {
+   "id": "node/364554434",
+   "name": "Twyford",
+   "kind": "village",
+   "position": [-0.86481,51.47881]
+  },
+  {
+   "id": "node/428173203",
+   "name": "Arborfield",
+   "kind": "village",
+   "position": [-0.90543,51.39634]
+  },
+  {
+   "id": "node/558816949",
+   "name": "Sonning",
+   "kind": "village",
+   "position": [-0.90991,51.47359]
+  },
+  {
+   "id": "node/610201249",
+   "name": "Sindlesham",
+   "kind": "village",
+   "position": [-0.88558,51.42282]
+  },
+  {
+   "id": "node/625749873",
+   "name": "Hurst",
+   "kind": "village",
+   "position": [-0.85422,51.4566]
+  },
+  {
+   "id": "node/697223906",
+   "name": "Battle",
+   "kind": "suburb",
+   "position": [-0.99658,51.45712]
+  },
+  {
+   "id": "node/697223910",
+   "name": "Kentwood",
+   "kind": "suburb",
+   "position": [-1.03334,51.46528]
+  },
+  {
+   "id": "node/718511447",
+   "name": "Emmer Green",
+   "kind": "suburb",
+   "position": [-0.96352,51.48295]
+  },
+  {
+   "id": "node/718511448",
+   "name": "Caversham Heights",
+   "kind": "suburb",
+   "position": [-0.98772,51.47485]
+  },
+  {
+   "id": "node/718511449",
+   "name": "Caversham Park",
+   "kind": "suburb",
+   "position": [-0.95919,51.48425]
+  },
+  {
+   "id": "node/718511450",
+   "name": "Caversham",
+   "kind": "suburb",
+   "position": [-0.97389,51.4681]
+  },
+  {
+   "id": "node/754123400",
+   "name": "Barkham",
+   "kind": "village",
+   "position": [-0.87337,51.40311]
+  },
+  {
+   "id": "node/1378707457",
+   "name": "Winnersh",
+   "kind": "village",
+   "position": [-0.87786,51.43088]
+  },
+  {
+   "id": "node/1633878722",
+   "name": "Hare Hatch",
+   "kind": "village",
+   "position": [-0.84419,51.49516]
+  },
+  {
+   "id": "node/2117862027",
+   "name": "Calcot",
+   "kind": "suburb",
+   "position": [-1.05202,51.4418]
+  },
+  {
+   "id": "node/2117862038",
+   "name": "Churchend",
+   "kind": "suburb",
+   "position": [-1.03174,51.45103]
+  },
+  {
+   "id": "node/2117862045",
+   "name": "Coley Park",
+   "kind": "suburb",
+   "position": [-0.98678,51.44505]
+  },
+  {
+   "id": "node/2117862053",
+   "name": "Fords Farm",
+   "kind": "suburb",
+   "position": [-1.02988,51.43947]
+  },
+  {
+   "id": "node/2117862061",
+   "name": "Little Heath",
+   "kind": "suburb",
+   "position": [-1.05758,51.45663]
+  },
+  {
+   "id": "node/2117873172",
+   "name": "Norcot",
+   "kind": "suburb",
+   "position": [-1.02544,51.4595]
+  },
+  {
+   "id": "node/2956220804",
+   "name": "Ruscombe",
+   "kind": "village",
+   "position": [-0.85668,51.48121]
+  },
+  {
+   "id": "node/3470411241",
+   "name": "Emmbrook",
+   "kind": "suburb",
+   "position": [-0.8521,51.42013]
+  },
+  {
+   "id": "node/4589210082",
+   "name": "Coley",
+   "kind": "suburb",
+   "position": [-0.97834,51.44921]
+  },
+  {
+   "id": "node/5850876633",
+   "name": "Southcote",
+   "kind": "suburb",
+   "position": [-1.0028,51.44325]
+  },
+  {
+   "id": "node/5918874458",
+   "name": "Whitley Wood",
+   "kind": "suburb",
+   "position": [-0.96373,51.41677]
+  },
+  {
+   "id": "node/6399615991",
+   "name": "Newtown",
+   "kind": "suburb",
+   "position": [-0.94869,51.45572]
+  },
+  {
+   "id": "node/7637657211",
+   "name": "Beansheaf",
+   "kind": "suburb",
+   "position": [-1.04965,51.4399]
+  },
+  {
+   "id": "node/7637657212",
+   "name": "Dee Park",
+   "kind": "suburb",
+   "position": [-1.01767,51.45608]
+  }
+ ]
+}
