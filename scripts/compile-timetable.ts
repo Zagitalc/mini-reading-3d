@@ -7,7 +7,7 @@ import {loopDestination,type LoopDestination} from './loop-destinations';
 import type {LngLat,Place} from '../shared/types';
 type Row=Record<string,string>;
 /** Bump when compiled output changes for the same feed, so the scheduled refresh rebuilds and redeploys. */
-export const TIMETABLE_COMPILER=2;
+export const TIMETABLE_COMPILER=3;
 export const timetableVersion=(contentHash:string)=>createHash('sha256').update(`${contentHash}\0compiler ${TIMETABLE_COMPILER}`).digest('hex').slice(0,16);
 export function compileTimetable(rows:(file:string)=>Row[],provenance:{source:string;sourceUrl:string;licence:string;retrievedAt:string},version:string,places:Place[]=[]){
  const agencies=rows('agency.txt'),zones=new Set(agencies.map(a=>a.agency_timezone));if(zones.size!==1||!zones.has('Europe/London'))throw Error('Expected one Europe/London timetable timezone');

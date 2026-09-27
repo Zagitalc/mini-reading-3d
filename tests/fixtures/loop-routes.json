@@ -1,5 +1,5 @@
 {
- "note": "Stop patterns of Reading Buses 13 and 23 from the bundled BODS timetable (dataset 14449ac53b0d12b4), closed back to their first stop because the timetable files omit the terminal call; area places from features.json (OSM).",
+ "note": "Stop patterns of Reading Buses 13, 19a, 23 and 24 from the bundled BODS timetable (dataset 14449ac53b0d12b4), closed back to their first stop because the timetable files omit the terminal call; area places from features.json (OSM).",
  "routes": {
   "13": [
    {
@@ -498,6 +498,580 @@
     "sequence": 41,
     "stop": "Friar Street",
     "position": [-0.97456,51.45671]
+   }
+  ],
+  "24": [
+   {
+    "sequence": 0,
+    "stop": "Friar Street",
+    "position": [-0.97456,51.45671]
+   },
+   {
+    "sequence": 1,
+    "stop": "Forbury Road",
+    "position": [-0.96985,51.45798]
+   },
+   {
+    "sequence": 2,
+    "stop": "Station North Interchange",
+    "position": [-0.97131,51.46044]
+   },
+   {
+    "sequence": 3,
+    "stop": "Swansea Road",
+    "position": [-0.9755,51.46265]
+   },
+   {
+    "sequence": 4,
+    "stop": "The Moderation",
+    "position": [-0.97755,51.46457]
+   },
+   {
+    "sequence": 5,
+    "stop": "Bridge Street Caversham",
+    "position": [-0.97696,51.46649]
+   },
+   {
+    "sequence": 6,
+    "stop": "Church Street",
+    "position": [-0.97549,51.46776]
+   },
+   {
+    "sequence": 7,
+    "stop": "Caversham Library",
+    "position": [-0.97431,51.46843]
+   },
+   {
+    "sequence": 8,
+    "stop": "Hemdean Hill",
+    "position": [-0.97377,51.47057]
+   },
+   {
+    "sequence": 9,
+    "stop": "Queen Street",
+    "position": [-0.97489,51.47265]
+   },
+   {
+    "sequence": 10,
+    "stop": "Victoria Road",
+    "position": [-0.97426,51.4745]
+   },
+   {
+    "sequence": 11,
+    "stop": "Grove Hill",
+    "position": [-0.97506,51.47624]
+   },
+   {
+    "sequence": 12,
+    "stop": "Rotherfield Way",
+    "position": [-0.97086,51.47834]
+   },
+   {
+    "sequence": 13,
+    "stop": "Southdown Road",
+    "position": [-0.96768,51.48019]
+   },
+   {
+    "sequence": 14,
+    "stop": "St Barnabas Church",
+    "position": [-0.96987,51.48195]
+   },
+   {
+    "sequence": 15,
+    "stop": "Black Horse",
+    "position": [-0.96467,51.48337]
+   },
+   {
+    "sequence": 16,
+    "stop": "Chalgrove Way",
+    "position": [-0.96535,51.48564]
+   },
+   {
+    "sequence": 17,
+    "stop": "Crawshay Drive",
+    "position": [-0.96622,51.48802]
+   },
+   {
+    "sequence": 18,
+    "stop": "Courtenay Drive Top",
+    "position": [-0.9623,51.48812]
+   },
+   {
+    "sequence": 19,
+    "stop": "Kiln Road",
+    "position": [-0.9607,51.48576]
+   },
+   {
+    "sequence": 20,
+    "stop": "Cavendish Road",
+    "position": [-0.96272,51.48364]
+   },
+   {
+    "sequence": 21,
+    "stop": "Barnard Close",
+    "position": [-0.9596,51.48299]
+   },
+   {
+    "sequence": 22,
+    "stop": "Ariel View",
+    "position": [-0.95642,51.48281]
+   },
+   {
+    "sequence": 23,
+    "stop": "Milestone Centre",
+    "position": [-0.95375,51.48191]
+   },
+   {
+    "sequence": 24,
+    "stop": "Montpelier Drive",
+    "position": [-0.95278,51.48025]
+   },
+   {
+    "sequence": 25,
+    "stop": "Galsworthy Drive",
+    "position": [-0.95054,51.4787]
+   },
+   {
+    "sequence": 26,
+    "stop": "Earlsfield Close",
+    "position": [-0.94606,51.47692]
+   },
+   {
+    "sequence": 27,
+    "stop": "Henley Road County Boundary",
+    "position": [-0.94261,51.47466]
+   },
+   {
+    "sequence": 28,
+    "stop": "Micklands Road",
+    "position": [-0.94679,51.47319]
+   },
+   {
+    "sequence": 29,
+    "stop": "All Hallows Road",
+    "position": [-0.95103,51.47149]
+   },
+   {
+    "sequence": 30,
+    "stop": "Travellers Rest",
+    "position": [-0.954,51.47058]
+   },
+   {
+    "sequence": 31,
+    "stop": "Chiltern Road",
+    "position": [-0.95812,51.4706]
+   },
+   {
+    "sequence": 32,
+    "stop": "Star Inn",
+    "position": [-0.95952,51.46796]
+   },
+   {
+    "sequence": 33,
+    "stop": "Montague Street",
+    "position": [-0.95932,51.46622]
+   },
+   {
+    "sequence": 34,
+    "stop": "St Johns Road",
+    "position": [-0.96277,51.4655]
+   },
+   {
+    "sequence": 35,
+    "stop": "Elizabeth House",
+    "position": [-0.96738,51.46613]
+   },
+   {
+    "sequence": 36,
+    "stop": "Westfield Road",
+    "position": [-0.97065,51.46679]
+   },
+   {
+    "sequence": 37,
+    "stop": "Church Street",
+    "position": [-0.97353,51.46748]
+   },
+   {
+    "sequence": 38,
+    "stop": "Bridge Street Caversham",
+    "position": [-0.97672,51.46687]
+   },
+   {
+    "sequence": 39,
+    "stop": "The Moderation",
+    "position": [-0.9769,51.46414]
+   },
+   {
+    "sequence": 40,
+    "stop": "Swansea Road",
+    "position": [-0.9753,51.46265]
+   },
+   {
+    "sequence": 41,
+    "stop": "Caversham Road Fire Station",
+    "position": [-0.97588,51.46023]
+   },
+   {
+    "sequence": 42,
+    "stop": "South West Interchange",
+    "position": [-0.97449,51.45889]
+   },
+   {
+    "sequence": 43,
+    "stop": "Friar Street",
+    "position": [-0.97456,51.45671]
+   }
+  ],
+  "19a": [
+   {
+    "sequence": 0,
+    "stop": "St Marys Butts",
+    "position": [-0.97485,51.45476]
+   },
+   {
+    "sequence": 1,
+    "stop": "Friar Street",
+    "position": [-0.97365,51.45678]
+   },
+   {
+    "sequence": 2,
+    "stop": "Station Road",
+    "position": [-0.9723,51.45813]
+   },
+   {
+    "sequence": 3,
+    "stop": "Market Place",
+    "position": [-0.96939,51.456]
+   },
+   {
+    "sequence": 4,
+    "stop": "Kings Road",
+    "position": [-0.96791,51.45495]
+   },
+   {
+    "sequence": 5,
+    "stop": "Huntley and Palmers",
+    "position": [-0.96346,51.45495]
+   },
+   {
+    "sequence": 6,
+    "stop": "Eldon Road",
+    "position": [-0.95866,51.45325]
+   },
+   {
+    "sequence": 7,
+    "stop": "RBH Main Entrance",
+    "position": [-0.95733,51.45042]
+   },
+   {
+    "sequence": 8,
+    "stop": "RBH South Wing",
+    "position": [-0.95626,51.44816]
+   },
+   {
+    "sequence": 9,
+    "stop": "Alexandra Road",
+    "position": [-0.95135,51.44802]
+   },
+   {
+    "sequence": 10,
+    "stop": "Foxhill Road",
+    "position": [-0.94852,51.44855]
+   },
+   {
+    "sequence": 11,
+    "stop": "Eastern Avenue Foot",
+    "position": [-0.94449,51.44677]
+   },
+   {
+    "sequence": 12,
+    "stop": "Mockbeggar",
+    "position": [-0.93996,51.44547]
+   },
+   {
+    "sequence": 13,
+    "stop": "Bridges Hall",
+    "position": [-0.93587,51.4436]
+   },
+   {
+    "sequence": 14,
+    "stop": "Earley Gate",
+    "position": [-0.93176,51.44086]
+   },
+   {
+    "sequence": 15,
+    "stop": "Ramsbury Drive",
+    "position": [-0.93253,51.43816]
+   },
+   {
+    "sequence": 16,
+    "stop": "Kennedy Gardens",
+    "position": [-0.92989,51.43676]
+   },
+   {
+    "sequence": 17,
+    "stop": "Silverdale Road Shops",
+    "position": [-0.92625,51.43646]
+   },
+   {
+    "sequence": 18,
+    "stop": "Lakeside",
+    "position": [-0.92252,51.43506]
+   },
+   {
+    "sequence": 19,
+    "stop": "Kenton Road",
+    "position": [-0.91802,51.43547]
+   },
+   {
+    "sequence": 20,
+    "stop": "Hillside Road",
+    "position": [-0.91322,51.43464]
+   },
+   {
+    "sequence": 21,
+    "stop": "Gipsy Lane",
+    "position": [-0.91078,51.43342]
+   },
+   {
+    "sequence": 22,
+    "stop": "Mill Lane",
+    "position": [-0.90727,51.43397]
+   },
+   {
+    "sequence": 23,
+    "stop": "Gipsy Lane",
+    "position": [-0.90681,51.43443]
+   },
+   {
+    "sequence": 24,
+    "stop": "Skelmerdale Way Footpath",
+    "position": [-0.90738,51.43769]
+   },
+   {
+    "sequence": 25,
+    "stop": "The George",
+    "position": [-0.90202,51.43838]
+   },
+   {
+    "sequence": 26,
+    "stop": "Coppice Road",
+    "position": [-0.899,51.4402]
+   },
+   {
+    "sequence": 27,
+    "stop": "Coppice Road Parade",
+    "position": [-0.90226,51.44056]
+   },
+   {
+    "sequence": 28,
+    "stop": "Hearn Road",
+    "position": [-0.90381,51.44378]
+   },
+   {
+    "sequence": 29,
+    "stop": "Drovers Way Top",
+    "position": [-0.90325,51.44715]
+   },
+   {
+    "sequence": 30,
+    "stop": "Drovers Way Top",
+    "position": [-0.90169,51.447]
+   },
+   {
+    "sequence": 31,
+    "stop": "Colemans Moor Lane Top",
+    "position": [-0.89832,51.4484]
+   },
+   {
+    "sequence": 32,
+    "stop": "Chapel Hall",
+    "position": [-0.89776,51.44998]
+   },
+   {
+    "sequence": 33,
+    "stop": "Austin Road",
+    "position": [-0.89337,51.4499]
+   },
+   {
+    "sequence": 34,
+    "stop": "Oak Drive",
+    "position": [-0.88938,51.44762]
+   },
+   {
+    "sequence": 35,
+    "stop": "Dunbar Drive",
+    "position": [-0.88669,51.4495]
+   },
+   {
+    "sequence": 36,
+    "stop": "Herald Way",
+    "position": [-0.88533,51.45112]
+   },
+   {
+    "sequence": 37,
+    "stop": "Viscount Way",
+    "position": [-0.88914,51.45173]
+   },
+   {
+    "sequence": 38,
+    "stop": "Victor Way",
+    "position": [-0.88697,51.4527]
+   },
+   {
+    "sequence": 39,
+    "stop": "Comet Way - Rose Close",
+    "position": [-0.88317,51.45359]
+   },
+   {
+    "sequence": 40,
+    "stop": "Lysander Close",
+    "position": [-0.88548,51.455]
+   },
+   {
+    "sequence": 41,
+    "stop": "Woodley Piazza",
+    "position": [-0.88879,51.45438]
+   },
+   {
+    "sequence": 42,
+    "stop": "Headley Park",
+    "position": [-0.8926,51.45386]
+   },
+   {
+    "sequence": 43,
+    "stop": "Adwest",
+    "position": [-0.89457,51.4533]
+   },
+   {
+    "sequence": 44,
+    "stop": "Headley Road Circle",
+    "position": [-0.89957,51.45418]
+   },
+   {
+    "sequence": 45,
+    "stop": "Chequers",
+    "position": [-0.90734,51.45371]
+   },
+   {
+    "sequence": 46,
+    "stop": "Woodwaye",
+    "position": [-0.90898,51.45377]
+   },
+   {
+    "sequence": 47,
+    "stop": "Beaufield Close",
+    "position": [-0.91306,51.45405]
+   },
+   {
+    "sequence": 48,
+    "stop": "Bulmershe Sports Centre",
+    "position": [-0.91654,51.45184]
+   },
+   {
+    "sequence": 49,
+    "stop": "Bulmershe Court",
+    "position": [-0.92432,51.45073]
+   },
+   {
+    "sequence": 50,
+    "stop": "Culver Lane",
+    "position": [-0.92724,51.45272]
+   },
+   {
+    "sequence": 51,
+    "stop": "Culver Lane",
+    "position": [-0.92992,51.45204]
+   },
+   {
+    "sequence": 52,
+    "stop": "Eastcourt Avenue",
+    "position": [-0.92992,51.44954]
+   },
+   {
+    "sequence": 53,
+    "stop": "Anderson Avenue",
+    "position": [-0.92743,51.44664]
+   },
+   {
+    "sequence": 54,
+    "stop": "St Peters Church",
+    "position": [-0.92933,51.44386]
+   },
+   {
+    "sequence": 55,
+    "stop": "Earley Crossroads",
+    "position": [-0.93114,51.44098]
+   },
+   {
+    "sequence": 56,
+    "stop": "Earley Gate",
+    "position": [-0.93205,51.44083]
+   },
+   {
+    "sequence": 57,
+    "stop": "Bridges Hall",
+    "position": [-0.93626,51.4437]
+   },
+   {
+    "sequence": 58,
+    "stop": "Mockbeggar",
+    "position": [-0.94097,51.44572]
+   },
+   {
+    "sequence": 59,
+    "stop": "Eastern Avenue Foot",
+    "position": [-0.94476,51.44683]
+   },
+   {
+    "sequence": 60,
+    "stop": "Foxhill Road",
+    "position": [-0.94823,51.44852]
+   },
+   {
+    "sequence": 61,
+    "stop": "Alexandra Road",
+    "position": [-0.95211,51.44779]
+   },
+   {
+    "sequence": 62,
+    "stop": "RBH South Wing",
+    "position": [-0.95611,51.44764]
+   },
+   {
+    "sequence": 63,
+    "stop": "RBH Main Entrance",
+    "position": [-0.95714,51.44973]
+   },
+   {
+    "sequence": 64,
+    "stop": "UoR London Road",
+    "position": [-0.9639,51.45082]
+   },
+   {
+    "sequence": 65,
+    "stop": "Crown Street",
+    "position": [-0.96743,51.45093]
+   },
+   {
+    "sequence": 66,
+    "stop": "London Street Foot",
+    "position": [-0.96839,51.4527]
+   },
+   {
+    "sequence": 67,
+    "stop": "Kings Road",
+    "position": [-0.9688,51.45441]
+   },
+   {
+    "sequence": 68,
+    "stop": "Minster Street",
+    "position": [-0.97174,51.45458]
+   },
+   {
+    "sequence": 69,
+    "stop": "St Marys Butts",
+    "position": [-0.97485,51.45476]
    }
   ]
  },

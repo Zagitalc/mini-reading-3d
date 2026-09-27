@@ -18,13 +18,17 @@ test('trips that end elsewhere, short shuttles and loops within the home area ke
  assert.equal(loopDestination(loop.slice(0,6),places),undefined,'ends in Woodley, not back at the station');
  assert.equal(loopDestination([east(1,-0.9719),east(2,-0.965),east(3,-0.96),east(4,-0.9716)],places),undefined,'under 1.5 km out');
  assert.equal(loopDestination(loop,[places[0]]),undefined,'no area other than the one it started in');
- assert.equal(loopDestination(loop,[]),undefined);assert.equal(loopDestination(loop.slice(0,2),places),undefined);
+ assert.equal(loopDestination(loop,[]),undefined);
+ const mixed:Place[]=[places[0],{id:'l',name:'Lower Earley',kind:'suburb',position:[-0.93,51.456]},{id:'e',name:'Earley',kind:'suburb',position:[-0.912,51.456]},{...places[1],position:[-0.899,51.456]}];
+ assert.equal(loopDestination(loop,mixed),undefined,'an outbound run split across Lower Earley, Earley and Woodley names no single area');assert.equal(loopDestination(loop.slice(0,2),places),undefined);
 });
-test('bundled Reading Buses loops: the 13 reads Woodley from Blagrave Street and the 23 reads Caversham Park',()=>{
+test('bundled Reading Buses loops match the operator boards read on 27 September',()=>{
  const thirteen=fixture.routes['13'],result=loopDestination(thirteen,fixture.places)!;
  assert.equal(result.label,'Woodley');assert.equal(thirteen[0].stop,'Blagrave Street');assert.ok(thirteen[0].sequence<result.beforeSequence);
  assert.equal(thirteen.find(c=>c.sequence===result.beforeSequence)?.stop,'Sandford Lane');
  assert.equal(loopDestination(fixture.routes['23'],fixture.places)?.label,'Caversham Park');
+ assert.equal(loopDestination(fixture.routes['24'],fixture.places)?.label,'Emmer Green','goes out through Emmer Green before turning in Caversham Park');
+ assert.equal(loopDestination(fixture.routes['19a'],fixture.places),undefined,'the board shows Central Reading at Kenton Road, on the way out through Earley');
 });
 test('compiled stop timetables carry the loop destination before the turn and the GTFS headsign after it',()=>{
  const stops=loop.map((c,i)=>({stop_id:`S${i+1}`,stop_name:`Stop ${i+1}`,stop_lon:String(c.position[0]),stop_lat:String(c.position[1])}));
