@@ -9,6 +9,8 @@ export interface LastDepartureCase {
  id:string;serviceDate:string;stopId:string;stopLabel:string;routeLabel:string;headsign:string;why:string;
  reference:null|{time:string;kind:'stop-board'|'route-timetable'|'pdf';url:string;read:string;note?:string};
  resolution?:{status:'reference-superseded';checked:string;evidence:string};
+ /** What was seen but could not be recorded as a reference, such as a truncated board. */
+ note?:string;
 }
 export type LastDepartureStatus='match'|'discrepant'|'unverified'|'outside-coverage'|'missing-in-timetable';
 export interface LastDepartureResult {id:string;status:LastDepartureStatus;timetable?:string;reference?:string;explained?:boolean;count?:number;detail:string}

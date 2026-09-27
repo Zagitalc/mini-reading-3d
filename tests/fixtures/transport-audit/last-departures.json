@@ -3,6 +3,137 @@
   "note": "Reference times are transcribed by hand from dated operator publications for the listed service date. Never fill them from GTFS or from this application's output.",
   "cases": [
     {
+      "id": "21-20260927-039026610001",
+      "serviceDate": "20260927",
+      "stopId": "039026610001",
+      "stopLabel": "Kendrick Student Village (rdgdama), towards Lower Earley",
+      "routeLabel": "21",
+      "headsign": "Lower Earley",
+      "why": "Sunday night on a 24-hour route",
+      "reference": {
+        "time": "27:04",
+        "kind": "stop-board",
+        "url": "https://www.reading-buses.co.uk/stops/039026610001",
+        "read": "2026-09-27T17:44:00Z",
+        "note": "Board listed 15 departures ending at 03:04; not truncated."
+      }
+    },
+    {
+      "id": "21-20260927-039026610002-central",
+      "serviceDate": "20260927",
+      "stopId": "039026610002",
+      "stopLabel": "Kendrick Student Village (rdgdamd), towards Central Reading",
+      "routeLabel": "21",
+      "headsign": "Central Reading",
+      "why": "Sunday night, inbound",
+      "reference": {
+        "time": "26:46",
+        "kind": "stop-board",
+        "url": "https://www.reading-buses.co.uk/stops/039026610002",
+        "read": "2026-09-27T17:44:00Z",
+        "note": "Board listed 17 departures; not truncated."
+      }
+    },
+    {
+      "id": "21-20260927-039026610002-reading",
+      "serviceDate": "20260927",
+      "stopId": "039026610002",
+      "stopLabel": "Kendrick Student Village (rdgdamd), inbound",
+      "routeLabel": "21",
+      "headsign": "Reading Station",
+      "why": "Sunday night, inbound short working to the station",
+      "reference": {
+        "time": "27:46",
+        "kind": "stop-board",
+        "url": "https://www.reading-buses.co.uk/stops/039026610002",
+        "read": "2026-09-27T17:44:00Z",
+        "note": "Board listed 17 departures; not truncated."
+      }
+    },
+    {
+      "id": "11-20260927-039028150002",
+      "serviceDate": "20260927",
+      "stopId": "039028150002",
+      "stopLabel": "Blagrave Street (rdgjagt)",
+      "routeLabel": "11",
+      "headsign": "Coley Park",
+      "why": "Sunday evening finish",
+      "reference": null,
+      "note": "Board read 2026-09-27 18:44 showed 22:46 as the last 11, but the board stops at 30 departures (last entry 23:42), so a later departure could not be ruled out."
+    },
+    {
+      "id": "17-20260927-039028150002",
+      "serviceDate": "20260927",
+      "stopId": "039028150002",
+      "stopLabel": "Blagrave Street (rdgjagt)",
+      "routeLabel": "17",
+      "headsign": "Wokingham Road",
+      "why": "Sunday night service after midnight",
+      "reference": null,
+      "note": "Board read 2026-09-27 18:44 was cut off at 30 departures (last entry 23:42, itself a 17), so the night departures were not visible."
+    },
+    {
+      "id": "14-20260927-039028150003",
+      "serviceDate": "20260927",
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street (rdgjagw)",
+      "routeLabel": "14",
+      "headsign": "Reading Station",
+      "why": "Sunday evening finish",
+      "reference": {
+        "time": "23:00",
+        "kind": "stop-board",
+        "url": "https://www.reading-buses.co.uk/stops/039028150003",
+        "read": "2026-09-27T17:44:00Z",
+        "note": "Complete board (9 departures). The board shows the destination as Woodley, not Reading Station."
+      },
+      "note": "GTFS headsign Reading Station; operator board shows Woodley for every 13 and 14 at this stop."
+    },
+    {
+      "id": "13-20260927-039028150003",
+      "serviceDate": "20260927",
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street (rdgjagw)",
+      "routeLabel": "13",
+      "headsign": "Reading Station",
+      "why": "Sunday evening finish",
+      "reference": {
+        "time": "22:30",
+        "kind": "stop-board",
+        "url": "https://www.reading-buses.co.uk/stops/039028150003",
+        "read": "2026-09-27T17:44:00Z",
+        "note": "Complete board (9 departures). The board shows the destination as Woodley, not Reading Station."
+      },
+      "note": "GTFS headsign Reading Station; operator board shows Woodley for every 13 and 14 at this stop."
+    },
+    {
+      "id": "26-20260927-039028150004",
+      "serviceDate": "20260927",
+      "stopId": "039028150004",
+      "stopLabel": "Blagrave Street (rdgjaja)",
+      "routeLabel": "26",
+      "headsign": "Calcot, Sainsbury's",
+      "why": "Sunday small-hours departure",
+      "reference": null,
+      "note": "Board read 2026-09-27 18:44 was cut off at 30 departures (last entry 00:50, itself a 26 to Calcot, Sainsbury's), so later departures were not visible."
+    },
+    {
+      "id": "20-20260927-039028150004",
+      "serviceDate": "20260927",
+      "stopId": "039028150004",
+      "stopLabel": "Blagrave Street (rdgjaja)",
+      "routeLabel": "20",
+      "headsign": "Reading University",
+      "why": "Sunday evening finish",
+      "reference": {
+        "time": "23:15",
+        "kind": "stop-board",
+        "url": "https://www.reading-buses.co.uk/stops/039028150004",
+        "read": "2026-09-27T17:44:00Z",
+        "note": "Board ran to 00:50 (cut off at 30 departures) with no route 20 after 23:15."
+      }
+    },
+    {
       "id": "21-20261001-039026610001",
       "serviceDate": "20261001",
       "stopId": "039026610001",

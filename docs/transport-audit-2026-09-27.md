@@ -22,7 +22,27 @@ Route window audit (`npm run audit:timetable`): 20 cases, of which 6 fall within
 
 So the BODS-derived timetable reproduces the Sunday results obtained from the operator's own feed on 26 September, including the two known PDF differences on routes 17 and 21. The Thursday, Friday and Saturday cases (24–26 September) are now in the past and can no longer be compared with this bundle. Their earlier results stand in [the 26 September audit](timetable-audit-2026-09-26.md).
 
-Last-departure audit (`npm run audit:last-departures`): 10 cases, all **unverified**. The operator's website was not reachable from the environment that built this release, so no reference times have been recorded yet. Each case already shows what the timetable says, so the check is a straight comparison when someone reads the board.
+Last-departure audit (`npm run audit:last-departures`): 19 cases. Six Sunday 27 September cases match the operator's boards; the other 13 are unverified (see below).
+
+## Sunday 27 September readings
+
+The operator's stop boards were read at 18:44 BST on Sunday 27 September from the owner's own computer (the build environment cannot reach the site) and recorded as nine dated cases.
+
+| Stop | Route → destination | Board | Timetable | Result |
+| --- | --- | --- | --- | --- |
+| Kendrick Student Village (039026610001) | 21 → Lower Earley | 03:04 Mon | 03:04 Mon | Match |
+| Kendrick Student Village (039026610002) | 21 → Central Reading | 02:46 Mon | 02:46 Mon | Match |
+| Kendrick Student Village (039026610002) | 21 → Reading Station | 03:46 Mon | 03:46 Mon | Match |
+| Blagrave Street (039028150003) | 14 → Woodley on the board | 23:00 | 23:00 | Match (time) |
+| Blagrave Street (039028150003) | 13 → Woodley on the board | 22:30 | 22:30 | Match (time) |
+| Blagrave Street (039028150004) | 20 → Reading University | 23:15 | 23:15 | Match |
+| Blagrave Street (039028150002) | 11 → Coley Park | 22:46, board cut off at 23:42 | 22:46 | Unverified |
+| Blagrave Street (039028150002) | 17 → Wokingham Road | cut off at 23:42 | 03:46 Mon | Unverified |
+| Blagrave Street (039028150004) | 26 → Calcot, Sainsbury's | cut off at 00:50 | 02:50 Mon | Unverified |
+
+Six of six readable cases match, including three after midnight on a 24-hour route. The three unverified cases are on busy stops where the board prints only 30 departures, so the end of the evening was not visible. They need reading later in the evening, when fewer departures remain.
+
+**Destination labels differ at Blagrave Street (039028150003).** The timetable gives every route 13 and 14 trip from this stop the headsign "Reading Station", because the loop ends there. The operator's board shows "Woodley", which is where a passenger boarding here is actually going. The times agree, but the stop panel currently tells people these buses go to Reading Station. GTFS supplies no stop-level headsign for these calls, so correcting it would need a rule (for example, showing the next principal stop on loop routes); that is left as a follow-up rather than guessed at here.
 
 ## Cases to verify
 
