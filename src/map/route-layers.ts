@@ -28,6 +28,11 @@ export async function connectRouteLayers(map:Map){
    };
    Object.assign(group,{choose});
    if(mode==='bus'){const show=(e:Event)=>{toggle.checked=true;toggle.dispatchEvent(new Event('change'));choose((e as CustomEvent<string>).detail);};document.addEventListener('reading-show-bus-route',show);map.on('remove',()=>document.removeEventListener('reading-show-bus-route',show));}
+   // The evening timetable explorer highlights the routes it has scheduled; null restores every route.
+   if(mode==='bus'){const scheduled=(e:Event)=>{const ids=(e as CustomEvent<string[]|null>).detail;if(ids&&!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}
+    group.selected='';select.value='';const opacity:ExpressionSpecification|number=ids?['case',['in',['get','id'],['literal',ids]],.95,.1]:.95;
+    for(const part of ['outline','lines'])map.setPaintProperty(`${mode}-route-${part}`,'line-opacity',opacity);map.setPaintProperty(`${mode}-route-labels`,'text-opacity',ids?['case',['in',['get','id'],['literal',ids]],1,0]:1);};
+    document.addEventListener('reading-scheduled-routes',scheduled);map.on('remove',()=>document.removeEventListener('reading-scheduled-routes',scheduled));}
    search.addEventListener('input',list);select.addEventListener('change',()=>choose(select.value));section.querySelector('button')!.addEventListener('click',()=>{search.value='';list();choose('');});list();
    toggle.disabled=false;section.querySelector('.route-loading')!.remove();toggle.addEventListener('change',()=>{group.enabled=toggle.checked;if(mode==='bus')document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:group.enabled?group.selected:''}));section.querySelector<HTMLElement>('.route-options')!.hidden=!toggle.checked;for(const part of ['outline','lines','labels'])map.setLayoutProperty(`${mode}-route-${part}`,'visibility',toggle.checked?'visible':'none');});
   }catch{section.querySelector('.route-loading')!.textContent='Route snapshot unavailable';}

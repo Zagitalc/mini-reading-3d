@@ -31,15 +31,16 @@ if(!places.length)console.warn('No place names in public/data/features.json; loo
 const timetable=compileTimetable(rows,provenance,version,places);
 const network={...provenance,version,shapes,trips,routes,stops,calendar:rows('calendar.txt'),calendarDates:rows('calendar_dates.txt')};
 const previous=await readFile('public/data/bus-stops.json','utf8').then(JSON.parse).catch(()=>undefined);
-validateGtfs(network,timetable.index,timetable.files,previous);
+validateGtfs(network,timetable.index,timetable.files,previous,Date.now(),timetable.summary);
 const feedInfo=rows('feed_info.txt')[0];
 const metadata={schema:1,contentHash,version,compiler:TIMETABLE_COMPILER,...provenance,validFrom:timetable.index.validFrom,validUntil:timetable.index.validUntil,...(shapeSource?{derivedShapes:shapeSource}:{}),feedInfo:feedInfo?{version:feedInfo.feed_version,startDate:feedInfo.feed_start_date,endDate:feedInfo.feed_end_date}:undefined};
 timetable.index.version=version;timetable.index.feedInfo=metadata.feedInfo;
 await writeFile(`${dest}/gtfs-metadata.json`,JSON.stringify(metadata));
 await rm(`${dest}/timetables`,{recursive:true,force:true});await mkdir(`${dest}/timetables/${version}`,{recursive:true});
 for(const [file,data] of timetable.files)await writeFile(`${dest}/timetables/${version}/${file}`,JSON.stringify(data));
+await writeFile(`${dest}/timetables/${version}/${timetable.summaryFile}`,JSON.stringify(timetable.summary));
 await writeFile(`${dest}/bus-stops.json`,JSON.stringify(timetable.index));
 await writeFile(`${dest}/bus-network.json`,JSON.stringify(network));
 console.log(`${Object.keys(shapes).length} shapes, ${trips.length} trips, ${routes.length} routes, ${stops.length} stops`);
 
-console.log(`${timetable.index.stops.length} verified stops, ${timetable.files.size} timetable files, valid ${timetable.index.validFrom}–${timetable.index.validUntil}`);
+console.log(`${timetable.index.stops.length} verified stops, ${timetable.files.size} timetable files, ${timetable.summary.trips.length} journeys in the service summary, valid ${timetable.index.validFrom}–${timetable.index.validUntil}`);

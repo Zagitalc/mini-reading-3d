@@ -34,6 +34,7 @@
     "test:performance": "node tests/render-performance.mjs",
     "test:stops-browser": "node tests/stops-browser.mjs",
     "test:tonight-browser": "node tests/tonight-stops-browser.mjs",
+    "test:evening-browser": "node tests/evening-explorer-browser.mjs",
     "data:gtfs:fetch": "node scripts/download-data.mjs --gtfs-only",
     "data:gtfs:refresh": "node --import tsx scripts/refresh-gtfs.mjs"
   },

@@ -5,7 +5,7 @@ export interface TimetableTrip {id:string;service:number;routeId:string;headsign
 export type StopTime=[number,number,number,0|1,number,string?];
 export interface StopTimetable {schema:1;stopId:string;timezone:string;services:TimetableService[];trips:TimetableTrip[];times:StopTime[]}
 export interface BusStop {id:string;name:string;code:string;position:LngLat;routeIds:string[];timetableUrl?:string}
-export interface StopIndex {schema:1;version?:string;feedInfo?:{version?:string;startDate?:string;endDate?:string};source:string;sourceUrl:string;licence:string;retrievedAt:string;generatedAt:string;timezone:string;validFrom:string;validUntil:string;routes:Record<string,{label:string;colour:string}>;stops:BusStop[];omitted:{missingTimes:number;frequencyTrips:number}}
+export interface StopIndex {schema:1;version?:string;feedInfo?:{version?:string;startDate?:string;endDate?:string};source:string;sourceUrl:string;licence:string;retrievedAt:string;generatedAt:string;timezone:string;validFrom:string;validUntil:string;routes:Record<string,{label:string;colour:string}>;stops:BusStop[];servicesUrl?:string;omitted:{missingTimes:number;frequencyTrips:number}}
 export interface Departure {tripId:string;routeId:string;headsign:string;direction:string;sequence:number;time:number;serviceDate:string;approximate:boolean;pickupType:number}
 const formatters=new Map<string,Intl.DateTimeFormat>();
 function formatter(timezone:string){let f=formatters.get(timezone);if(!f){f=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});formatters.set(timezone,f);}return f;}
@@ -48,8 +48,8 @@ export interface TonightDepartures {
 }
 
 /** Resolve a civil clock time independently of GTFS's elapsed service-day times. */
-function civilHour(date:string,hour:number,timezone:string){
- const target=Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8),hour);let result=target;
+export function civilTime(date:string,hour:number,timezone:string,minute=0){
+ const target=Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8),hour,minute);let result=target;
  for(let i=0;i<4;i++){
   const p=parts(result,timezone),represented=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute,+p.second);
   const correction=target-represented;if(!correction)break;result+=correction;
@@ -67,7 +67,7 @@ function civilHour(date:string,hour:number,timezone:string){
  */
 export function tonightDepartures(data:StopTimetable,index:Pick<StopIndex,'validFrom'|'validUntil'|'timezone'>,now=Date.now()):TonightDepartures{
  const today=localDate(now,index.timezone),hour=+parts(now,index.timezone).hour;
- const cutoffDate=hour<4?today:addDays(today,1),end=civilHour(cutoffDate,4,index.timezone);
+ const cutoffDate=hour<4?today:addDays(today,1),end=civilTime(cutoffDate,4,index.timezone);
  const state:TonightDepartures['state']=today<index.validFrom?'future':today>index.validUntil?'expired':localDate(end-1,index.timezone)>index.validUntil?'partial':'current';
  if(state==='future'||state==='expired')return {start:now,end,departures:[],state,afterMidnightRouteIds:[]};
  const departures=scheduledDepartures(data,now,(end-now)/3600000,Infinity)
