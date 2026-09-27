@@ -45,6 +45,24 @@ Retrieved on 26 September 2026:
 
 Effective dates were not established from the document contents. In particular, the `20250901` filename is insufficient evidence to dismiss route 21's PDF as obsolete. The web timetable and GTFS may share an upstream source, so their agreement is corroboration rather than independent proof of operational correctness.
 
+## Follow-up — 27 September 2026
+
+Two of the six discrepant windows are now resolved in favour of GTFS, using operator publications for the same stop and service day. The PDF expectations are unchanged; each resolved case carries a `resolution` with its evidence in the fixture, and the audit reports it as `explained` rather than failing.
+
+| Case | Evidence | Status |
+| --- | --- | --- |
+| Sunday, 17, Blagrave Street EO | The operator's dated route 17 web timetable for 27 September lists 00:46–03:46, as recorded above. | Resolved: PDF superseded |
+| Sunday, 21, Kendrick → Lower Earley | The operator's live [stop board for Kendrick Student Village (adj)](https://www.reading-buses.co.uk/stops/039026610001), read on Sunday 27 September, lists 23:02, 23:32, then 00:04–03:04 hourly. That matches GTFS and contradicts the PDF's 00:02–03:02. | Resolved: PDF superseded |
+| Thursday and Saturday, 21, both directions (four windows) | Not yet checked on a matching day. The stop board accepts no date and shows only the current service day. | Open |
+
+Supporting context for the four open windows, which is not enough to close them on its own:
+
+- The operator's route 21 page now labels the supplied PDF "PDF Timetable claret 21 (From Mon 1st Sep 2025)". It is last year's edition, not merely a file with 2025 in its name.
+- The dated route 21 web timetable for Thursday 1 October 2026, towards Lower Earley, agrees with GTFS at every principal stop after 21:30 (for example St Mary's Butts 21:55, Reading Station 22:00, UoR Whiteknights House 22:11, Marefield 22:22). Kendrick Student Village is not a principal stop there, so this does not test its time directly.
+- The inbound web timetable could not be read, because the page returned the outbound direction.
+
+To close them, read the two Kendrick stop boards (`039026610001` towards Lower Earley, `039026610002` towards Central Reading) during a Thursday or Saturday and add a `resolution` to the matching cases only if the board agrees with GTFS. The operator's web pages and GTFS may share an upstream source, so agreement is corroboration rather than independent proof.
+
 ## Repeating the check
 
 ```sh
@@ -59,7 +77,7 @@ For machine-readable output without npm's command banner:
 node --import tsx scripts/audit-timetable.ts --raw raw/reading-gtfs.zip > audit-results.json
 ```
 
-**Exit status 1 is expected for this snapshot**, because six PDF comparisons remain discrepant. This is an explicit source audit, separate from the passing application test suite. Omitting `--raw` performs only the PDF-versus-bundle comparison. Dates outside a replacement bundle's coverage are rejected; update the dated fixture and verify its reference sources before auditing a new period. Do not regenerate expected times from GTFS to make this check pass.
+**Exit status 1 is expected for this snapshot**, because four PDF comparisons remain discrepant without a cited resolution. Resolved cases are still listed under `discrepant` and counted as `explained`. This is an explicit source audit, separate from the passing application test suite. Omitting `--raw` performs only the PDF-versus-bundle comparison. Dates outside a replacement bundle's coverage are rejected; update the dated fixture and verify its reference sources before auditing a new period. Do not regenerate expected times from GTFS to make this check pass.
 
 ## Release implications and remaining checks
 

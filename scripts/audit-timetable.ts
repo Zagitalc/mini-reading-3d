@@ -4,7 +4,9 @@ import {gtfsContentHash} from './gtfs-validation';
 import {unzipSync,strFromU8} from 'fflate';
 import {parse} from 'csv-parse/sync';
 // Expectations are manually transcribed from visually reviewed PDFs, never generated from GTFS.
-interface AuditCase {id:string;routeId:string;serviceDate:string;pdf:string;page:number;stopId:string;stopLabel:string;fromTime:string;toTime:string;expected:string[];note:string}
+// A discrepancy stays reported when a later dated operator publication shows the PDF is out of date; the
+// cited resolution only stops it failing the audit. Expected times are never edited to match GTFS.
+interface AuditCase {id:string;routeId:string;serviceDate:string;pdf:string;page:number;stopId:string;stopLabel:string;fromTime:string;toTime:string;expected:string[];note:string;resolution?:{status:'pdf-superseded';checked:string;evidence:string}}
 const fixture: {sources:Record<string,unknown>;cases:AuditCase[]}=JSON.parse(readFileSync('tests/fixtures/timetable-audit/reading-2026-09-26.json','utf8'));
 const index:StopIndex=JSON.parse(readFileSync('public/data/bus-stops.json','utf8'));
 const metadata=JSON.parse(readFileSync('public/data/gtfs-metadata.json','utf8'));
@@ -42,5 +44,5 @@ const results=fixture.cases.map(c=>{
  }
  return {...c,actual,approximateDepartures:departures.filter(d=>d.approximate).length,missing:difference(c.expected,actual),additional:difference(actual,c.expected),match:JSON.stringify(c.expected)===JSON.stringify(actual),rawMatches};
 });
-console.log(JSON.stringify({dataset:metadata.version,coverage:[index.validFrom,index.validUntil],sources:fixture.sources,summary:{cases:results.length,matching:results.filter(r=>r.match).length,discrepant:results.filter(r=>!r.match).length,expectedDepartures:results.reduce((n,r)=>n+r.expected.length,0),rawChecks:results.filter(r=>r.rawMatches!==undefined).length,rawFailures:results.filter(r=>r.rawMatches===false).length},results},null,2));
-if(results.some(r=>!r.match||r.rawMatches===false))process.exitCode=1;
+console.log(JSON.stringify({dataset:metadata.version,coverage:[index.validFrom,index.validUntil],sources:fixture.sources,summary:{cases:results.length,matching:results.filter(r=>r.match).length,discrepant:results.filter(r=>!r.match).length,explained:results.filter(r=>!r.match&&r.resolution).length,expectedDepartures:results.reduce((n,r)=>n+r.expected.length,0),rawChecks:results.filter(r=>r.rawMatches!==undefined).length,rawFailures:results.filter(r=>r.rawMatches===false).length},results},null,2));
+if(results.some(r=>(!r.match&&!r.resolution)||r.rawMatches===false))process.exitCode=1;

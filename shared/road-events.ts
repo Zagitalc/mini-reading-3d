@@ -4,11 +4,14 @@ export function eventIsVisible(event:RoadEvent,now=Date.now()){
  if(event.status==='cancelled'||event.status==='completed')return false;
  // A confirmed start overrides the original schedule, including works that start early.
  if(event.actualStart){if(!Number.isFinite(Date.parse(event.actualStart))||Date.parse(event.actualStart)>now)return false;}
- else if(event.status!=='active'){
-  const start=event.plannedStart;
-  if(!start||!Number.isFinite(Date.parse(start)))return false;
+ // A permit whose window has opened is not evidence of works on the road: many never report a start,
+ // and some windows run for months. Show works only once the promoter reports them under way.
+ else if(event.status!=='active')return false;
+ else{
+  // An in-progress flag without a start time still waits for the planned start.
   // Date-only permits begin on their London calendar date, not at UTC midnight.
-  if(/^\d{4}-\d{2}-\d{2}$/.test(start)?start>londonDay.format(now):Date.parse(start)>now)return false;
+  const start=event.plannedStart;
+  if(start&&Number.isFinite(Date.parse(start))&&(/^\d{4}-\d{2}-\d{2}$/.test(start)?start>londonDay.format(now):Date.parse(start)>now))return false;
  }
  const end=event.actualEnd||event.plannedEnd;return !end||Date.parse(end)>=now;
 }

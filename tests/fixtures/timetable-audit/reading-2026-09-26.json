@@ -14,7 +14,7 @@
     "21": {
       "filename": "21-timetable-20250901-6b3c0712.pdf",
       "sha256": "c3ec6a956f452891a37de07b34037555dc97a1e592aaba4c13143e97a17e209c",
-      "effectiveDate": "Not established from document contents; filename date is not treated as validity proof."
+      "effectiveDate": "Not established from document contents. The operator's route 21 page labels this PDF 'PDF Timetable claret 21 (From Mon 1st Sep 2025)' (checked 2026-09-27)."
     }
   },
   "cases": [
@@ -212,7 +212,12 @@
         "26:49",
         "27:49"
       ],
-      "note": "Omit terminal-only calls with no continuation to Three Tuns. Page 1 blue columns are Monday\u2013Thursday; pink columns Friday."
+      "note": "Omit terminal-only calls with no continuation to Three Tuns. Page 1 blue columns are Monday\u2013Thursday; pink columns Friday.",
+      "resolution": {
+        "status": "pdf-superseded",
+        "checked": "2026-09-26",
+        "evidence": "Operator's dated route 17 web timetable for Sunday 27 September 2026 lists Blagrave Street 00:46, 01:46, 02:46, 03:46 (checked 2026-09-26; see docs/timetable-audit-2026-09-26.md)."
+      }
     },
     {
       "id": "17-20260924-039025530003-23:30",
@@ -406,7 +411,12 @@
         "26:02",
         "27:02"
       ],
-      "note": "Intermediate stop avoids terminal arrival/departure ambiguity; filename bears 2025, current validity unconfirmed."
+      "note": "Intermediate stop avoids terminal arrival/departure ambiguity; filename bears 2025, current validity unconfirmed.",
+      "resolution": {
+        "status": "pdf-superseded",
+        "checked": "2026-09-27",
+        "evidence": "Operator's live stop board for Kendrick Student Village (adj), stop 039026610001, on Sunday 27 September 2026 lists route 21 to Lower Earley at 23:02, 23:32, 00:04, 01:04, 02:04, 03:04, agreeing with GTFS and contradicting the PDF's 00:02-03:02 (checked 2026-09-27)."
+      }
     },
     {
       "id": "21-20260927-039026610002-22:00",

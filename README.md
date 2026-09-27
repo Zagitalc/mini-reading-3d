@@ -88,6 +88,6 @@ Traffic/weather/fuel: enter `TOMTOM_API_KEY` in `.env` for local development. Ke
 
 ## Timetable maintenance and bus movement
 
-Run `npm run data:gtfs:refresh` to check the publisher feed and rebuild only changed content. The daily GitHub workflow validates, tests and deploys updates using a repository `CLOUDFLARE_API_TOKEN` secret. The map shows timetable coverage and expiry warnings. See [setup and validation](docs/timetables-and-validation.md).
+Run `npm run data:gtfs:refresh` to check the publisher feed and rebuild only changed content. reading-buses.co.uk refuses cloud runners (HTTP 403), so when the publisher download fails the script takes Reading Buses' timetable from the Bus Open Data Service's South East GTFS instead, keeping only the RBUS operator. Set `GTFS_SOURCE=bods` to use that source directly; the provenance shown in the app names whichever source was used. The daily GitHub workflow validates, tests and deploys updates using a repository `CLOUDFLARE_API_TOKEN` secret. The map shows timetable coverage and expiry warnings. See [setup and validation](docs/timetables-and-validation.md).
 
 Buses follow confidently matched geometry or shared route sections, with route-derived headings. Unmatched observations stay at the reported GPS location rather than animating through buildings.

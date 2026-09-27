@@ -5,7 +5,7 @@ const bytes=await readFile('raw/reading-gtfs.zip'),archive=unzipSync(new Uint8Ar
 const contentHash=gtfsContentHash(archive),version=contentHash.slice(0,16);
 const dest=process.env.GTFS_OUTPUT??'public/data';await mkdir(dest,{recursive:true});
 const source=await readFile('raw/gtfs-source.json','utf8').then(JSON.parse).catch(async()=>({retrievedAt:(await stat('raw/reading-gtfs.zip')).mtime.toISOString()}));
-const provenance={source:'Reading Buses',sourceUrl:'https://www.reading-buses.co.uk/open-data',licence:'OGL 3.0',retrievedAt:source.retrievedAt};
+const provenance=source.provider==='bods'?{source:'Reading Buses (via Bus Open Data Service)',sourceUrl:'https://www.bus-data.dft.gov.uk/',licence:'OGL 3.0',retrievedAt:source.retrievedAt}:{source:'Reading Buses',sourceUrl:'https://www.reading-buses.co.uk/open-data',licence:'OGL 3.0',retrievedAt:source.retrievedAt};
 const rows=(file:string):Record<string,string>[]=>archive[file]?parse(strFromU8(archive[file]),{columns:true,skip_empty_lines:true,bom:true}):[];
 const shapes:Record<string,LngLat[]>={};const grouped=new Map<string,Record<string,string>[]>();
 for(const row of rows('shapes.txt')){if(!grouped.has(row.shape_id))grouped.set(row.shape_id,[]);grouped.get(row.shape_id)!.push(row);}
