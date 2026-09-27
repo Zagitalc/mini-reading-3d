@@ -1,6 +1,6 @@
 import type {Map} from 'maplibre-gl';
 import {detail,escape} from '../ui/shell';
-import {localDate,scheduledDepartures,timetableExpired,timetableStatus,tonightDepartures,type BusStop,type StopIndex,type StopTimetable} from '../../shared/timetable';
+import {addDays,compareRouteLabels,currentServiceDate,lastDepartures,localDate,scheduledDepartures,timetableExpired,timetableStatus,tonightDepartures,type BusStop,type StopIndex,type StopTimetable} from '../../shared/timetable';
 const dateLabel=(date:string)=>`${date.slice(6,8)}/${date.slice(4,6)}/${date.slice(0,4)}`;
 export async function connectStopLayers(map:Map){
  const section=document.createElement('section');section.className='route-control stop-control';
@@ -8,7 +8,7 @@ export async function connectStopLayers(map:Map){
  document.querySelector('#layers')!.insertBefore(section,document.querySelector('[data-layer=traffic]')!.closest('label'));
  let disposed=false,timer:ReturnType<typeof setInterval>|undefined,active:{element:HTMLElement;stop:BusStop;data?:StopTimetable}|undefined;
  map.on('remove',()=>{disposed=true;clearInterval(timer);});
- let view:'next'|'tonight'='next',visibleCount=30;
+ let view:'next'|'tonight'|'last'='next',visibleCount=30,lastDate:string|undefined;
  const cache=new globalThis.Map<string,Promise<StopTimetable>>();
  const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
  const day=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short'});
@@ -20,8 +20,24 @@ export async function connectStopLayers(map:Map){
    const through=dateLabel(index.validUntil);
    el.textContent=status.state==='expired'?`Timetable expired ${through} · awaiting an updated feed`:status.state==='future'?`Timetable begins ${dateLabel(index.validFrom)}`:`Timetable through ${through}${status.state==='expiring'?` · expires ${status.days===0?'today':`in ${status.days} days`}`:''}`;
   };
+  const serviceDay=(date:string)=>day.format(Date.UTC(+date.slice(0,4),+date.slice(4,6)-1,+date.slice(6,8),12));
+  const renderLast=(data:StopTimetable,element:HTMLElement,now:number)=>{
+   const start=currentServiceDate(now,index.timezone),dates=[0,1,2,3,4,5,6].map(i=>addDays(start<index.validFrom?index.validFrom:start,i)).filter(d=>d<=index.validUntil);
+   if(!dates.length){element.innerHTML='<p class="schedule-notice">This timetable snapshot has expired. Last departures are unavailable until an updated feed is published.</p>';return;}
+   if(!lastDate||!dates.includes(lastDate))lastDate=dates[0];
+   const result=lastDepartures(data,index,lastDate),label=(id:string)=>index.routes[id]?.label??id;
+   const groups=result.groups.sort((a,b)=>compareRouteLabels(label(a.routeId),label(b.routeId))||a.direction.localeCompare(b.direction)||a.last.time-b.last.time);
+   const ambiguous=new Set(groups.map(g=>`${g.routeId}|${g.headsign}`).filter((k,i,all)=>all.indexOf(k)!==i));
+   const picker=`<label class="service-date-picker">Service date<select>${dates.map(d=>`<option value="${d}"${d===lastDate?' selected':''}>${escape(serviceDay(d))}${d===start?' (tonight)':''}</option>`).join('')}</select></label>`;
+   const rows=groups.map(g=>{const departed=g.last.time<now,next=g.next;
+    return `<li class="last-departure${departed?' departed':''}"><time datetime="${new Date(g.last.time).toISOString()}">${clock.format(g.last.time)}<small>${escape(day.format(g.last.time))}${g.afterMidnight?' · after midnight':''}</small></time><div><strong>${escape(label(g.routeId))}</strong> ${escape(g.headsign)}${ambiguous.has(`${g.routeId}|${g.headsign}`)?` <small>Timetable direction ${escape(g.direction||'not supplied')}</small>`:''}<small>${departed?'Already departed · ':''}Last of ${g.count} ${g.count===1?'departure':'departures'} · ${g.last.approximate?'approximate timetable time':'scheduled'}</small><small>${next?`Next: ${clock.format(next.time)} ${escape(day.format(next.time))} (service date ${dateLabel(next.serviceDate)})${next.time-g.last.time<90*60000?'. Service continues through the night; this is where one service date hands over to the next, not a last bus.':''}`:result.nextCovered?'No departures to this destination on the following service date.':'Following service date is outside this timetable snapshot.'}</small></div></li>`;}).join('');
+   element.innerHTML=`${picker}<p class="departure-window">Final scheduled boarding departure for each route, direction and destination on service date ${dateLabel(lastDate)}, computed from the whole timetable. Times after midnight still belong to this service date. Scheduled times, not live predictions: cancellations and delays are not included.</p>${groups.length?`<ol class="departures last-departures">${rows}</ol><small>A short working to a different destination is listed separately. Source: ${escape(index.source)} GTFS${index.version?`, dataset ${escape(index.version)}`:''}.</small>`:'<p>No scheduled boarding departures on this service date in this snapshot.</p>'}`;
+   element.querySelector('select')!.addEventListener('change',e=>{lastDate=(e.currentTarget as HTMLSelectElement).value;render();});
+  };
   const render=()=>{freshness();
    if(disposed||document.hidden||!active?.element.isConnected||document.querySelector<HTMLElement>('#details')!.hidden||!active.data)return;
+   // Periodic refreshes must not close a service-date menu the viewer is using.
+   if(view==='last'){if(document.activeElement?.tagName!=='SELECT'||!active.element.contains(document.activeElement))renderLast(active.data,active.element,Date.now());return;}
    const {data,element}=active,now=Date.now(),night=view==='tonight'?tonightDepartures(data,index,now):undefined;
    const expired=timetableExpired(index,now),before=localDate(now,index.timezone)<index.validFrom;
    const departures=night?.departures??(expired||before?[]:scheduledDepartures(data,now));
@@ -34,8 +50,8 @@ export async function connectStopLayers(map:Map){
    element.querySelector('.more-departures')?.addEventListener('click',()=>{const firstNew=shown.length;visibleCount+=30;render();const row=element.querySelectorAll<HTMLElement>('.departures li')[firstNew];if(row){row.tabIndex=-1;row.focus();}});
   };
   const open=async(stop:BusStop)=>{
-   detail(`<span class="pill">Bus stop · timetable</span><h2>${escape(stop.name)}</h2><p>Stop ${escape(stop.code)}</p><h3>Routes in this snapshot</h3><p>${stop.routeIds.map(id=>`<span class="stop-route">${escape(index.routes[id]?.label??id)}</span>`).join(' ')}</p><small>Routes recorded at this stop, including drop-off-only services. Service varies by date.</small><h3>Scheduled departures</h3><div class="departure-views" role="group" aria-label="Departure time window"><button type="button" data-departure-view="next" aria-pressed="${view==='next'}">Next departures</button><button type="button" data-departure-view="tonight" aria-pressed="${view==='tonight'}">Tonight / overnight</button></div><div id="stop-departures" aria-live="polite"><p>Loading this stop’s timetable…</p></div><dl><dt>Source</dt><dd><a href="${escape(index.sourceUrl)}" target="_blank" rel="noopener">${escape(index.source)} GTFS</a> · ${escape(index.licence)}</dd><dt>Snapshot retrieved</dt><dd>${escape(new Date(index.retrievedAt).toLocaleDateString('en-GB',{timeZone:index.timezone}))}</dd><dt>Service dates in dataset</dt><dd>${dateLabel(index.validFrom)}–${dateLabel(index.validUntil)}</dd></dl><small>Cancelled trips and delays are not available in this static timetable. Terminal and drop-off-only calls are excluded. Untimed and frequency-based services are not listed.</small>`);
-   const element=document.querySelector<HTMLElement>('#stop-departures')!;active={element,stop};visibleCount=30;
+   detail(`<span class="pill">Bus stop · timetable</span><h2>${escape(stop.name)}</h2><p>Stop ${escape(stop.code)}</p><h3>Routes in this snapshot</h3><p>${stop.routeIds.map(id=>`<span class="stop-route">${escape(index.routes[id]?.label??id)}</span>`).join(' ')}</p><small>Routes recorded at this stop, including drop-off-only services. Service varies by date.</small><h3>Scheduled departures</h3><div class="departure-views" role="group" aria-label="Departure time window"><button type="button" data-departure-view="next" aria-pressed="${view==='next'}">Next departures</button><button type="button" data-departure-view="tonight" aria-pressed="${view==='tonight'}">Tonight / overnight</button><button type="button" data-departure-view="last" aria-pressed="${view==='last'}">Last departures</button></div><div id="stop-departures" aria-live="polite"><p>Loading this stop’s timetable…</p></div><dl><dt>Source</dt><dd><a href="${escape(index.sourceUrl)}" target="_blank" rel="noopener">${escape(index.source)} GTFS</a> · ${escape(index.licence)}</dd><dt>Snapshot retrieved</dt><dd>${escape(new Date(index.retrievedAt).toLocaleDateString('en-GB',{timeZone:index.timezone}))}</dd><dt>Service dates in dataset</dt><dd>${dateLabel(index.validFrom)}–${dateLabel(index.validUntil)}</dd></dl><small>Cancelled trips and delays are not available in this static timetable. Terminal and drop-off-only calls are excluded. Untimed and frequency-based services are not listed.</small>`);
+   const element=document.querySelector<HTMLElement>('#stop-departures')!;active={element,stop};visibleCount=30;lastDate=undefined;
    document.querySelectorAll<HTMLButtonElement>('[data-departure-view]').forEach(button=>button.addEventListener('click',()=>{view=button.dataset.departureView as typeof view;visibleCount=30;document.querySelectorAll<HTMLButtonElement>('[data-departure-view]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));render();}));
    if(!stop.timetableUrl){element.textContent='No timed departures supplied for this stop.';return;}
    try{

@@ -18,6 +18,8 @@
     "start": "node --env-file-if-exists=.env --import tsx server/index.ts",
     "test": "node --import tsx --test tests/*.test.ts",
     "audit:timetable": "node --import tsx scripts/audit-timetable.ts",
+    "audit:last-departures": "node --import tsx scripts/audit-last-departures.ts",
+    "test:transport-browser": "node tests/transport-release-browser.mjs",
     "data:fetch": "node scripts/fetch-osm.mjs",
     "data:build": "node --import tsx scripts/build-geography.ts",
     "data:gtfs": "node --import tsx scripts/build-gtfs.ts",

@@ -7,6 +7,7 @@ import type { FeedStatus, LngLat, TrafficSegment, VehicleObservation } from '../
 import { validateSns, confirmSns } from '../server/providers/sns';
 import { parseStreetManager } from '../server/providers/roadworks';
 import type { Env } from './env';
+import type { RailBoardResponse, StationBoard } from '../shared/rail-board';
 import { CloudStore } from './store';
 import { pollFeeds } from './poll';
 
@@ -100,6 +101,11 @@ export default {
       if(path==='/api/v1/usage')return json({period:trafficPeriod(),trafficTileRequests:(await store.state<{count:number}>('traffic-usage:'+trafficPeriod()))?.count??0,trafficTileLimit:trafficBudget(env.TOMTOM_MONTHLY_TILE_LIMIT),providerIntervalsMs:CADENCE,busRefreshMode:'shared-on-demand',streetManager:'push only; no polling'});
       if(path==='/api/v1/health')return json(snapshot(await feedHealth(store,env)));
       if(path==='/api/v1/road-events')return json(snapshot(await store.active()));
+      if(path==='/api/v1/rail-board'){
+        // Reads the board saved by the scheduled rail refresh; viewers never trigger a provider call.
+        const configured=!!(env.RDM_API_KEY||env.DARWIN_TOKEN);
+        return json({version:1,configured,board:configured?await store.state<StationBoard>('rail-board:RDG')??null:null} satisfies RailBoardResponse);
+      }
       if(path==='/api/v1/traffic')return json(snapshot(env.TRAFFIC_FEED_URL?(await store.items<TrafficSegment>('traffic')).filter(fresh):[]));
       if(path==='/api/v1/vehicles'||path==='/api/v1/vehicle-state') {
         // BODS rejects some countries used by global cron execution. Fetch handlers

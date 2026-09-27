@@ -75,3 +75,46 @@ export function tonightDepartures(data:StopTimetable,index:Pick<StopIndex,'valid
  const afterMidnightRouteIds=[...new Set(departures.filter(departure=>localDate(departure.time,index.timezone)===cutoffDate).map(departure=>departure.routeId))];
  return {start:now,end,departures,state,afterMidnightRouteIds};
 }
+
+/** The service day a passenger means by "tonight": before local 04:00 it is still the previous day. */
+export function currentServiceDate(now=Date.now(),timezone='Europe/London'){const today=localDate(now,timezone);return +parts(now,timezone).hour<4?addDays(today,-1):today;}
+
+/** Every boarding departure attached to one GTFS service date, independent of any viewing window. */
+export function serviceDayDepartures(data:StopTimetable,date:string):Departure[]{
+ const origin=serviceOrigin(date,data.timezone),running=data.services.map(s=>serviceRuns(s,date)),result:Departure[]=[];
+ for(const [tripIndex,seconds,sequence,approximate,pickupType,headsign] of data.times){const trip=data.trips[tripIndex];if(!running[trip.service]||pickupType===1)continue;result.push({tripId:trip.id,routeId:trip.routeId,headsign:headsign||trip.headsign,direction:trip.direction,sequence,time:origin+seconds*1000,serviceDate:date,approximate:!!approximate,pickupType});}
+ return result.sort((a,b)=>a.time-b.time||a.tripId.localeCompare(b.tripId)||a.sequence-b.sequence);
+}
+
+export interface LastDeparture {
+ routeId:string;direction:string;headsign:string;
+ /** Final boarding departure for this route, direction and destination on the service date. */
+ last:Departure;
+ /** Scheduled boarding departures for this group on the service date. */
+ count:number;
+ /** The last departure falls on the following calendar date (a GTFS time of 24:00 or later). */
+ afterMidnight:boolean;
+ /** First departure for the same group on the following service date, when that date is covered. */
+ next?:Departure;
+}
+export interface LastDepartures {serviceDate:string;state:'covered'|'uncovered';nextCovered:boolean;groups:LastDeparture[]}
+
+/**
+ * Last scheduled departures per route, direction and destination for one service date, computed
+ * from the whole timetable rather than a finite window. A departure at 24:30 stays attached to the
+ * service date it belongs to. The following day's first departure is included because an early
+ * service (for example 03:20) can be the next bus even though it belongs to another service date.
+ */
+export function lastDepartures(data:StopTimetable,index:Pick<StopIndex,'validFrom'|'validUntil'|'timezone'>,serviceDate:string):LastDepartures{
+ const covered=(date:string)=>date>=index.validFrom&&date<=index.validUntil,nextDate=addDays(serviceDate,1);
+ if(!covered(serviceDate))return {serviceDate,state:'uncovered',nextCovered:covered(nextDate),groups:[]};
+ const key=(d:Departure)=>`${d.routeId}\u0000${d.direction}\u0000${d.headsign}`,groups=new Map<string,LastDeparture>();
+ for(const departure of serviceDayDepartures(data,serviceDate)){const group=groups.get(key(departure));
+  if(group){group.last=departure;group.count++;}else groups.set(key(departure),{routeId:departure.routeId,direction:departure.direction,headsign:departure.headsign,last:departure,count:1,afterMidnight:false});}
+ if(covered(nextDate))for(const departure of serviceDayDepartures(data,nextDate)){const group=groups.get(key(departure));if(group&&!group.next)group.next=departure;}
+ for(const group of groups.values())group.afterMidnight=localDate(group.last.time,index.timezone)>serviceDate;
+ return {serviceDate,state:'covered',nextCovered:covered(nextDate),groups:[...groups.values()]};
+}
+
+/** Order route labels as people read them: 2, 2a, 14, 17, X4, then anything else. */
+export function compareRouteLabels(a:string,b:string){return a.localeCompare(b,'en-GB',{numeric:true,sensitivity:'base'});}

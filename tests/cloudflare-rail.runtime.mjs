@@ -13,15 +13,16 @@ try{
  const db=await mf.getD1Database('DB');for(const s of(await readFile('migrations/0001_initial.sql','utf8')).split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  const worker=await mf.getWorker(),get=async path=>(await mf.dispatchFetch('http://local'+path)).json();
  await worker.scheduled({cron:'* * * * *'});assert.equal(calls,11);
+ const station=await get('/api/v1/rail-board');assert.equal(station.configured,true);assert.equal(station.board.station,'RDG');assert.equal(station.board.services.length,1);assert.equal(station.board.services[0].destination,'Reading West');
  const snapshot=await get('/api/v1/vehicle-state');assert.equal(snapshot.data.length,1);assert.equal(snapshot.data[0].status,'estimated');assert.equal(snapshot.data[0].destination,'Reading West');assert.equal(snapshot.routes['train-test'].length,3);
  assert.equal((await get('/api/v1/vehicle-routes')).routes['train-test'].length,3,'RDM-only configuration exposes paths');
  assert.equal((await get('/api/v1/health')).data.find(f=>f.id==='trains').state,'live');
- await Promise.all([worker.scheduled({cron:'* * * * *'}),worker.scheduled({cron:'* * * * *'}),get('/api/v1/vehicles')]);assert.equal(calls,11,'cron and viewers share cached rail snapshots');
+ await Promise.all([worker.scheduled({cron:'* * * * *'}),worker.scheduled({cron:'* * * * *'}),get('/api/v1/vehicles'),get('/api/v1/rail-board')]);assert.equal(calls,11,'cron and viewers share cached rail snapshots');
  const saved=JSON.parse((await db.prepare("SELECT body FROM state WHERE id='trains'").first()).body);
  await db.prepare("UPDATE state SET body=? WHERE id='trains'").bind(JSON.stringify({...saved,lastAttempt:new Date(Date.now()-3600000).toISOString()})).run();
  await db.prepare("UPDATE state SET body='0' WHERE id='poll-lease:trains'").run();status=401;
  await worker.scheduled({cron:'* * * * *'});assert.equal(calls,12,'one rejected key does not trigger eleven rejected requests');
  const health=(await get('/api/v1/health')).data.find(f=>f.id==='trains');assert.equal(health.state,'stale');assert.equal(health.message,'Rail provider returned HTTP 401');
  await worker.scheduled({cron:'* * * * *'});assert.equal(calls,12,'failed requests back off');
- console.log('RDM Worker: estimates, route visibility, shared polling, authentication failure and backoff passed.');
+ console.log('RDM Worker: estimates, station board, route visibility, shared polling, authentication failure and backoff passed.');
 }finally{await mf.dispose();}

@@ -1,4 +1,4 @@
-import{XMLParser}from'fast-xml-parser';import{alongLine,bearing,lineLength}from'../../shared/geo';import type{VehicleObservation,LngLat}from'../../shared/types';import{RailNetwork,STATIONS}from'../rail-network';
+import{XMLParser}from'fast-xml-parser';import{alongLine,bearing,lineLength}from'../../shared/geo';import type{VehicleObservation,LngLat}from'../../shared/types';import{RailNetwork,STATIONS}from'../rail-network';import{BOARD_STATIONS,type RailDeparture,type StationBoard}from'../../shared/rail-board';
 const arr=(v:any)=>v==null?[]:Array.isArray(v)?v:[v];const xml=(s:string)=>s.replace(/[<>&'\"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]!));
 export type RailCredentials = {rdmKey?:string;soapToken?:string};
 const RDM_ENDPOINT='https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepBoardWithDetails/';
@@ -25,12 +25,32 @@ export async function fetchRailBoard(credentials:RailCredentials|string,station:
  return parseRdmBoard(board,station);
 }
 
+const text=(v:unknown)=>typeof v==='string'?v.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim():typeof v==='number'?String(v):'';
+/** Passenger-facing departures from a parsed RDM or SOAP board; arrivals-only calls are dropped. */
+export function summariseBoard(board:any,station:string):StationBoard{
+ const services:RailDeparture[]=[];
+ for(const s of arr(board.trainServices?.service)){
+  const scheduled=text(s.std);if(!/^\d\d:\d\d$/.test(scheduled))continue;
+  const destinations=arr(s.destination?.location).filter(Boolean),cancelled=s.isCancelled===true||s.isCancelled==='true'||s.etd==='Cancelled';
+  const reason=text(cancelled?s.cancelReason:s.delayReason);
+  services.push({id:text(s.serviceID)||`${scheduled}:${services.length}`,scheduled,expected:cancelled?'Cancelled':text(s.etd)||'No report',
+   destination:destinations.map(d=>text(d.locationName)).filter(Boolean).join(' & ')||'Destination not supplied',
+   ...(text(destinations[0]?.via)?{via:text(destinations[0].via)}:{}),...(text(s.platform)?{platform:text(s.platform)}:{}),
+   operator:text(s.operator)||'Operator not supplied',cancelled,...(reason?{reason}:{})});
+ }
+ const messages=arr(board.nrccMessages?.message??board.nrccMessages).map(m=>text(typeof m==='object'&&m?m.Value??m.value??m['#text']:m)).filter(Boolean).slice(0,3);
+ return {schema:1,station,name:BOARD_STATIONS[station as keyof typeof BOARD_STATIONS]??station,generatedAt:new Date(board.generatedAt).toISOString(),services,messages,
+  source:'National Rail Darwin via Rail Data Marketplace',sourceUrl:'https://www.nationalrail.co.uk/developers/darwin-data-feeds/'};
+}
+
 export async function fetchRailSnapshot(credentials:RailCredentials,network:RailNetwork,now=Date.now()){
- const items=new Map<string,VehicleObservation>(),routes:Record<string,LngLat[]>={};
+ const items=new Map<string,VehicleObservation>(),routes:Record<string,LngLat[]>={},boards:Record<string,StationBoard>={};
  let successes=0,lastError:unknown;
  for(const station of Object.keys(STATIONS)){
   try{
-   const data=estimateBoard(await fetchRailBoard(credentials,station),station,network,now);successes++;
+   const board=await fetchRailBoard(credentials,station),data=estimateBoard(board,station,network,now);successes++;
+   // Keep boards from the same shared refresh; a board failing to summarise must not lose positions.
+   if(station in BOARD_STATIONS){try{boards[station]=summariseBoard(board,station);}catch{}}
    for(const observation of data.observations){const previous=items.get(observation.id);
     if(!previous||Date.parse(observation.observedAt)>Date.parse(previous.observedAt)||(observation.observedAt===previous.observedAt&&observation.cancelled))items.set(observation.id,observation);
    }
@@ -42,7 +62,7 @@ export async function fetchRailSnapshot(credentials:RailCredentials,network:Rail
   }
  }
  if(!successes)throw lastError??Error('Rail unavailable');
- return {items:[...items.values()],routes};
+ return {items:[...items.values()],routes,boards};
 }
 
 // Resolve HH:mm around a dated observation in London, including midnight and BST.

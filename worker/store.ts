@@ -20,7 +20,7 @@ export class CloudStore {
     return result.results.flatMap(row => JSON.parse(row.body));
   }
 
-  async saveFeed(feed: string, items: {id:string}[], health: unknown, routes: Record<string, unknown> = {}) {
+  async saveFeed(feed: string, items: {id:string}[], health: unknown, routes: Record<string, unknown> = {}, states: Record<string, unknown> = {}) {
     // Chunk snapshots to limit daily writes while staying below D1's 2 MB row limit.
     const chunks = (values: unknown[]) => {
       const output: string[] = []; let current: string[] = []; let size = 2;
@@ -40,6 +40,8 @@ export class CloudStore {
       this.db.prepare('DELETE FROM feed_items WHERE feed IN (?,?)').bind(feed, routeFeed),
       ...chunks(items).map((body,id) => this.db.prepare('INSERT INTO feed_items VALUES(?,?,?)').bind(feed, String(id), body)),
       ...chunks(Object.entries(routes).map(([id,route])=>({id,route}))).map((body,id) => this.db.prepare('INSERT INTO feed_items VALUES(?,?,?)').bind(routeFeed, String(id), body)),
+      // Extra state (such as a station board) commits with the snapshot it came from.
+      ...Object.entries(states).map(([id,value]) => this.stateStatement(id, value)),
       this.stateStatement(feed, health),
     ]);
   }

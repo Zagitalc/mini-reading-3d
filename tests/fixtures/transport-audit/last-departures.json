@@ -1,0 +1,106 @@
+{
+  "schema": 1,
+  "note": "Reference times are transcribed by hand from dated operator publications for the listed service date. Never fill them from GTFS or from this application's output.",
+  "cases": [
+    {
+      "id": "21-20261001-039026610001",
+      "serviceDate": "20261001",
+      "stopId": "039026610001",
+      "stopLabel": "Kendrick Student Village (rdgdama), towards Lower Earley",
+      "routeLabel": "21",
+      "headsign": "Lower Earley",
+      "why": "Thursday night on a 24-hour route; also the day the open route 21 Thursday windows can be checked",
+      "reference": null
+    },
+    {
+      "id": "21-20261001-039026610002",
+      "serviceDate": "20261001",
+      "stopId": "039026610002",
+      "stopLabel": "Kendrick Student Village (rdgdamd), towards Central Reading",
+      "routeLabel": "21",
+      "headsign": "Central Reading",
+      "why": "Opposite direction of the same Thursday night service",
+      "reference": null
+    },
+    {
+      "id": "11-20261002-039028150002",
+      "serviceDate": "20261002",
+      "stopId": "039028150002",
+      "stopLabel": "Blagrave Street (rdgjagt)",
+      "routeLabel": "11",
+      "headsign": "Coley Park",
+      "why": "Ordinary Friday evening finish",
+      "reference": null
+    },
+    {
+      "id": "21-20261003-039026610001",
+      "serviceDate": "20261003",
+      "stopId": "039026610001",
+      "stopLabel": "Kendrick Student Village (rdgdama), towards Lower Earley",
+      "routeLabel": "21",
+      "headsign": "Lower Earley",
+      "why": "Saturday night; closes the open Saturday route 21 windows if the board agrees",
+      "reference": null
+    },
+    {
+      "id": "26-20261003-039028150004",
+      "serviceDate": "20261003",
+      "stopId": "039028150004",
+      "stopLabel": "Blagrave Street (rdgjaja)",
+      "routeLabel": "26",
+      "headsign": "Calcot, Sainsbury's",
+      "why": "Saturday night departure in the small hours",
+      "reference": null
+    },
+    {
+      "id": "17-20261004-039028150002",
+      "serviceDate": "20261004",
+      "stopId": "039028150002",
+      "stopLabel": "Blagrave Street (rdgjagt)",
+      "routeLabel": "17",
+      "headsign": "Wokingham Road",
+      "why": "Sunday night service running after midnight",
+      "reference": null
+    },
+    {
+      "id": "14-20261004-039028150003",
+      "serviceDate": "20261004",
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street (rdgjagw)",
+      "routeLabel": "14",
+      "headsign": "Reading Station",
+      "why": "Sunday evening finish on a daytime route",
+      "reference": null
+    },
+    {
+      "id": "13-20261005-039028150003",
+      "serviceDate": "20261005",
+      "stopId": "039028150003",
+      "stopLabel": "Blagrave Street (rdgjagw)",
+      "routeLabel": "13",
+      "headsign": "Reading Station",
+      "why": "Weekday evening finish",
+      "reference": null
+    },
+    {
+      "id": "701-20261005-039025480001",
+      "serviceDate": "20261005",
+      "stopId": "039025480001",
+      "stopLabel": "Cemetery Junction (rdgajdp)",
+      "routeLabel": "701",
+      "headsign": "Reading Station",
+      "why": "Weekday coach service arriving after midnight",
+      "reference": null
+    },
+    {
+      "id": "2-20261005-039028150001",
+      "serviceDate": "20261005",
+      "stopId": "039028150001",
+      "stopLabel": "Blagrave Street (rdgjagp)",
+      "routeLabel": "2",
+      "headsign": "Mortimer",
+      "why": "Weekday finish on an interurban route",
+      "reference": null
+    }
+  ]
+}
