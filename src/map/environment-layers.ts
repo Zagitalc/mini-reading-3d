@@ -1,13 +1,14 @@
 import type {Map,VectorTileSource,GeoJSONSource} from 'maplibre-gl';
 import {CADENCE} from '../../shared/feed-policy';
 import {BOUNDS} from '../../shared/config';
-import type {Weather,FuelStation} from '../../shared/types';
+import type {Weather} from '../../shared/types';
 import {detail,escape} from '../ui/shell';
 import {WeatherEffects} from '../scene/weather';
 import {rainRate} from '../scene/weather-layout';
 const precipitationText=(w:Weather)=>w.snowCm>0?`Snow ${(w.snowCm*3600/w.intervalSeconds).toFixed(1)} cm/h equivalent over the reported interval.`:rainRate(w.rainMm,w.intervalSeconds)>0?`Rain ${rainRate(w.rainMm,w.intervalSeconds).toFixed(1)} mm/h equivalent over the reported interval.`:'No rain reported in the latest interval.';
 import type {ReadingScene} from '../scene/layer';
-import {fuelPumpIcon,fuelPumpLegend} from './fuel-icon';
+import {fuelPumpLegend} from './fuel-icon';
+import {connectFuel} from './fuel-panel';
 import {connectRivers} from './river-layers';
 export async function connectEnvironment(map:Map,scene:ReadingScene){
  const effects=new WeatherEffects(scene);const prior=scene.animate;scene.animate=()=>{const a=prior?.()??false;return effects.update()||a;};
@@ -31,21 +32,17 @@ export async function connectEnvironment(map:Map,scene:ReadingScene){
   let firstTrafficRefresh=true;
   schedule(async()=>{if(firstTrafficRefresh){firstTrafficRefresh=false;return;}if(loaded&&toggle.checked)(map.getSource('tomtom-flow') as VectorTileSource).setTiles([tileUrl()]);},CADENCE.traffic);
  }
- const section=document.createElement('section');section.className='environment-control';section.innerHTML='<div class="layer-title">Around Reading</div><label class="layer-row"><span>☁ Weather effects</span><input id="weather-effects" type="checkbox" checked role="switch"></label><button id="weather-summary" class="environment-summary">Weather loading…</button><label class="layer-row"><span>◈ Fuel prices</span><input id="fuel-layer" type="checkbox" role="switch"></label><small id="fuel-summary">Twice-daily prices · source dates on click</small>';document.querySelector('#layers')!.append(section);
+ const section=document.createElement('section');section.className='environment-control';section.innerHTML='<div class="layer-title">Around Reading</div><label class="layer-row"><span>☁ Weather effects</span><input id="weather-effects" type="checkbox" checked role="switch"></label><button id="weather-summary" class="environment-summary">Weather loading…</button><label class="layer-row"><span>◈ Fuel prices</span><input id="fuel-layer" type="checkbox" role="switch"></label><button id="fuel-compare" class="environment-summary">Compare prices and trips</button><small id="fuel-summary">Twice-daily prices · source dates on click</small>';document.querySelector('#layers')!.append(section);
  const weatherText=section.querySelector<HTMLButtonElement>('#weather-summary')!;let weather:Weather|undefined;
  section.querySelector<HTMLInputElement>('#weather-effects')!.addEventListener('change',e=>{effects.enabled=(e.target as HTMLInputElement).checked;map.triggerRepaint();});
  weatherText.addEventListener('click',()=>{if(weather)detail(`<span class="pill">Estimated weather for Reading</span><h2>${weather.temperature.toFixed(1)}°C</h2><p>Cloud cover ${weather.cloudCover}% · Wind ${weather.windKph.toFixed(0)} km/h</p><p>${precipitationText(weather)}</p><p>Model time: ${escape(new Date(weather.observedAt).toLocaleString('en-GB'))}</p><p>The number of clouds follows the reported cover, and rain or snow is drawn only while the model reports it falling. Cloud positions are illustrative: the model gives one value for the whole area, so it does not locate individual clouds or showers.</p><a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo · CC BY 4.0</a>`);});
  if(config.weather)schedule(async()=>{try{const data=await get('/api/v1/weather');if(disposed)return;weather=data.data[0];effects.set(weather);weatherText.textContent=weather?`${weather.temperature.toFixed(0)}°C · ${weather.cloudCover}% cloud${weather.snowCm>0?' · snow':rainRate(weather.rainMm,weather.intervalSeconds)>0?' · rain':''} · estimated`:'Weather unavailable';return !!weather;}catch{if(!disposed){weather=undefined;effects.set();weatherText.textContent='Weather unavailable';}return false;}},CADENCE.weather);else weatherText.textContent='Weather disabled';
- let stations:FuelStation[]=[];
- map.addSource('fuel-stations',{type:'geojson',data:{type:'FeatureCollection',features:[]},attribution:'Fuel Finder via Cheap Fuel Near Me · OGL 3.0'});
- map.addImage('fuel-pump-orange',fuelPumpIcon(),{pixelRatio:2});
- map.addLayer({id:'fuel-points',type:'symbol',source:'fuel-stations',layout:{visibility:'none','icon-image':'fuel-pump-orange','icon-size':.85,'icon-anchor':'bottom','icon-allow-overlap':true,'icon-ignore-placement':true}});
- const fuelToggle=section.querySelector<HTMLInputElement>('#fuel-layer')!;fuelToggle.disabled=!config.fuel;
+ const fuel=connectFuel(map,section,config.fuel);
+ const fuelToggle=section.querySelector<HTMLInputElement>('#fuel-layer')!;
  fuelToggle.closest('label')!.querySelector('span')!.innerHTML=`${fuelPumpLegend}Fuel prices`;
- map.on('mouseenter','fuel-points',()=>{map.getCanvas().style.cursor='pointer';});
- map.on('mouseleave','fuel-points',()=>{map.getCanvas().style.cursor='';});
- fuelToggle.addEventListener('change',()=>{map.setLayoutProperty('fuel-points','visibility',fuelToggle.checked?'visible':'none');});
- map.on('click','fuel-points',e=>{const station=stations.find(s=>s.id===e.features?.[0]?.properties.id);if(!station)return;detail(`<span class="pill">Fuel price snapshot</span><h2>${escape(station.name)}</h2><p>${escape(station.brand)} · ${escape(station.postcode)}</p>${station.quiet?'<p>No prices submitted at this site for at least 14 days.</p>':''}<dl>${Object.entries(station.prices).map(([grade,p])=>`<dt>${escape(({E10:'Petrol E10',E5:'Petrol E5',B7S:'Diesel',B7P:'Premium diesel'} as Record<string,string>)[grade]??grade)}</dt><dd>${p.pence.toFixed(1)}p/litre<small>Submitted ${escape(new Date(p.submittedAt).toLocaleString('en-GB'))}</small></dd>`).join('')}</dl><p>Source snapshot: ${escape(new Date(station.observedAt).toLocaleString('en-GB'))}. Prices may have changed.</p>${station.locationRepaired?'<p>Source reports a corrected coordinate.</p>':''}<a href="https://cheapfuelnearme.uk/api/" target="_blank" rel="noopener">Fuel Finder via Cheap Fuel Near Me</a><p>Contains public sector information licensed under OGL v3.0.</p>`);});
- if(config.fuel)schedule(async()=>{try{const data=await get('/api/v1/fuel');if(disposed)return;stations=data.data;(map.getSource('fuel-stations') as GeoJSONSource).setData({type:'FeatureCollection',features:stations.map(s=>({type:'Feature',geometry:{type:'Point',coordinates:s.position},properties:{id:s.id}}))});section.querySelector('#fuel-summary')!.textContent=stations.length?`${stations.length} forecourts · twice-daily source`:'Fuel snapshot unavailable';return stations.length>0;}catch{if(!disposed){section.querySelector('#fuel-summary')!.textContent='Fuel snapshot unavailable';if(stations.some(s=>Date.now()-Date.parse(s.observedAt)>=48*3600000)){stations=[];(map.getSource('fuel-stations') as GeoJSONSource).setData({type:'FeatureCollection',features:[]});}}return false;}},CADENCE.fuel);
+ const fuelSummary=section.querySelector('#fuel-summary')!;
+ if(config.fuel)schedule(async()=>{try{const data=await get('/api/v1/fuel');if(disposed)return;fuel.set(data.data);const list=fuel.stations,latest=list.map(s=>s.observedAt).sort().at(-1);
+  fuelSummary.textContent=latest?`${list.length} forecourts · prices as of ${new Date(latest).toLocaleString('en-GB',{timeZone:'Europe/London',weekday:'short',hour:'2-digit',minute:'2-digit'})}`:'Fuel snapshot unavailable';return list.length>0;}
+  catch{if(!disposed){fuelSummary.textContent='Fuel snapshot unavailable';if(fuel.stations.some(s=>Date.now()-Date.parse(s.observedAt)>=48*3600000))fuel.set([]);}return false;}},CADENCE.fuel);
  connectRivers(map,section,schedule,get,config.rivers===true,CADENCE.rivers,()=>disposed);
 }

@@ -25,6 +25,7 @@
     "data:gtfs": "node --import tsx scripts/build-gtfs.ts",
     "data:routes": "node --import tsx scripts/build-routes.ts",
     "test:phase-browser": "node tests/phase-browser.mjs",
+    "data:hygiene": "node --import tsx scripts/build-hygiene.ts",
     "data:roadworks": "node --import tsx scripts/import-roadworks.ts",
     "check": "npm run test && npm run build",
     "data:download": "node scripts/download-data.mjs",
@@ -36,6 +37,7 @@
     "test:tonight-browser": "node tests/tonight-stops-browser.mjs",
     "test:evening-browser": "node tests/evening-explorer-browser.mjs",
     "test:live-browser": "node --import tsx tests/live-departures-browser.mjs",
+    "test:places-browser": "node tests/places-fuel-browser.mjs",
     "test:history-browser": "node --import tsx tests/history-browser.mjs",
     "data:gtfs:fetch": "node scripts/download-data.mjs --gtfs-only",
     "data:gtfs:refresh": "node --import tsx scripts/refresh-gtfs.mjs"

@@ -1,5 +1,5 @@
 import type {D1Database} from '@cloudflare/workers-types';
-import {historyResponse,recordMinute,routeCount,type FuelDay,type HistoryStore,type HourRecord} from '../shared/history';
+import {fuelHistoryFrom,historyResponse,recordMinute,routeCount,stationHistory,type FuelDay,type HistoryStore,type HourRecord} from '../shared/history';
 import type {StationBoard} from '../shared/rail-board';
 import type {FeedStatus,FuelStation,VehicleObservation} from '../shared/types';
 import type {Env} from './env';
@@ -44,3 +44,9 @@ export async function recordHistory(env:Env,store:CloudStore,feeds:FeedStatus[],
 }
 
 export const historyFor=(env:Env,days:number)=>historyResponse(d1History(env.DB),days);
+
+/** One station's recorded daily prices, for the forecourt's own chart. */
+export async function fuelHistoryFor(env:Env,id:string,days:number) {
+ const rows=await env.DB.prepare('SELECT body FROM history_fuel WHERE day>=?').bind(fuelHistoryFrom(days)).all<{body:string}>();
+ return {version:1,id,days:stationHistory(rows.results.map(r=>JSON.parse(r.body) as FuelDay),id)};
+}

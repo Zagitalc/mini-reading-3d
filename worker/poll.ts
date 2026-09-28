@@ -33,6 +33,10 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
       .bind(`poll-lease:${id}`,String(now+intervalMs),now).first();
     if(!lease)return;
     const lastAttempt = new Date().toISOString();
+    // Slow feeds note the attempt before calling the provider: a run cut short (for example by the
+    // CPU limit) then shows on /health instead of leaving the last success looking like the last try.
+    if(intervalMs>=900_000)await store.stateStatement(id,{...(previous??{count:0,state:'connecting'}),id,label,intervalMs,lastAttempt,
+      message:'Refresh started; no result saved yet'}).run();
     try {
       const {items, routes, states} = await fetcher();
       // A partial rail response can repeat a service across station boards.
@@ -48,6 +52,8 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
     }
   }
   // Sequential provider groups keep concurrent outbound connections bounded.
+  // Fuel runs first: it is due only every six hours, so it must not be the step a long run loses.
+  await update('fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true'?async()=>({items:await fetchFuel()}):undefined);
   await update('buses','Buses',env.BODS_API_KEY ? async () => {
     const rows=await fetchBuses(env.BODS_API_KEY!);
     const previous=new Map((await store.items<VehicleObservation>('buses')).map(o=>[o.id,o]));
@@ -73,7 +79,6 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
   } : undefined);
   await update('traffic','Road traffic',!env.TOMTOM_API_KEY&&env.TRAFFIC_FEED_URL ? async () => ({items:await fetchTraffic(env.TRAFFIC_FEED_URL!,env.TRAFFIC_FEED_TOKEN)}) : undefined);
   await update('weather','Estimated weather',env.WEATHER_ENABLED==='true'?async()=>({items:await fetchWeather()}):undefined);
-  await update('fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true'?async()=>({items:await fetchFuel()}):undefined);
   // Previous outlines are reused, so a standing warning costs one polygon request in total.
   await update('rivers','River levels & flood warnings',env.RIVERS_ENABLED==='true'?async()=>({items:await fetchRivers(await store.items<RiverFeedItem>('rivers'))}):undefined);
   if(feeds.includes('fuel')&&new Date().getUTCHours()===0&&new Date().getUTCMinutes()===0)await env.DB.prepare('DELETE FROM sns_messages WHERE received_at < ?').bind(Date.now()-7*86400000).run();

@@ -49,5 +49,12 @@ try{
   const later=(await (await get('/api/v1/history?days=1')).json()).hours.at(-1);
   assert.deepEqual(later.buses&&[later.buses.mean,later.buses.max],[1,1],'a bus refresh in the last two minutes is sampled');assert.equal(later.trains,null,'no rail key, no train sample');assert.equal(later.feeds.weather,1);
   assert.equal((await db.prepare('SELECT count(*) AS n FROM history_fuel').first()).n,1,'one fuel row per day');}
+ {// One forecourt's recorded days, with ids checked before any database read.
+  const history=await (await get('/api/v1/fuel-history?id=f')).json();assert.equal(history.days.length,1);assert.equal(history.days[0].prices.E10.pence,140.9);
+  assert.equal((await get('/api/v1/fuel-history')).status,404);assert.equal((await get('/api/v1/fuel-history?id='+'x'.repeat(200))).status,404);}
+ {// A fuel run cut short after taking its lease still shows on /health.
+  const fuel=JSON.parse((await db.prepare('SELECT body FROM state WHERE id=?').bind('fuel').first()).body);
+  await db.prepare('UPDATE state SET body=? WHERE id=?').bind(JSON.stringify({...fuel,lastSuccess:new Date(Date.now()-13*3600000).toISOString(),lastAttempt:new Date(Date.now()-3600000).toISOString(),message:'Refresh started; no result saved yet'}),'fuel').run();
+  const health=(await (await get('/api/v1/health')).json()).data.find(f=>f.id==='fuel');assert.equal(health.state,'stale');assert.match(health.message,/cut short/);}
  console.log('Worker feeds: durable buses without geometry, weather/fuel/rivers, cron deduplication, tile cache, quota and geographic limits passed.',calls);
 }finally{await mf.dispose();}

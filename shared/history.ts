@@ -130,3 +130,11 @@ export async function historyResponse(store:HistoryStore,days:number,now=Date.no
   hours:data.hours.filter(h=>h.schema===HISTORY_SCHEMA).sort((a,b)=>a.hour.localeCompare(b.hour)).map(summariseHour),
   fuel:data.fuel.sort((a,b)=>a.day.localeCompare(b.day)).map(({stations:_,...day})=>day)};
 }
+/** One station's prices on each recorded day, oldest first; each price keeps its own submission time. */
+export interface StationPriceDay {day:string;observedAt:string;prices:FuelStation['prices']}
+export function stationHistory(days:FuelDay[],id:string):StationPriceDay[] {
+ return days.filter(d=>d.schema===HISTORY_SCHEMA).sort((a,b)=>a.day.localeCompare(b.day)).flatMap(d=>{const s=d.stations.find(x=>x.id===id);return s?[{day:d.day,observedAt:d.observedAt,prices:s.prices}]:[];});
+}
+/** Station ids come from the fuel feed; anything else is refused before a database read. */
+export const validStationId=(id:unknown):id is string=>typeof id==='string'&&id.length>0&&id.length<=120;
+export const fuelHistoryFrom=(days:number,now=Date.now())=>londonDay(now-Math.min(HISTORY_MAX_DAYS,Math.max(1,Math.round(days)||14))*86_400_000);

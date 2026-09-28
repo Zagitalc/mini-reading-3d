@@ -10,7 +10,8 @@ import type { Env } from './env';
 import type { RailBoardResponse, StationBoard } from '../shared/rail-board';
 import { CloudStore } from './store';
 import { pollFeeds } from './poll';
-import { historyFor, recordHistory } from './history';
+import { fuelHistoryFor, historyFor, recordHistory } from './history';
+import { validStationId } from '../shared/history';
 
 const json = (body: unknown, status = 200) => Response.json(body, {status, headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const snapshot = (data: unknown[]) => ({version:1,generatedAt:new Date().toISOString(),data});
@@ -34,7 +35,7 @@ export async function feedHealth(store: CloudStore, env: Env, countRoadworks = t
     const saved = configured ? await store.state<FeedStatus>(id) : undefined;
     const health: FeedStatus = saved ?? {id,label,state:configured?'connecting':'unavailable',message:configured?(id==='buses'?'Waiting for first map refresh':'Waiting for first scheduled update'):message,count:0,intervalMs:CADENCE[id]};
     if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>CADENCE[id]*2) {
-      health.state='stale'; if(!health.failures)health.message=id==='buses'?'No recent map-triggered bus refresh':'Scheduled updates delayed';
+      health.state='stale'; if(!health.failures)health.message=id==='buses'?'No recent map-triggered bus refresh':health.lastAttempt&&health.lastAttempt>health.lastSuccess?'Last refresh started but saved no result; it may have been cut short':'Scheduled updates delayed';
     }
     if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>(id==='weather'?3600000:id==='fuel'?48*3600000:id==='rivers'?6*3600000:300000)) health.count=0;
     if(id==='traffic'&&env.TOMTOM_API_KEY){health.state='connecting';health.message='Tiles load on demand; five-minute cache and monthly request cap';}
@@ -112,6 +113,12 @@ export default {
       if(path==='/api/v1/history'){
         // Summaries only: per-station fuel prices and per-service rail rows stay in D1.
         try{return json(await historyFor(env,Number(new URL(request.url).searchParams.get('days')??7)));}
+        catch{return json({error:'History is not recorded yet; apply the D1 migrations'},503);}
+      }
+      if(path==='/api/v1/fuel-history'){
+        const params=new URL(request.url).searchParams,id=params.get('id');
+        if(env.FUEL_ENABLED!=='true'||!validStationId(id))return json({error:'Unknown fuel station'},404);
+        try{return json(await fuelHistoryFor(env,id,Number(params.get('days')??14)));}
         catch{return json({error:'History is not recorded yet; apply the D1 migrations'},503);}
       }
       if(path==='/api/v1/road-events')return json(snapshot(await store.active()));
