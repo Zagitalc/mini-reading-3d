@@ -30,6 +30,7 @@ try {
   const sql = await readFile('migrations/0001_initial.sql','utf8');
   for (const statement of sql.split(';').map(x=>x.trim()).filter(Boolean)) await db.prepare(statement).run();
   const get = async path => (await mf.dispatchFetch(`http://local${path}`)).json();
+  assert.equal((await mf.dispatchFetch('http://local/api/v1/history')).status,503,'history before its migration fails clearly');
   const health = await get('/api/v1/health');
   assert.equal(health.data.length,7);
   assert.equal(health.data[0].state,'connecting');

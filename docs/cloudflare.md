@@ -86,6 +86,7 @@ Weather, fuel and river levels use keyless endpoints. Existing BODS/rail credent
 | Reading fuel mirror | Six hours (4/day) |
 | Environment Agency rivers | 15 minutes: one station list, one document per Thames/Kennet gauge (at most 16), one flood query, plus one outline per new warning (at most 6); seven gauges qualified on 28 September 2026, so nine requests per refresh (864/day); at most 1,728/day at the 16-gauge cap. A cron minute in which every feed is due stays under 30 subrequests |
 | Street Manager | Push notifications only; zero polling calls |
+| Reading over time | No provider calls. One sample per cron minute from saved snapshots: about 15 D1 rows read and 2 to 3 written (lease, hour row, and the next hour's row when a departure crosses the hour), roughly 3,000 rows written/day; the fuel row is rewritten only when a newer fuel snapshot arrives (at most 4/day) |
 | Browser vehicle state and health | Two requests/minute total while visible |
 | Browser roadworks snapshot | Once per five minutes (95% fewer reads than the old 15-second refresh) |
 | Browser weather / fuel snapshot | 15 minutes / six hours when healthy; bounded earlier retry while unavailable |
@@ -95,6 +96,14 @@ Provider failures use exponential backoff. Polling uses persistent atomic leases
 Street Manager verifies every notification before handling it. Out-of-area/unsupported notifications are acknowledged without writing per-message records; there is no local side effect to deduplicate. Relevant notifications retain deduplication and version ordering. This reduces D1 writes, **not inbound nationwide SNS delivery volume**. Narrowing that volume would require a supported change to the DfT subscription. Never drop relevant lifecycle updates to reduce traffic. Node prunes deduplication history at most hourly; Worker cleanup runs daily.
 
 Run `APP_URL=http://127.0.0.1:8787 npm run check:feeds` after adding keys and restarting the app. Set `APP_URL` to the deployed URL to audit production. The check prints no credentials and reports the persistent TomTom counter and cap. Its vehicle request may trigger one shared BODS refresh when due. `/api/v1/usage` exposes the same budget/cadences. Node and Cloudflare counters are separate; other consumers of the same TomTom key are outside this cap. Production free-Worker CPU limits still need validation with the account's metrics; local runtime tests do not emulate CPU enforcement.
+
+## Reading over time
+
+`migrations/0002_history.sql` adds `history_hours` (one row per UTC hour) and `history_fuel` (one row per London day). Apply it with `npm run cf:migrate` before deploying the code that uses it; until then the cron logs `History sample failed` and `/api/v1/history` answers 503, while every live feed keeps working.
+
+Each cron minute, after the feeds refresh, the Worker takes one sample from what D1 already holds: the bus snapshot if it is under two minutes old, the estimated train count, the Reading station board and each feed's state. A D1 lease makes it one sample per wall-clock minute even when invocations overlap. Buses are only sampled while someone has the map open (see the BODS restriction below), so unviewed hours are left empty rather than recorded as zero. Station departures are recorded once they are within 15 minutes of leaving, under the hour they are scheduled in, with the last status seen; a departure counts as late at five minutes. Only services on the ten-row board are seen, so a busy hour can be undercounted.
+
+The fuel row holds every station's prices with their own submission times, as well as the cheapest, median and dearest price per grade, so later work can compare stations over time. `/api/v1/history?days=7` (1 to 14 days) returns hourly summaries and the daily fuel spread without the per-station and per-service rows. History is kept indefinitely: about 24 rows of a few kilobytes a day. The local Node server keeps the same tables in `var/roadworks.sqlite` and samples from its pollers once a minute.
 
 ## BODS geographic restriction
 

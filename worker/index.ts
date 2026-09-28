@@ -10,6 +10,7 @@ import type { Env } from './env';
 import type { RailBoardResponse, StationBoard } from '../shared/rail-board';
 import { CloudStore } from './store';
 import { pollFeeds } from './poll';
+import { historyFor, recordHistory } from './history';
 
 const json = (body: unknown, status = 200) => Response.json(body, {status, headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const snapshot = (data: unknown[]) => ({version:1,generatedAt:new Date().toISOString(),data});
@@ -18,7 +19,8 @@ const fresh = (item: {observedAt:string}) => {
   return Number.isFinite(age) && age>=-60000 && age<300000;
 };
 
-export async function feedHealth(store: CloudStore, env: Env): Promise<FeedStatus[]> {
+/** `countRoadworks` is off for history samples, which need each feed's state but not a road-event scan every minute. */
+export async function feedHealth(store: CloudStore, env: Env, countRoadworks = true): Promise<FeedStatus[]> {
   const definitions = [
     ['buses','Buses',env.BODS_API_KEY,'BODS registration required'],
     ['trains','Trains',env.RDM_API_KEY||env.DARWIN_TOKEN,'RDM API key required; train positions are estimates'],
@@ -40,7 +42,7 @@ export async function feedHealth(store: CloudStore, env: Env): Promise<FeedStatu
   }
   const road = await store.state<{confirmed:boolean;lastSuccess:string}>('roadworks');
   const enabled = env.STREET_MANAGER_ENABLED==='true';
-  feeds.splice(2,0,{id:'roadworks',label:'Roadworks & closures',intervalMs:0,count:(await store.active()).length,
+  feeds.splice(2,0,{id:'roadworks',label:'Roadworks & closures',intervalMs:0,count:countRoadworks?(await store.active()).length:0,
     state:enabled&&road?.confirmed?'live':road?'stale':'unavailable',lastSuccess:road?.lastSuccess,
     message:enabled&&road?.confirmed?'Subscription confirmed; coverage begins at subscription, delivery is not continuously monitored':'Street Manager subscription and public HTTPS receiver required'});
   return feeds;
@@ -107,6 +109,11 @@ export default {
       }
       if(path==='/api/v1/usage')return json({period:trafficPeriod(),trafficTileRequests:(await store.state<{count:number}>('traffic-usage:'+trafficPeriod()))?.count??0,trafficTileLimit:trafficBudget(env.TOMTOM_MONTHLY_TILE_LIMIT),providerIntervalsMs:CADENCE,busRefreshMode:'shared-on-demand',streetManager:'push only; no polling'});
       if(path==='/api/v1/health')return json(snapshot(await feedHealth(store,env)));
+      if(path==='/api/v1/history'){
+        // Summaries only: per-station fuel prices and per-service rail rows stay in D1.
+        try{return json(await historyFor(env,Number(new URL(request.url).searchParams.get('days')??7)));}
+        catch{return json({error:'History is not recorded yet; apply the D1 migrations'},503);}
+      }
       if(path==='/api/v1/road-events')return json(snapshot(await store.active()));
       if(path==='/api/v1/rail-board'){
         // Reads the board saved by the scheduled rail refresh; viewers never trigger a provider call.
@@ -141,5 +148,8 @@ export default {
   },
   async scheduled(_event: ScheduledController, env: Env, _ctx: ExecutionContext) {
     await pollFeeds(env,['trains','traffic','weather','fuel','rivers']);
+    // History failures (for example, before its migration is applied) must never stop the live feeds.
+    try{const store=new CloudStore(env.DB);await recordHistory(env,store,await feedHealth(store,env,false));}
+    catch(error){console.warn('History sample failed',{reason:error instanceof Error?error.message:'unknown'});}
   },
 };

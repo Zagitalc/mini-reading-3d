@@ -21,7 +21,7 @@ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{modules:true,scriptP
  throw Error('Unexpected outbound request '+url.hostname);
 }}]}));
 try{
- const db=await mf.getD1Database('DB');for(const s of (await readFile('migrations/0001_initial.sql','utf8')).split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
+ const db=await mf.getD1Database('DB');for(const file of ['0001_initial.sql','0002_history.sql'])for(const s of (await readFile('migrations/'+file,'utf8')).replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  const get=path=>mf.dispatchFetch('http://local'+path);
  const worker=await mf.getWorker();const tick=await worker.scheduled({cron:'* * * * *'});assert.equal(tick.outcome,'ok');assert.equal(calls.bus,0,'global cron must not call the geo-restricted BODS API');
  {const state=await (await get('/api/v1/vehicle-state')).json();assert.equal(state.data.length,1,'bus survives unavailable route geometry');assert.equal(state.data[0].timetableTripId,'VJfixture','GTFS-RT names the timetabled trip');}
@@ -41,5 +41,13 @@ try{
  const failedHealth=(await(await get('/api/v1/health')).json()).data.find(f=>f.id==='buses');assert.equal(failedHealth.state,'stale');assert.equal(failedHealth.message,'Bus provider returned HTTP 503');assert.equal(failedHealth.failures,1);
  const failedCalls=calls.bus;await get('/api/v1/vehicle-state');assert.equal(calls.bus,failedCalls,'provider errors must retain retry backoff');
  busStatus=200;await allowBusRetry();const beforeRecovery=calls.bus;await Promise.all([get('/api/v1/vehicle-state'),get('/api/v1/vehicles'),get('/api/v1/vehicle-state')]);assert.equal(calls.bus,beforeRecovery+1,'concurrent viewers share a single provider request');const recovered=(await(await get('/api/v1/health')).json()).data.find(f=>f.id==='buses');assert.equal(recovered.state,'live');assert.equal(recovered.failures,undefined);
+ {// Cron minutes are sampled once each; the fuel day keeps its summary and the API leaves out per-station rows.
+  const first=await (await get('/api/v1/history?days=1')).json(),minutes=first.hours.reduce((a,h)=>a+h.minutes,0);
+  assert.ok(minutes>=1&&minutes<=2,'three cron runs across at most two minutes record at most two samples');assert.ok(first.recordingSince);
+  assert.equal(first.fuel.length,1);assert.equal(first.fuel[0].grades.E10.cheapest,140.9);assert.equal(first.fuel[0].stations,undefined);
+  await db.prepare('UPDATE state SET body=? WHERE id=?').bind('0','history-lease').run();await worker.scheduled({cron:'* * * * *'});
+  const later=(await (await get('/api/v1/history?days=1')).json()).hours.at(-1);
+  assert.deepEqual(later.buses&&[later.buses.mean,later.buses.max],[1,1],'a bus refresh in the last two minutes is sampled');assert.equal(later.trains,null,'no rail key, no train sample');assert.equal(later.feeds.weather,1);
+  assert.equal((await db.prepare('SELECT count(*) AS n FROM history_fuel').first()).n,1,'one fuel row per day');}
  console.log('Worker feeds: durable buses without geometry, weather/fuel/rivers, cron deduplication, tile cache, quota and geographic limits passed.',calls);
 }finally{await mf.dispose();}

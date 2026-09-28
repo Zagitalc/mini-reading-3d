@@ -10,13 +10,14 @@ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{modules:true,scriptP
  const crs=url.pathname.split('/').at(-1);return Response.json({crs,generatedAt:new Date().toISOString(),trainServices:crs==='RDG'?[{serviceID:'train-test',std:time(-2),etd:'On time',operator:'GWR',destination:[{locationName:'Reading West'}],subsequentCallingPoints:[{callingPoint:[{crs:'RDW',st:time(3),et:'On time'}]}]}]:null});
 }}]}));
 try{
- const db=await mf.getD1Database('DB');for(const s of(await readFile('migrations/0001_initial.sql','utf8')).split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
+ const db=await mf.getD1Database('DB');for(const file of ['0001_initial.sql','0002_history.sql'])for(const s of(await readFile('migrations/'+file,'utf8')).replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  const worker=await mf.getWorker(),get=async path=>(await mf.dispatchFetch('http://local'+path)).json();
  await worker.scheduled({cron:'* * * * *'});assert.equal(calls,11);
  const station=await get('/api/v1/rail-board');assert.equal(station.configured,true);assert.equal(station.board.station,'RDG');assert.equal(station.board.services.length,1);assert.equal(station.board.services[0].destination,'Reading West');
  const snapshot=await get('/api/v1/vehicle-state');assert.equal(snapshot.data.length,1);assert.equal(snapshot.data[0].status,'estimated');assert.equal(snapshot.data[0].destination,'Reading West');assert.equal(snapshot.routes['train-test'].length,3);
  assert.equal((await get('/api/v1/vehicle-routes')).routes['train-test'].length,3,'RDM-only configuration exposes paths');
  assert.equal((await get('/api/v1/health')).data.find(f=>f.id==='trains').state,'live');
+ {const history=await get('/api/v1/history?days=1'),rail=history.hours.reduce((a,h)=>a+h.rail.departures,0);assert.equal(rail,1,'the station board departure is recorded once');assert.deepEqual(history.hours.find(h=>h.trains).trains,{minutes:1,mean:1,max:1});assert.equal(history.hours.find(h=>h.rail.departures).rail.onTime,1);}
  await Promise.all([worker.scheduled({cron:'* * * * *'}),worker.scheduled({cron:'* * * * *'}),get('/api/v1/vehicles'),get('/api/v1/rail-board')]);assert.equal(calls,11,'cron and viewers share cached rail snapshots');
  const saved=JSON.parse((await db.prepare("SELECT body FROM state WHERE id='trains'").first()).body);
  await db.prepare("UPDATE state SET body=? WHERE id='trains'").bind(JSON.stringify({...saved,lastAttempt:new Date(Date.now()-3600000).toISOString()})).run();

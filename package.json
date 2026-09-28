@@ -36,6 +36,7 @@
     "test:tonight-browser": "node tests/tonight-stops-browser.mjs",
     "test:evening-browser": "node tests/evening-explorer-browser.mjs",
     "test:live-browser": "node --import tsx tests/live-departures-browser.mjs",
+    "test:history-browser": "node --import tsx tests/history-browser.mjs",
     "data:gtfs:fetch": "node scripts/download-data.mjs --gtfs-only",
     "data:gtfs:refresh": "node --import tsx scripts/refresh-gtfs.mjs"
   },
