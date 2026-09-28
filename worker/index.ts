@@ -6,6 +6,7 @@ import type { ScheduledController, ExecutionContext } from '@cloudflare/workers-
 import type { FeedStatus, LngLat, TrafficSegment, VehicleObservation } from '../shared/types';
 import { validateSns, confirmSns } from '../server/providers/sns';
 import { parseStreetManager } from '../server/providers/roadworks';
+import { parseFuel } from '../server/providers/fuel';
 import type { Env } from './env';
 import type { RailBoardResponse, StationBoard } from '../shared/rail-board';
 import { CloudStore } from './store';
@@ -81,6 +82,30 @@ async function ingest(request: Request, env: Env, store: CloudStore) {
   }catch{return json({error:'Invalid or unverified Street Manager message'},400);}
 }
 
+/** Constant-time comparison of SHA-256 digests, so the token check leaks nothing through timing. */
+async function sameSecret(given: string, expected: string) {
+  const digest = async (value: string) => new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)));
+  const [a,b] = await Promise.all([digest(given),digest(expected)]);
+  let diff = 0; for (let i=0;i<a.length;i++) diff |= a[i]^b[i];
+  return diff===0;
+}
+
+/** Fuel prices pushed by the GitHub refresh, already trimmed to the map area (about 40 forecourts). */
+async function ingestFuel(request: Request, env: Env, store: CloudStore) {
+  if (env.FUEL_ENABLED!=='true' || !env.FUEL_INGEST_TOKEN) return json({error:'Fuel upload disabled'},503);
+  const auth = request.headers.get('Authorization') ?? '';
+  if (!auth.startsWith('Bearer ') || !await sameSecret(auth.slice(7), env.FUEL_INGEST_TOKEN)) return json({error:'Not authorised'},401);
+  const text = await request.text();
+  if (text.length > 262144) return json({error:'Upload too large'},413);
+  let items;
+  try { items = parseFuel(JSON.parse(text)); } catch (error) { return json({error:error instanceof Error&&/stale/.test(error.message)?error.message:'Invalid fuel upload'},422); }
+  if (!items.length) return json({error:'No forecourts in the map area'},422);
+  const time = new Date().toISOString();
+  await store.saveFeed('fuel', items, {id:'fuel',label:'Fuel prices (snapshot)',intervalMs:CADENCE.fuel,state:'live',lastAttempt:time,lastSuccess:time,count:items.length,
+    message:'Uploaded by the GitHub fuel refresh twice a day'});
+  return json({accepted:true,stations:items.length});
+}
+
 const tileServices=new WeakMap<object,TrafficTiles>();
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -91,6 +116,10 @@ export default {
       if(path==='/api/v1/ingest/street-manager') {
         if(request.method==='POST')return ingest(request,env,store);
         return json({error:'Use POST for signed Street Manager notifications'},405);
+      }
+      if(path==='/api/v1/ingest/fuel') {
+        if(request.method==='POST')return ingestFuel(request,env,store);
+        return json({error:'Use POST'},405);
       }
       if(request.method!=='GET')return json({error:'Method not allowed'},405);
       if(path==='/api/v1/config')return json({tomtom:!!env.TOMTOM_API_KEY,trafficRefreshMs:CADENCE.traffic,weather:env.WEATHER_ENABLED==='true',fuel:env.FUEL_ENABLED==='true',rivers:env.RIVERS_ENABLED==='true'});

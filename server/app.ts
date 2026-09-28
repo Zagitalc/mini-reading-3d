@@ -1,7 +1,7 @@
 import {CADENCE,riverSnapshot} from '../shared/feed-policy';
 import {rateLimit, MemoryStore} from 'express-rate-limit';
 import {fetchWeather} from './providers/weather';
-import {fetchFuel} from './providers/fuel';
+import {fetchFuelArea,parseFuel} from './providers/fuel';
 import {fetchRivers} from './providers/rivers';
 import {TrafficTiles,memoryTileCache,trafficBudget,trafficPeriod} from './providers/tomtom';
 import type {Weather,FuelStation,RiverFeedItem} from '../shared/types';
@@ -18,7 +18,7 @@ export async function createApp(options:{env?:NodeJS.ProcessEnv;database?:string
  const trains=new Poller<VehicleObservation>('trains','Trains',CADENCE.trains,(env.RDM_API_KEY||env.DARWIN_TOKEN)?async()=>{const result=await fetchRailSnapshot({rdmKey:env.RDM_API_KEY,soapToken:env.DARWIN_TOKEN},rail);railRoutes=result.routes;railBoards={...railBoards,...result.boards};return result.items;}:undefined,'RDM API key required; train positions are estimates');
  const traffic=new Poller<TrafficSegment>('traffic','Road traffic',CADENCE.traffic,env.TRAFFIC_FEED_URL?()=>fetchTraffic(env.TRAFFIC_FEED_URL!,env.TRAFFIC_FEED_TOKEN):undefined,'No verified traffic feed configured');
  const weather=new Poller<Weather>('weather','Estimated weather',CADENCE.weather,env.WEATHER_ENABLED==='true'?fetchWeather:undefined,'Weather disabled');
- const fuel=new Poller<FuelStation>('fuel','Fuel prices (snapshot)',CADENCE.fuel,env.FUEL_ENABLED==='true'?fetchFuel:undefined,'Fuel prices disabled');
+ const fuel=new Poller<FuelStation>('fuel','Fuel prices (snapshot)',CADENCE.fuel,env.FUEL_ENABLED==='true'?async()=>parseFuel(await fetchFuelArea()):undefined,'Fuel prices disabled');
  const rivers:Poller<RiverFeedItem>=new Poller<RiverFeedItem>('rivers','River levels & flood warnings',CADENCE.rivers,env.RIVERS_ENABLED==='true'?()=>fetchRivers(rivers.data):undefined,'River levels disabled');
  store.db.exec('CREATE TABLE IF NOT EXISTS usage (period TEXT PRIMARY KEY, count INTEGER NOT NULL)');
  const tiles=new TrafficTiles(memoryTileCache(),async()=>!!store.db.prepare('INSERT INTO usage VALUES(?,1) ON CONFLICT(period) DO UPDATE SET count=count+1 WHERE count<? RETURNING count').get(trafficPeriod(),trafficBudget(env.TOMTOM_MONTHLY_TILE_LIMIT)));

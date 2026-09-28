@@ -53,7 +53,10 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
   }
   // Sequential provider groups keep concurrent outbound connections bounded.
   // Fuel runs first: it is due only every six hours, so it must not be the step a long run loses.
-  await update('fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true'?async()=>({items:await fetchFuel()}):undefined);
+  // With the GitHub refresh configured, the cron only steps in once uploads have stopped for 13 hours.
+  const uploaded=env.FUEL_INGEST_TOKEN&&feeds.includes('fuel')?await store.state<FeedStatus>('fuel'):undefined;
+  const uploadRecent=!!uploaded?.lastSuccess&&Date.now()-Date.parse(uploaded.lastSuccess)<13*3_600_000;
+  await update('fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true'&&!uploadRecent?async()=>({items:await fetchFuel()}):undefined);
   await update('buses','Buses',env.BODS_API_KEY ? async () => {
     const rows=await fetchBuses(env.BODS_API_KEY!);
     const previous=new Map((await store.items<VehicleObservation>('buses')).map(o=>[o.id,o]));

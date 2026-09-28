@@ -5,7 +5,7 @@ const calls={bus:0,busTrips:0,weather:0,fuel:0,traffic:0,rivers:0};
 // One GTFS-RT entity naming the fixture bus's timetabled trip, protobuf-encoded by hand.
 const field=(n,body)=>{const bytes=typeof body==='string'?[...new TextEncoder().encode(body)]:body;return [n*8+2,bytes.length,...bytes];};
 const vehicleTrip=(vehicle,trip)=>new Uint8Array(field(2,field(4,[...field(1,field(1,trip)),...field(8,field(1,vehicle))])));let busStatus=200;
-const mf=new Miniflare(convertV4MiniflareOptions({workers:[{modules:true,scriptPath:'dist-worker/index.js',compatibilityDate:'2026-08-06',compatibilityFlags:['nodejs_compat'],d1Databases:{DB:'feeds-test'},bindings:{BODS_API_KEY:'fixture',TOMTOM_API_KEY:'fixture',TOMTOM_MONTHLY_TILE_LIMIT:'2',WEATHER_ENABLED:'true',FUEL_ENABLED:'true',RIVERS_ENABLED:'true'},serviceBindings:{ASSETS:()=>new Response('missing asset',{status:503})},outboundService:request=>{
+const mf=new Miniflare(convertV4MiniflareOptions({workers:[{modules:true,scriptPath:'dist-worker/index.js',compatibilityDate:'2026-08-06',compatibilityFlags:['nodejs_compat'],d1Databases:{DB:'feeds-test'},bindings:{BODS_API_KEY:'fixture',TOMTOM_API_KEY:'fixture',TOMTOM_MONTHLY_TILE_LIMIT:'2',WEATHER_ENABLED:'true',FUEL_ENABLED:'true',FUEL_INGEST_TOKEN:'fuel-secret',RIVERS_ENABLED:'true'},serviceBindings:{ASSETS:()=>new Response('missing asset',{status:503})},outboundService:request=>{
  const url=new URL(request.url),now=new Date().toISOString();
  if(url.hostname==='data.bus-data.dft.gov.uk'&&url.pathname==='/api/v1/gtfsrtdatafeed/'){calls.busTrips++;assert.match(request.headers.get('User-Agent'),/^MiniReading3D\//);if(busStatus!==200)return new Response('Unavailable',{status:busStatus});return new Response(vehicleTrip('701','VJfixture'));}
  if(url.hostname==='data.bus-data.dft.gov.uk'){calls.bus++;assert.equal(url.pathname,'/api/v1/datafeed/');assert.match(request.headers.get('User-Agent'),/^MiniReading3D\//);assert.equal(request.headers.get('Accept'),'text/xml');if(busStatus!==200)return new Response('Unavailable',{status:busStatus});return new Response(`<Siri><ServiceDelivery><VehicleMonitoringDelivery><VehicleActivity><RecordedAtTime>${now}</RecordedAtTime><MonitoredVehicleJourney><VehicleRef>701</VehicleRef><OperatorRef>RBUS</OperatorRef><PublishedLineName>17</PublishedLineName><VehicleLocation><Longitude>-0.97</Longitude><Latitude>51.455</Latitude></VehicleLocation></MonitoredVehicleJourney></VehicleActivity></VehicleMonitoringDelivery></ServiceDelivery></Siri>`);}
@@ -52,6 +52,20 @@ try{
  {// One forecourt's recorded days, with ids checked before any database read.
   const history=await (await get('/api/v1/fuel-history?id=f')).json();assert.equal(history.days.length,1);assert.equal(history.days[0].prices.E10.pence,140.9);
   assert.equal((await get('/api/v1/fuel-history')).status,404);assert.equal((await get('/api/v1/fuel-history?id='+'x'.repeat(200))).status,404);}
+ {// The GitHub refresh uploads the trimmed national file; only the shared secret is accepted.
+  const post=(body,token='fuel-secret')=>mf.dispatchFetch('http://local/api/v1/ingest/fuel',{method:'POST',headers:{'Content-Type':'application/json',Authorization:'Bearer '+token},body:JSON.stringify(body)});
+  const now=new Date().toISOString(),raw=(id,lat,lon)=>({id,name:id,brand:'Test',postcode:'RG6 7HN',town:'Berkshire',lat,lon,site_quiet:false,location_repaired:null,prices:{E10:{pence_per_litre:174.9,submitted_at:now}}});
+  const upload={source_generated_at:now,stations:[raw('loddon',51.43779,-.90118),raw('f2',51.45,-.97)]};
+  assert.equal((await post(upload,'wrong')).status,401);assert.equal((await mf.dispatchFetch('http://local/api/v1/ingest/fuel')).status,405);
+  assert.equal((await post({source_generated_at:new Date(Date.now()-50*3600000).toISOString(),stations:upload.stations})).status,422,'a stale upload is refused');
+  assert.equal((await post({source_generated_at:now,stations:[raw('leeds',53.8,-1.55)]})).status,422,'an upload with nothing in the area is refused');
+  const accepted=await post(upload);assert.equal(accepted.status,200);assert.equal((await accepted.json()).stations,2);
+  assert.deepEqual((await (await get('/api/v1/fuel')).json()).data.map(s=>s.id).sort(),['f2','loddon']);
+  const before=calls.fuel;await db.prepare('UPDATE state SET body=? WHERE id=?').bind('0','poll-lease:fuel').run();
+  const fuelState=JSON.parse((await db.prepare('SELECT body FROM state WHERE id=?').bind('fuel').first()).body);
+  await db.prepare('UPDATE state SET body=? WHERE id=?').bind(JSON.stringify({...fuelState,lastAttempt:new Date(Date.now()-7*3600000).toISOString()}),'fuel').run();
+  await worker.scheduled({cron:'* * * * *'});assert.equal(calls.fuel,before,'the cron leaves fuel alone while uploads are recent');
+  assert.equal((await (await get('/api/v1/health')).json()).data.find(f=>f.id==='fuel').message,'Uploaded by the GitHub fuel refresh twice a day');}
  {// A fuel run cut short after taking its lease still shows on /health.
   const fuel=JSON.parse((await db.prepare('SELECT body FROM state WHERE id=?').bind('fuel').first()).body);
   await db.prepare('UPDATE state SET body=? WHERE id=?').bind(JSON.stringify({...fuel,lastSuccess:new Date(Date.now()-13*3600000).toISOString(),lastAttempt:new Date(Date.now()-3600000).toISOString(),message:'Refresh started; no result saved yet'}),'fuel').run();

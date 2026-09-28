@@ -1,0 +1,37 @@
+name: Refresh fuel prices
+# The fuel mirror rebuilds at about 09:45 and 15:45 UTC. This trims its national file to the map area
+# and uploads the result, so forecourts filed under Earley, Winnersh or Tilehurst are not missed.
+# The 22:05 and 04:05 runs re-send the latest snapshot so the upload never looks stale overnight and the
+# Worker's fallback (the Reading town file, which misses those forecourts) stays off.
+on:
+  schedule:
+    - cron: '5 4,10,16,22 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: fuel-refresh
+  cancel-in-progress: false
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check the upload secret
+        env:
+          FUEL_INGEST_TOKEN: ${{ secrets.FUEL_INGEST_TOKEN }}
+        run: |
+          if [ -z "$FUEL_INGEST_TOKEN" ]; then
+            echo '::error::Set the repository secret FUEL_INGEST_TOKEN to the same value as the Worker secret.'
+            exit 1
+          fi
+      - name: Trim the national file to the map area and upload it
+        env:
+          FUEL_INGEST_TOKEN: ${{ secrets.FUEL_INGEST_TOKEN }}
+        run: npm run fuel:push

@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {parseWeather} from '../server/providers/weather';
-import {parseFuel} from '../server/providers/fuel';
+import {parseFuel,trimFuelToArea} from '../server/providers/fuel';
 import {TrafficTiles,memoryTileCache,validTrafficTile} from '../server/providers/tomtom';
 import {matchBusRoute,type BusNetwork} from '../server/route-matcher';
 import {CADENCE,due,retryDelay} from '../shared/feed-policy';
@@ -32,4 +32,11 @@ test('bus branding matches its line even when the exact journey shape is ambiguo
 });
 test('provider schedules skip early calls and slow providers never retry at a faster cadence',()=>{
  assert.equal(due(new Date(now).toISOString(),CADENCE.weather,0,now+60000),false);assert.equal(due(new Date(now).toISOString(),CADENCE.weather,0,now+900000),true);assert.equal(retryDelay(CADENCE.fuel,1),12*3600000);assert.equal(due(new Date(now).toISOString(),CADENCE.buses,2,now+60000),false);
+});
+test('the national fuel file is trimmed to the map on raw coordinates, keeping the source shape',()=>{
+ const s={id:'loddon',name:'Loddon Bridge Service Station',brand:'SHELL',postcode:'RG6 7HN',town:'Berkshire',lat:51.43779,lon:-.90118,site_quiet:false,location_repaired:null,prices:{E10:{pence_per_litre:174.9,submitted_at:'2026-09-23T10:00:00Z'}}};
+ const input={source_generated_at:'2026-09-14T11:00:00.073000Z',built_at:'2026-09-14T11:41:33Z',count:4,stations:[s,{...s,id:'leeds',lat:53.8,lon:-1.55},{...s,id:'broken',lat:'51.4'},null]};
+ const area=trimFuelToArea(input);assert.deepEqual(area.stations.map(x=>(x as {id:string}).id),['loddon'],'a Berkshire-filed forecourt inside the map is kept');
+ assert.equal(area.source_generated_at,'2026-09-14T11:00:00.073000Z');assert.equal(parseFuel(area,now)[0].postcode,'RG6 7HN');
+ assert.throws(()=>trimFuelToArea({stations:[]}));
 });

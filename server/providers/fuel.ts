@@ -12,6 +12,21 @@ export function parseFuel(input:unknown,now=Date.now()):FuelStation[] {
   return [{id:s.id,name:s.name,brand:s.brand,postcode:s.postcode,position:[s.lon,s.lat] as [number,number],quiet:s.site_quiet,locationRepaired:s.location_repaired??undefined,prices,observedAt:data.source_generated_at,source:'Fuel Finder via Cheap Fuel Near Me (twice-daily mirror)',sourceUrl:'https://cheapfuelnearme.uk/api/'}];
  });
 }
+/** Every UK forecourt; the Reading town file leaves out ones filed under another town (Earley, Winnersh, Tilehurst…). */
+export const FUEL_NATIONAL_URL='https://cheapfuelnearme.uk/api/v1/stations.json';
+export const FUEL_USER_AGENT='MiniReading3D/0.1 (+https://github.com/Zagitalc/mini-reading-3d)';
+/** Keeps only records inside the map, checked on raw coordinates before any schema work, so the
+ * 3 MB national file costs one pass. The output has the source's own shape, ready for parseFuel. */
+export function trimFuelToArea(input:unknown){
+ const data=z.object({source_generated_at:z.string(),stations:z.array(z.unknown())}).parse(input);
+ const near=(r:unknown)=>{const s=r as {lat?:unknown;lon?:unknown};return typeof s?.lat==='number'&&typeof s?.lon==='number'&&inBounds([s.lon,s.lat]);};
+ return {source_generated_at:data.source_generated_at,stations:data.stations.filter(near)};
+}
+/** The national file trimmed to the map; used by the GitHub fuel refresh and the local server. */
+export async function fetchFuelArea() {
+ const r=await fetch(FUEL_NATIONAL_URL,{headers:{'User-Agent':FUEL_USER_AGENT},signal:AbortSignal.timeout(60_000)});if(!r.ok)throw Error(`Fuel HTTP ${r.status}`);return trimFuelToArea(await r.json());
+}
+/** The Worker's own fallback: the small Reading town file, which misses a few forecourts in the area. */
 export async function fetchFuel() {
  const r=await fetch('https://cheapfuelnearme.uk/api/v1/towns/reading.json',{signal:AbortSignal.timeout(12_000)});if(!r.ok)throw Error(`Fuel HTTP ${r.status}`);return parseFuel(await r.json());
 }

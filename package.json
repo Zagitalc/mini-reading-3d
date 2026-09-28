@@ -26,6 +26,7 @@
     "data:routes": "node --import tsx scripts/build-routes.ts",
     "test:phase-browser": "node tests/phase-browser.mjs",
     "data:hygiene": "node --import tsx scripts/build-hygiene.ts",
+    "fuel:push": "node --import tsx scripts/push-fuel.ts",
     "data:roadworks": "node --import tsx scripts/import-roadworks.ts",
     "check": "npm run test && npm run build",
     "data:download": "node scripts/download-data.mjs",

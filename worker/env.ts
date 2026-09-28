@@ -5,6 +5,8 @@ export interface Env {
   TOMTOM_MONTHLY_TILE_LIMIT?:string;
   WEATHER_ENABLED?:string;
   FUEL_ENABLED?:string;
+  /** Shared secret for the GitHub fuel refresh's upload; unset means the cron fetches fuel itself. */
+  FUEL_INGEST_TOKEN?:string;
   RIVERS_ENABLED?:string;
   DB: D1Database;
   ASSETS: Fetcher;
