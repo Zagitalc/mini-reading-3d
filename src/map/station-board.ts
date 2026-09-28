@@ -1,4 +1,5 @@
 import {detail,escape} from '../ui/shell';
+import {storyHtml} from '../ui/landmark-story';
 import {BOARD_STALE_MS,type RailBoardResponse,type RailDeparture,type StationBoard} from '../../shared/rail-board';
 const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
 let timer:ReturnType<typeof setInterval>|undefined;
@@ -21,7 +22,7 @@ function render(element:HTMLElement,response:RailBoardResponse){
 /** Reading station's departure board from the shared rail refresh. Re-reads the server copy while open. */
 export function openStationBoard(onFocus:()=>void){
  clearInterval(timer);
- detail('<span class="pill">Railway station · live departures</span><h2>Reading station</h2><div id="station-board" aria-live="polite"><p>Loading departures…</p></div><button class="status-button" id="focus-landmark">Take a closer look ↗</button>');
+ detail('<span class="pill">Railway station · live departures</span><h2>Reading station</h2><div id="station-board" aria-live="polite"><p>Loading departures…</p></div><button class="status-button" id="focus-landmark">Take a closer look ↗</button>'+storyHtml('station'));
  document.querySelector('#focus-landmark')!.addEventListener('click',onFocus);
  const element=document.querySelector<HTMLElement>('#station-board')!;
  const load=async()=>{
