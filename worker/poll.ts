@@ -2,12 +2,13 @@ import {CADENCE,due} from '../shared/feed-policy';
 import {feedFailureReason} from '../shared/feed-errors';
 import {fetchWeather} from '../server/providers/weather';
 import {fetchFuel} from '../server/providers/fuel';
+import {fetchRivers} from '../server/providers/rivers';
 import { fetchBuses } from '../server/providers/buses';
 import { fetchRailSnapshot } from '../server/providers/trains';
 import { fetchTraffic } from '../server/providers/traffic';
 import { RailNetwork } from '../server/rail-network';
 import { matchBusRoute, type BusNetwork } from '../server/route-matcher';
-import type { FeedStatus, LngLat, VehicleObservation } from '../shared/types';
+import type { FeedStatus, LngLat, RiverFeedItem, VehicleObservation } from '../shared/types';
 import type { Env } from './env';
 import { CloudStore } from './store';
 
@@ -19,7 +20,7 @@ async function asset<T>(env: Env, name: string): Promise<T> {
   const data=await response.json();assets.set(name,data);return data as T;
 }
 
-export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','trains','traffic','weather','fuel']) {
+export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','trains','traffic','weather','fuel','rivers']) {
   const store = new CloudStore(env.DB);
   async function update(id: FeedStatus['id'], label: string, fetcher?: () => Promise<{items: {id:string}[]; routes?: Record<string, LngLat[]>; states?: Record<string, unknown>}>) {
     if (!fetcher || !feeds.includes(id)) return;
@@ -73,5 +74,7 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
   await update('traffic','Road traffic',!env.TOMTOM_API_KEY&&env.TRAFFIC_FEED_URL ? async () => ({items:await fetchTraffic(env.TRAFFIC_FEED_URL!,env.TRAFFIC_FEED_TOKEN)}) : undefined);
   await update('weather','Estimated weather',env.WEATHER_ENABLED==='true'?async()=>({items:await fetchWeather()}):undefined);
   await update('fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true'?async()=>({items:await fetchFuel()}):undefined);
+  // Previous outlines are reused, so a standing warning costs one polygon request in total.
+  await update('rivers','River levels & flood warnings',env.RIVERS_ENABLED==='true'?async()=>({items:await fetchRivers(await store.items<RiverFeedItem>('rivers'))}):undefined);
   if(feeds.includes('fuel')&&new Date().getUTCHours()===0&&new Date().getUTCMinutes()===0)await env.DB.prepare('DELETE FROM sns_messages WHERE received_at < ?').bind(Date.now()-7*86400000).run();
 }

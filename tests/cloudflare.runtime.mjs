@@ -31,7 +31,7 @@ try {
   for (const statement of sql.split(';').map(x=>x.trim()).filter(Boolean)) await db.prepare(statement).run();
   const get = async path => (await mf.dispatchFetch(`http://local${path}`)).json();
   const health = await get('/api/v1/health');
-  assert.equal(health.data.length,6);
+  assert.equal(health.data.length,7);
   assert.equal(health.data[0].state,'connecting');
   assert.equal(health.data[1].state,'unavailable');
   assert.deepEqual((await get('/api/v1/vehicles')).data,[]);

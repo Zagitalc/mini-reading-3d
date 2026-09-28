@@ -1,6 +1,6 @@
-import {CADENCE} from '../shared/feed-policy';
+import {CADENCE,riverSnapshot} from '../shared/feed-policy';
 import {TrafficTiles,trafficBudget,trafficPeriod} from '../server/providers/tomtom';
-import type {Weather,FuelStation} from '../shared/types';
+import type {Weather,FuelStation,RiverFeedItem} from '../shared/types';
 import type {CacheStorage as CFCacheStorage} from '@cloudflare/workers-types';
 import type { ScheduledController, ExecutionContext } from '@cloudflare/workers-types';
 import type { FeedStatus, LngLat, TrafficSegment, VehicleObservation } from '../shared/types';
@@ -25,6 +25,7 @@ export async function feedHealth(store: CloudStore, env: Env): Promise<FeedStatu
     ['traffic','Road traffic',env.TOMTOM_API_KEY||env.TRAFFIC_FEED_URL,'No verified traffic feed configured'],
     ['weather','Estimated weather',env.WEATHER_ENABLED==='true','Weather disabled'],
     ['fuel','Fuel prices (snapshot)',env.FUEL_ENABLED==='true','Fuel prices disabled'],
+    ['rivers','River levels & flood warnings',env.RIVERS_ENABLED==='true','River levels disabled'],
   ] as const;
   const feeds: FeedStatus[] = [];
   for (const [id,label,configured,message] of definitions) {
@@ -33,7 +34,7 @@ export async function feedHealth(store: CloudStore, env: Env): Promise<FeedStatu
     if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>CADENCE[id]*2) {
       health.state='stale'; if(!health.failures)health.message=id==='buses'?'No recent map-triggered bus refresh':'Scheduled updates delayed';
     }
-    if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>(id==='weather'?3600000:id==='fuel'?48*3600000:300000)) health.count=0;
+    if (health.lastSuccess && Date.now()-Date.parse(health.lastSuccess)>(id==='weather'?3600000:id==='fuel'?48*3600000:id==='rivers'?6*3600000:300000)) health.count=0;
     if(id==='traffic'&&env.TOMTOM_API_KEY){health.state='connecting';health.message='Tiles load on demand; five-minute cache and monthly request cap';}
     feeds.push(health);
   }
@@ -89,7 +90,7 @@ export default {
         return json({error:'Use POST for signed Street Manager notifications'},405);
       }
       if(request.method!=='GET')return json({error:'Method not allowed'},405);
-      if(path==='/api/v1/config')return json({tomtom:!!env.TOMTOM_API_KEY,trafficRefreshMs:CADENCE.traffic,weather:env.WEATHER_ENABLED==='true',fuel:env.FUEL_ENABLED==='true'});
+      if(path==='/api/v1/config')return json({tomtom:!!env.TOMTOM_API_KEY,trafficRefreshMs:CADENCE.traffic,weather:env.WEATHER_ENABLED==='true',fuel:env.FUEL_ENABLED==='true',rivers:env.RIVERS_ENABLED==='true'});
       if(path.startsWith('/api/v1/traffic-tiles/')){
         const match=path.match(/^\/api\/v1\/traffic-tiles\/(\d+)\/(\d+)\/(\d+)$/);if(!match)return json({error:'Invalid tile'},404);
         let service=tileServices.get(env.DB);
@@ -98,6 +99,12 @@ export default {
       }
       if(path==='/api/v1/weather')return json(snapshot(env.WEATHER_ENABLED==='true'?(await store.items<Weather>('weather')).filter(w=>Date.now()-Date.parse(w.observedAt)<3600000):[]));
       if(path==='/api/v1/fuel')return json(snapshot(env.FUEL_ENABLED==='true'?(await store.items<FuelStation>('fuel')).filter(f=>Date.now()-Date.parse(f.observedAt)<48*3600000):[]));
+      if(path==='/api/v1/rivers'){
+        if(env.RIVERS_ENABLED!=='true')return json({...snapshot([]),warningsCurrent:false});
+        const health=await store.state<FeedStatus>('rivers');
+        const rivers=riverSnapshot(await store.items<RiverFeedItem>('rivers'),health?.lastSuccess);
+        return json({...snapshot(rivers.data),warningsCurrent:rivers.warningsCurrent});
+      }
       if(path==='/api/v1/usage')return json({period:trafficPeriod(),trafficTileRequests:(await store.state<{count:number}>('traffic-usage:'+trafficPeriod()))?.count??0,trafficTileLimit:trafficBudget(env.TOMTOM_MONTHLY_TILE_LIMIT),providerIntervalsMs:CADENCE,busRefreshMode:'shared-on-demand',streetManager:'push only; no polling'});
       if(path==='/api/v1/health')return json(snapshot(await feedHealth(store,env)));
       if(path==='/api/v1/road-events')return json(snapshot(await store.active()));
@@ -133,6 +140,6 @@ export default {
     }catch{return json({error:'Data service unavailable'},503);}
   },
   async scheduled(_event: ScheduledController, env: Env, _ctx: ExecutionContext) {
-    await pollFeeds(env,['trains','traffic','weather','fuel']);
+    await pollFeeds(env,['trains','traffic','weather','fuel','rivers']);
   },
 };

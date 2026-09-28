@@ -5,6 +5,7 @@ export interface Env {
   TOMTOM_MONTHLY_TILE_LIMIT?:string;
   WEATHER_ENABLED?:string;
   FUEL_ENABLED?:string;
+  RIVERS_ENABLED?:string;
   DB: D1Database;
   ASSETS: Fetcher;
   BODS_API_KEY?: string;

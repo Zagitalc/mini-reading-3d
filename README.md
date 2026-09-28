@@ -84,7 +84,7 @@ Application code: MIT. Geography: © OpenStreetMap contributors, ODbL 1.0, distr
 
 Mini London / Mini Tokyo informed the separation of rendering and movement concerns. This is a fresh implementation; no London application source or TfL credentials were copied.
 
-Traffic/weather/fuel: enter `TOMTOM_API_KEY` in `.env` for local development. Keyless weather effects and Reading fuel snapshots are enabled there; see [feed sources](docs/data-sources.md#traffic-weather-and-fuel-september-2026) and [deployment/call budgets](docs/cloudflare.md#new-feed-configuration-and-call-budgets). Buses have route-coloured labels and selectable line matching. Use `npm run check:feeds` against the running local server (`APP_URL` overrides the URL) to audit cached feed status and the traffic request budget without calling providers directly.
+Traffic/weather/fuel: enter `TOMTOM_API_KEY` in `.env` for local development. Keyless weather effects, Reading fuel snapshots and Environment Agency river levels with flood warnings are enabled there; see [feed sources](docs/data-sources.md#traffic-weather-and-fuel-september-2026) and [deployment/call budgets](docs/cloudflare.md#new-feed-configuration-and-call-budgets). Buses have route-coloured labels and selectable line matching. Use `npm run check:feeds` against the running local server (`APP_URL` overrides the URL) to audit cached feed status and the traffic request budget without calling providers directly.
 
 ## Timetable maintenance and bus movement
 

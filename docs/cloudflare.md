@@ -69,9 +69,10 @@ TOMTOM_API_KEY=
 TOMTOM_MONTHLY_TILE_LIMIT=150000
 WEATHER_ENABLED=true
 FUEL_ENABLED=true
+RIVERS_ENABLED=true
 ```
 
-Weather and fuel use keyless endpoints. Existing BODS/rail credentials are preserved. `TRAFFIC_FEED_URL` is the older optional custom JSON bridge; leave it blank when using TomTom. The bridge is not polled when TomTom is enabled.
+Weather, fuel and river levels use keyless endpoints. Existing BODS/rail credentials are preserved. `TRAFFIC_FEED_URL` is the older optional custom JSON bridge; leave it blank when using TomTom. The bridge is not polled when TomTom is enabled.
 
 **`.env` is not uploaded to Cloudflare.** For the deployed Worker, run `npx wrangler secret put TOMTOM_API_KEY` and enter the key at the prompt, then deploy the tested bundle. Use `.dev.vars` for Wrangler local development. Non-secret weather/fuel switches and the traffic cap are in `wrangler.jsonc`. RDM JSON is supported through `RDM_API_KEY`; `DARWIN_TOKEN` remains a separate optional SOAP credential. Keys stay server-side and are not returned by the configuration API.
 
@@ -83,6 +84,7 @@ Weather and fuel use keyless endpoints. Existing BODS/rail credentials are prese
 | TomTom | Visible Reading tiles only; five-minute cache; 150,000 upstream attempts/month hard cap by default |
 | Open-Meteo | 15 minutes (96/day) |
 | Reading fuel mirror | Six hours (4/day) |
+| Environment Agency rivers | 15 minutes: one station list, one document per Thames/Kennet gauge (at most 16), one flood query, plus one outline per new warning (at most 6); seven gauges qualified on 28 September 2026, so nine requests per refresh (864/day); at most 1,728/day at the 16-gauge cap. A cron minute in which every feed is due stays under 30 subrequests |
 | Street Manager | Push notifications only; zero polling calls |
 | Browser vehicle state and health | Two requests/minute total while visible |
 | Browser roadworks snapshot | Once per five minutes (95% fewer reads than the old 15-second refresh) |

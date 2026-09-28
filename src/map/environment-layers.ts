@@ -6,6 +6,7 @@ import {detail,escape} from '../ui/shell';
 import {WeatherEffects} from '../scene/weather';
 import type {ReadingScene} from '../scene/layer';
 import {fuelPumpIcon,fuelPumpLegend} from './fuel-icon';
+import {connectRivers} from './river-layers';
 export async function connectEnvironment(map:Map,scene:ReadingScene){
  const effects=new WeatherEffects(scene);const prior=scene.animate;scene.animate=()=>{const a=prior?.()??false;return effects.update()||a;};
  let disposed=false;const timers=new Set<ReturnType<typeof setTimeout>>();const controllers=new Set<AbortController>();
@@ -15,7 +16,7 @@ export async function connectEnvironment(map:Map,scene:ReadingScene){
  const invoke=async(task:typeof tasks[number])=>{if(disposed||task.running||document.hidden||Date.now()<task.next)return;task.running=true;try{const ok=await task.run();task.failures=ok===false?task.failures+1:0;}catch{task.failures++;}finally{task.running=false;const delay=task.failures?Math.min(task.interval,60000*2**Math.min(task.failures-1,3)):task.interval;task.next=Date.now()+delay;if(!disposed){const timer=setTimeout(()=>{timers.delete(timer);void invoke(task);},delay);timers.add(timer);}}};
  const visible=()=>{if(!document.hidden){for(const task of tasks)void invoke(task);map.triggerRepaint();}};document.addEventListener('visibilitychange',visible);
  map.on('remove',()=>{disposed=true;timers.forEach(clearTimeout);controllers.forEach(c=>c.abort());document.removeEventListener('visibilitychange',visible);effects.dispose();});
- let config:{tomtom:boolean;weather:boolean;fuel:boolean};try{config=await get('/api/v1/config');}catch{return;}if(disposed)return;
+ let config:{tomtom:boolean;weather:boolean;fuel:boolean;rivers?:boolean};try{config=await get('/api/v1/config');}catch{return;}if(disposed)return;
  if(config.tomtom){
   const tileUrl=()=>`${location.origin}/api/v1/traffic-tiles/{z}/{x}/{y}?v=${Math.floor(Date.now()/CADENCE.traffic)}`;
   const toggle=document.querySelector<HTMLInputElement>('[data-layer=traffic]')!;
@@ -44,4 +45,5 @@ export async function connectEnvironment(map:Map,scene:ReadingScene){
  fuelToggle.addEventListener('change',()=>{map.setLayoutProperty('fuel-points','visibility',fuelToggle.checked?'visible':'none');});
  map.on('click','fuel-points',e=>{const station=stations.find(s=>s.id===e.features?.[0]?.properties.id);if(!station)return;detail(`<span class="pill">Fuel price snapshot</span><h2>${escape(station.name)}</h2><p>${escape(station.brand)} · ${escape(station.postcode)}</p>${station.quiet?'<p>No prices submitted at this site for at least 14 days.</p>':''}<dl>${Object.entries(station.prices).map(([grade,p])=>`<dt>${escape(({E10:'Petrol E10',E5:'Petrol E5',B7S:'Diesel',B7P:'Premium diesel'} as Record<string,string>)[grade]??grade)}</dt><dd>${p.pence.toFixed(1)}p/litre<small>Submitted ${escape(new Date(p.submittedAt).toLocaleString('en-GB'))}</small></dd>`).join('')}</dl><p>Source snapshot: ${escape(new Date(station.observedAt).toLocaleString('en-GB'))}. Prices may have changed.</p>${station.locationRepaired?'<p>Source reports a corrected coordinate.</p>':''}<a href="https://cheapfuelnearme.uk/api/" target="_blank" rel="noopener">Fuel Finder via Cheap Fuel Near Me</a><p>Contains public sector information licensed under OGL v3.0.</p>`);});
  if(config.fuel)schedule(async()=>{try{const data=await get('/api/v1/fuel');if(disposed)return;stations=data.data;(map.getSource('fuel-stations') as GeoJSONSource).setData({type:'FeatureCollection',features:stations.map(s=>({type:'Feature',geometry:{type:'Point',coordinates:s.position},properties:{id:s.id}}))});section.querySelector('#fuel-summary')!.textContent=stations.length?`${stations.length} forecourts · twice-daily source`:'Fuel snapshot unavailable';return stations.length>0;}catch{if(!disposed){section.querySelector('#fuel-summary')!.textContent='Fuel snapshot unavailable';if(stations.some(s=>Date.now()-Date.parse(s.observedAt)>=48*3600000)){stations=[];(map.getSource('fuel-stations') as GeoJSONSource).setData({type:'FeatureCollection',features:[]});}}return false;}},CADENCE.fuel);
+ connectRivers(map,section,schedule,get,config.rivers===true,CADENCE.rivers,()=>disposed);
 }
