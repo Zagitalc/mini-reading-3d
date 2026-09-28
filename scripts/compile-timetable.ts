@@ -4,13 +4,14 @@ import {fallbackColour} from '../shared/static-routes';
 import {inBounds} from '../shared/geo';
 import {parseGtfsTime,type BusStop,type StopIndex,type StopTimetable,type TimetableService} from '../shared/timetable';
 import type {ServiceSummary,ServiceTrip} from '../shared/scheduled-services';
+import {stopDistances,type JourneyPattern,type JourneyTrip,type RouteJourneys} from '../shared/live-departures';
 import {loopDestination,type LoopDestination} from './loop-destinations';
 import type {LngLat,Place} from '../shared/types';
 type Row=Record<string,string>;
 /** Bump when compiled output changes for the same feed, so the scheduled refresh rebuilds and redeploys. */
-export const TIMETABLE_COMPILER=4;
+export const TIMETABLE_COMPILER=5;
 export const timetableVersion=(contentHash:string)=>createHash('sha256').update(`${contentHash}\0compiler ${TIMETABLE_COMPILER}`).digest('hex').slice(0,16);
-export function compileTimetable(rows:(file:string)=>Row[],provenance:{source:string;sourceUrl:string;licence:string;retrievedAt:string},version:string,places:Place[]=[]){
+export function compileTimetable(rows:(file:string)=>Row[],provenance:{source:string;sourceUrl:string;licence:string;retrievedAt:string},version:string,places:Place[]=[],shapes:Record<string,LngLat[]>={}){
  const agencies=rows('agency.txt'),zones=new Set(agencies.map(a=>a.agency_timezone));if(zones.size!==1||!zones.has('Europe/London'))throw Error('Expected one Europe/London timetable timezone');
  const routes=Object.fromEntries(rows('routes.txt').map(r=>[r.route_id,r]));
  const trips=new Map(rows('trips.txt').map(t=>[t.trip_id,t]));
@@ -58,7 +59,9 @@ export function compileTimetable(rows:(file:string)=>Row[],provenance:{source:st
  for(const stop of stops.values()){if(!stop.routeIds.length)continue;stop.routeIds.sort();stop.routeIds.forEach(id=>usedRoutes.add(id));const data=payloads.get(stop.id);if(data){const file=createHash('sha256').update(JSON.stringify(data)).digest('hex').slice(0,20)+'.json';stop.timetableUrl=`/data/timetables/${version}/${file}`;files.set(file,data);}index.stops.push(stop);}
  for(const id of usedRoutes){const r=routes[id];index.routes[id]={label:r.route_short_name||r.route_long_name||id,colour:/^[a-f\d]{6}$/i.test(r.route_color)?`#${r.route_color}`:busBrands[r.route_short_name]?.[0]??fallbackColour(id)};}
  const summaryFile=`services-${createHash('sha256').update(JSON.stringify(summary)).digest('hex').slice(0,20)}.json`;index.servicesUrl=`/data/timetables/${version}/${summaryFile}`;
- index.stops.sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));return {index,files,summary,summaryFile};
+ const journeys=routeJourneys(stopTimes,trips,stops,shapes,frequencyTrips,version),journeyFiles=new Map<string,RouteJourneys>();
+ for(const [routeId,data] of journeys){if(!index.routes[routeId])continue;const file=`journeys-${createHash('sha256').update(JSON.stringify(data)).digest('hex').slice(0,20)}.json`;index.routes[routeId].journeysUrl=`/data/timetables/${version}/${file}`;journeyFiles.set(file,data);}
+ index.stops.sort((a,b)=>a.name.localeCompare(b.name)||a.id.localeCompare(b.id));return {index,files,summary,summaryFile,journeyFiles};
 }
 // A publisher's stop_headsign always wins; otherwise loop trips announce their far side until they turn.
 function headsignAt(row:Row,loop?:LoopDestination):[string]|[]{const headsign=row.stop_headsign||(loop&&+row.stop_sequence<loop.beforeSequence?loop.label:'');return headsign?[headsign]:[];}
@@ -71,5 +74,27 @@ function loopDestinations(stopRows:Row[],stopTimes:Row[],places:Place[]){
  for(const [trip,list] of calls){list.sort((a,b)=>a.sequence-b.sequence);const key=list.map(c=>`${c.sequence}:${c.stopId}`).join();
   if(!patterns.has(key))patterns.set(key,loopDestination(list.map(c=>({sequence:c.sequence,position:positions.get(c.stopId)!})),places));
   const loop=patterns.get(key);if(loop)result.set(trip,loop);}
+ return result;
+}
+/**
+ * Each route's journeys as road geometry plus timed calls inside the map area, so a live bus position can be
+ * compared with the timetable of the journey it reports running.
+ */
+function routeJourneys(stopTimes:Row[],trips:Map<string,Row>,stops:Map<string,BusStop>,shapes:Record<string,LngLat[]>,frequencyTrips:Set<string>,version:string){
+ const calls=new Map<string,{sequence:number;stopId:string;seconds?:number}[]>();
+ for(const row of stopTimes){if(!calls.has(row.trip_id))calls.set(row.trip_id,[]);calls.get(row.trip_id)!.push({sequence:+row.stop_sequence,stopId:row.stop_id,seconds:parseGtfsTime(row.departure_time||row.arrival_time)});}
+ const result=new Map<string,RouteJourneys>(),patternIndexes=new Map<string,Map<string,number>>(),shapeIndexes=new Map<string,Map<string,number>>();
+ for(const [tripId,list] of calls){
+  const trip=trips.get(tripId),shape=trip&&shapes[trip.shape_id];if(!trip||!shape||frequencyTrips.has(tripId))continue;
+  list.sort((a,b)=>a.sequence-b.sequence);
+  const local=list.filter(c=>stops.has(c.stopId)&&c.seconds!==undefined);if(local.length<2)continue;
+  if(!result.has(trip.route_id)){result.set(trip.route_id,{schema:1,version,routeId:trip.route_id,timezone:'Europe/London',shapes:[],patterns:[],trips:[]});patternIndexes.set(trip.route_id,new Map());shapeIndexes.set(trip.route_id,new Map());}
+  const data=result.get(trip.route_id)!,patterns=patternIndexes.get(trip.route_id)!,shapeIds=shapeIndexes.get(trip.route_id)!;
+  if(!shapeIds.has(trip.shape_id)){shapeIds.set(trip.shape_id,data.shapes.length);data.shapes.push(shape.map(([x,y])=>[+x.toFixed(5),+y.toFixed(5)] as LngLat));}
+  const key=`${trip.shape_id}\u0000${local.map(c=>`${c.sequence}:${c.stopId}`).join()}`;
+  if(!patterns.has(key)){patterns.set(key,data.patterns.length);data.patterns.push({shape:shapeIds.get(trip.shape_id)!,stops:local.map(c=>c.stopId),sequences:local.map(c=>c.sequence),along:stopDistances(local.map(c=>stops.get(c.stopId)!.position),shape)} satisfies JourneyPattern);}
+  data.trips.push([tripId,patterns.get(key)!,local.map(c=>c.seconds!)] satisfies JourneyTrip);
+ }
+ for(const data of result.values())data.trips.sort((a,b)=>a[2][0]-b[2][0]||a[0].localeCompare(b[0]));
  return result;
 }

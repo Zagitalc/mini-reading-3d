@@ -5,7 +5,7 @@ export interface TimetableTrip {id:string;service:number;routeId:string;headsign
 export type StopTime=[number,number,number,0|1,number,string?];
 export interface StopTimetable {schema:1;stopId:string;timezone:string;services:TimetableService[];trips:TimetableTrip[];times:StopTime[]}
 export interface BusStop {id:string;name:string;code:string;position:LngLat;routeIds:string[];timetableUrl?:string}
-export interface StopIndex {schema:1;version?:string;feedInfo?:{version?:string;startDate?:string;endDate?:string};source:string;sourceUrl:string;licence:string;retrievedAt:string;generatedAt:string;timezone:string;validFrom:string;validUntil:string;routes:Record<string,{label:string;colour:string}>;stops:BusStop[];servicesUrl?:string;omitted:{missingTimes:number;frequencyTrips:number}}
+export interface StopIndex {schema:1;version?:string;feedInfo?:{version?:string;startDate?:string;endDate?:string};source:string;sourceUrl:string;licence:string;retrievedAt:string;generatedAt:string;timezone:string;validFrom:string;validUntil:string;routes:Record<string,{label:string;colour:string;journeysUrl?:string}>;stops:BusStop[];servicesUrl?:string;omitted:{missingTimes:number;frequencyTrips:number}}
 export interface Departure {tripId:string;routeId:string;headsign:string;direction:string;sequence:number;time:number;serviceDate:string;approximate:boolean;pickupType:number}
 const formatters=new Map<string,Intl.DateTimeFormat>();
 function formatter(timezone:string){let f=formatters.get(timezone);if(!f){f=new Intl.DateTimeFormat('en-CA',{timeZone:timezone,year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hourCycle:'h23'});formatters.set(timezone,f);}return f;}

@@ -28,7 +28,7 @@ for(const required of ['agency.txt','routes.txt','trips.txt','stops.txt','stop_t
 // Place names label the far side of loop routes; features.json comes from the geography build.
 const places=await readFile('public/data/features.json','utf8').then(t=>JSON.parse(t).places??[]).catch(()=>[]);
 if(!places.length)console.warn('No place names in public/data/features.json; loop routes keep their final-stop destination.');
-const timetable=compileTimetable(rows,provenance,version,places);
+const timetable=compileTimetable(rows,provenance,version,places,shapes);
 const network={...provenance,version,shapes,trips,routes,stops,calendar:rows('calendar.txt'),calendarDates:rows('calendar_dates.txt')};
 const previous=await readFile('public/data/bus-stops.json','utf8').then(JSON.parse).catch(()=>undefined);
 validateGtfs(network,timetable.index,timetable.files,previous,Date.now(),timetable.summary);
@@ -39,6 +39,7 @@ await writeFile(`${dest}/gtfs-metadata.json`,JSON.stringify(metadata));
 await rm(`${dest}/timetables`,{recursive:true,force:true});await mkdir(`${dest}/timetables/${version}`,{recursive:true});
 for(const [file,data] of timetable.files)await writeFile(`${dest}/timetables/${version}/${file}`,JSON.stringify(data));
 await writeFile(`${dest}/timetables/${version}/${timetable.summaryFile}`,JSON.stringify(timetable.summary));
+for(const [file,data] of timetable.journeyFiles)await writeFile(`${dest}/timetables/${version}/${file}`,JSON.stringify(data));
 await writeFile(`${dest}/bus-stops.json`,JSON.stringify(timetable.index));
 await writeFile(`${dest}/bus-network.json`,JSON.stringify(network));
 console.log(`${Object.keys(shapes).length} shapes, ${trips.length} trips, ${routes.length} routes, ${stops.length} stops`);

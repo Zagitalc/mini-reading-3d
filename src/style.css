@@ -29,3 +29,4 @@
 .story-sources a{color:var(--accent)}
 .story-sources small,.story-checked{color:var(--muted);font-size:12px}
 .story-sources li:target{background:#eef3ea}
+.live-departures{border:1px solid #9cc3b4;border-radius:6px;background:#f0f8f3;padding:4px 10px 8px;margin:8px 0 12px}.live-departures h3{margin:6px 0 2px;color:#1f6b4f}.live-departures>small{display:block;font-size:10px;color:#586d65}.live-empty{font-size:12px;margin:6px 0}.departures.live li{border-bottom-color:#cfe3d8}.departures .countdown{min-width:65px;font-weight:700;font-size:16px;color:#1f6b4f}.departures small.live-flag{color:#1f6b4f;font-weight:600}.scheduled-heading{margin-bottom:2px}
