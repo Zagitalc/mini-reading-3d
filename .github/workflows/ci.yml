@@ -7,13 +7,13 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
-concurrency:
-  group: ci-${{ github.ref }}
-  cancel-in-progress: true
 jobs:
   check:
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    concurrency:
+      group: ci-${{ github.ref }}
+      cancel-in-progress: true
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
@@ -23,3 +23,30 @@ jobs:
       - run: npm ci
       - name: Unit tests, type check and build
         run: npm run check
+  deploy:
+    needs: check
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    # Shares the timetable workflow's group so two deploys never run at once; a deploy is never cancelled part-way.
+    concurrency:
+      group: reading-timetable-production
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check the Worker bundle
+        run: npm run cf:check
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: '4160ba018475163db86db8d32cb5af86'
+        # A newer push deploys itself, so an older commit never replaces it. D1 migrations stay manual: run `npm run cf:migrate` first.
+        run: |
+          git fetch origin main
+          if [ "$(git rev-parse HEAD)" != "$(git rev-parse origin/main)" ]; then echo 'main has moved on; the newer run deploys.'; exit 0; fi
+          npx wrangler deploy
