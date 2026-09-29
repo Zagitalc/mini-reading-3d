@@ -1,4 +1,4 @@
-import type{Map,StyleSpecification,LayerSpecification}from'maplibre-gl';import{BOUNDS}from'../../shared/config';
+import type{Map,StyleSpecification,LayerSpecification}from'maplibre-gl';import{BOUNDS}from'../../shared/config';import{isDark,onThemeChange}from'../ui/theme';
 /** Base map colours for light and dark mode; overlays keep their own colours. */
 const PALETTE={
  light:{ground:'#e8e7e1',urban:'#e4e1d9',farm:'#d8dccc',green:'#ced7c8',water:'#a9c2c4',casing:'#c7c5bd',path:'#e4dfd2',road:'#f7f5ef',railBed:'#c8c5bb',rail:'#858c89',footprint:'#bdb8ad',blocks:['#b6866d','#b89d86','#c8bfaa','#8da5a5','#b98b7a','#c5b394','#99aa9d','#c1a18e'],label:'#6f7772',halo:'#f4f2eb'},
@@ -14,10 +14,9 @@ const paints=(c:Palette):[string,any,any][]=>[
  ['building-overview','fill-extrusion-color',['match',['get','colour'],...c.blocks.slice(0,7).flatMap((colour,i)=>[i,colour]),c.blocks[7]]],
  ['road-labels','text-color',c.label],['road-labels','text-halo-color',c.halo],
 ];
-const DARK='(prefers-color-scheme: dark)';
-/** Keeps the base map in step with the system's light or dark setting. */
-export function followColourScheme(map:Map){const query=matchMedia(DARK);query.addEventListener('change',()=>{for(const [layer,property,value] of paints(query.matches?PALETTE.dark:PALETTE.light))map.setPaintProperty(layer,property,value);});}
-export function mapStyle(dark=globalThis.matchMedia?.(DARK).matches===true):StyleSpecification{
+/** Keeps the base map in step with the light or dark colours. */
+export function followColourScheme(map:Map){onThemeChange(()=>{for(const [layer,property,value] of paints(isDark()?PALETTE.dark:PALETTE.light))map.setPaintProperty(layer,property,value);});}
+export function mapStyle(dark=isDark()):StyleSpecification{
  const source={source:'reading','source-layer':'reading'};const filter=(kind:string)=>['==',['get','kind'],kind]as any;
  const roadWidth:any=['interpolate',['linear'],['zoom'],10,.5,14,['match',['get','highway'],['motorway','trunk'],5,['primary','secondary'],3,1.5],18,['match',['get','highway'],['motorway','trunk'],28,['primary','secondary'],20,['tertiary','residential'],12,5]];
  const layers:LayerSpecification[]=[
