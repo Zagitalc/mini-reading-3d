@@ -1,11 +1,11 @@
-import type {Map,GeoJSONSource} from 'maplibre-gl';
+import type {Map,GeoJSONSource,MapMouseEvent} from 'maplibre-gl';
 import type {FuelStation,LngLat} from '../../shared/types';
 import type {StationPriceDay} from '../../shared/history';
 import {GRADE_NAMES,band,detours,membersOnly,motorway,spread,tripCost,PRICE_MAX_AGE_MS,ROAD_FACTOR,type PriceRow} from '../../shared/fuel-compare';
 import {BUS_FARES,busReturn} from '../../shared/fares';
 import {LANDMARKS} from '../../shared/config';
 import {distance} from '../../shared/geo';
-import {detail,escape,toast} from '../ui/shell';
+import {detail,escape,startPick} from '../ui/shell';
 import {PUMP_COLOURS,fuelPumpIcon} from './fuel-icon';
 // Prices are shown as reported, each with its own submission time; nothing here estimates a price.
 type Settings={grade:string;tank:number;fill:number;mpg:number;parking:number;dest:string};
@@ -92,8 +92,10 @@ export function connectFuel(map:Map,section:HTMLElement,enabled:boolean){
   el.querySelectorAll<HTMLInputElement|HTMLSelectElement>('[data-fuel-setting]').forEach(input=>input.addEventListener('change',()=>{const id=input.dataset.fuelSetting as keyof Settings;
    if(id==='dest'||id==='grade')settings[id]=input.value;else{const v=Number(input.value),min=Number(input.getAttribute('min')),max=Number(input.getAttribute('max'));if(Number.isFinite(v)&&v>=min&&v<=max)settings[id]=v;}
    saveSettings(settings);render();}));
-  el.querySelector('#fuel-pick')?.addEventListener('click',()=>{toast('Click the map where your trip starts');map.getCanvas().style.cursor='crosshair';
-   map.once('click',e=>{map.getCanvas().style.cursor='';start=[e.lngLat.lng,e.lngLat.lat];if(!toggle.checked){toggle.checked=true;show(true);}draw();open();});});
+  el.querySelector('#fuel-pick')?.addEventListener('click',()=>{map.getCanvas().style.cursor='crosshair';
+   const picked=(e:MapMouseEvent)=>{done();map.getCanvas().style.cursor='';start=[e.lngLat.lng,e.lngLat.lat];if(!toggle.checked){toggle.checked=true;show(true);}draw();open();};
+   const done=startPick('Tap the map where your trip starts',()=>{map.off('click',picked);map.getCanvas().style.cursor='';});
+   map.once('click',picked);});
   if(trip)void stops().then(index=>{const target=el.querySelector('#fuel-bus-link');if(!target)return;if(!index){target.textContent='Bus stops could not load.';return;}
    const link=busLink(index,from,dest.position);
    target.textContent=link.stop&&link.metres<=800?`Nearest stop: ${link.stop.name}, about ${link.metres} m away. ${link.direct.length?`Direct routes: ${link.direct.slice(0,8).join(', ')}.`:'No route calls near both ends, so expect to change buses; a day ticket covers that.'}`:'No bus stop within 800 m of the start.';});
