@@ -2,7 +2,7 @@ import type {Map,VectorTileSource,GeoJSONSource} from 'maplibre-gl';
 import {CADENCE} from '../../shared/feed-policy';
 import {BOUNDS} from '../../shared/config';
 import type {Weather} from '../../shared/types';
-import {detail,escape} from '../ui/shell';
+import {detail,escape,layerGroup,toolSlot} from '../ui/shell';
 import {WeatherEffects} from '../scene/weather';
 import {rainRate} from '../scene/weather-layout';
 const precipitationText=(w:Weather)=>w.snowCm>0?`Snow ${(w.snowCm*3600/w.intervalSeconds).toFixed(1)} cm/h equivalent over the reported interval.`:rainRate(w.rainMm,w.intervalSeconds)>0?`Rain ${rainRate(w.rainMm,w.intervalSeconds).toFixed(1)} mm/h equivalent over the reported interval.`:'No rain reported in the latest interval.';
@@ -32,7 +32,7 @@ export async function connectEnvironment(map:Map,scene:ReadingScene){
   let firstTrafficRefresh=true;
   schedule(async()=>{if(firstTrafficRefresh){firstTrafficRefresh=false;return;}if(loaded&&toggle.checked)(map.getSource('tomtom-flow') as VectorTileSource).setTiles([tileUrl()]);},CADENCE.traffic);
  }
- const section=document.createElement('section');section.className='environment-control';section.innerHTML='<div class="layer-title">Around Reading</div><label class="layer-row"><span>☁ Weather effects</span><input id="weather-effects" type="checkbox" checked role="switch"></label><button id="weather-summary" class="environment-summary">Weather loading…</button><label class="layer-row"><span>◈ Fuel prices</span><input id="fuel-layer" type="checkbox" role="switch"></label><button id="fuel-compare" class="environment-summary">Compare prices and trips</button><small id="fuel-summary">Twice-daily prices · source dates on click</small>';document.querySelector('#layers')!.append(section);
+ const section=document.createElement('section');section.className='environment-control';section.innerHTML='<label class="layer-row"><span><i>☁</i>Weather effects</span><input id="weather-effects" type="checkbox" checked role="switch"></label><button id="weather-summary" class="environment-summary">Weather loading…</button><label class="layer-row"><span>◈ Fuel prices</span><input id="fuel-layer" type="checkbox" role="switch"></label><small id="fuel-summary">Twice-daily prices · source dates on click</small>';layerGroup('around').append(section);toolSlot('fuel').innerHTML='<button id="fuel-compare" type="button" class="layer-row"><span><i>◈</i>Fuel prices and trips<small>Compare</small></span><span aria-hidden="true">↗</span></button>';
  const weatherText=section.querySelector<HTMLButtonElement>('#weather-summary')!;let weather:Weather|undefined;
  section.querySelector<HTMLInputElement>('#weather-effects')!.addEventListener('change',e=>{effects.enabled=(e.target as HTMLInputElement).checked;map.triggerRepaint();});
  weatherText.addEventListener('click',()=>{if(weather)detail(`<span class="pill">Estimated weather for Reading</span><h2>${weather.temperature.toFixed(1)}°C</h2><p>Cloud cover ${weather.cloudCover}% · Wind ${weather.windKph.toFixed(0)} km/h</p><p>${precipitationText(weather)}</p><p>Model time: ${escape(new Date(weather.observedAt).toLocaleString('en-GB'))}</p><p>The number of clouds follows the reported cover, and rain or snow is drawn only while the model reports it falling. Cloud positions are illustrative: the model gives one value for the whole area, so it does not locate individual clouds or showers.</p><a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo · CC BY 4.0</a>`);});

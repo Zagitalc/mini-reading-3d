@@ -1,4 +1,4 @@
-import {detail,escape} from '../ui/shell';
+import {detail,escape,toolSlot} from '../ui/shell';
 import type {HistoryResponse,HourSummary} from '../../shared/history';
 const hourLabel=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
@@ -82,7 +82,7 @@ async function load(element:HTMLElement,days:number){
 export function connectHistoryPanel(){
  const section=document.createElement('section');section.className='route-control history-control';
  section.innerHTML='<button type="button" class="layer-row history-open"><span><i>▃</i>Reading over time<small>Recorded</small></span><span aria-hidden="true">↗</span></button>';
- document.querySelector('#layers')!.insertBefore(section,document.querySelector('[data-layer=traffic]')!.closest('label'));
+ toolSlot('history').append(section);
  section.querySelector('button')!.addEventListener('click',()=>{
   detail(`<span class="pill">Recorded history · hourly</span><h2>Reading over time</h2><p>How Reading’s buses, trains and data feeds behaved hour by hour, and what fuel cost each day, from figures the map saves as it runs.</p><div id="history-view" aria-live="polite"><p>Loading the recorded history…</p></div>
    <small>A sample is taken once a minute from the data the map already holds, so recording makes no extra provider calls. Buses refresh only while someone has the map open, which leaves gaps overnight. Trains are estimated positions; departures come from the Reading station board as each train is about to leave, and count as late at five minutes. Fuel is the day’s newest price snapshot; each station keeps its own submission time.</small>`);

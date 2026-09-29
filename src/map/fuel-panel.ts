@@ -47,7 +47,7 @@ export function connectFuel(map:Map,section:HTMLElement,enabled:boolean){
  map.addLayer({id:'fuel-points',type:'symbol',source:'fuel-stations',layout:{visibility:'none','icon-image':['concat','fuel-pump-',['get','state']],'icon-size':.85,'icon-anchor':'bottom','icon-allow-overlap':true,'icon-ignore-placement':true,'text-field':['get','label'],'text-size':11,'text-anchor':'top','text-offset':[0,.2],'text-font':['Noto Sans Regular'],'text-optional':true,'text-allow-overlap':true},minzoom:0,paint:{'text-color':['match',['get','state'],'cheap',PUMP_COLOURS.cheap,'dear',PUMP_COLOURS.dear,'old','#737a73','#7a3f10'],'text-halo-color':'#fffdf5','text-halo-width':1.6,'text-opacity':['step',['zoom'],0,13.5,1]}});
  map.addSource('fuel-start',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
  map.addLayer({id:'fuel-start-point',type:'circle',source:'fuel-start',layout:{visibility:'none'},paint:{'circle-radius':7,'circle-color':'#25483e','circle-stroke-color':'#fffdf5','circle-stroke-width':3}});
- const toggle=section.querySelector<HTMLInputElement>('#fuel-layer')!,compare=section.querySelector<HTMLButtonElement>('#fuel-compare')!;
+ const toggle=section.querySelector<HTMLInputElement>('#fuel-layer')!,compare=document.querySelector<HTMLButtonElement>('#fuel-compare')!;
  toggle.disabled=!enabled;compare.disabled=!enabled;
  const show=(on:boolean)=>{for(const id of ['fuel-points','fuel-start-point'])map.setLayoutProperty(id,'visibility',on?'visible':'none');};
  toggle.addEventListener('change',()=>show(toggle.checked));

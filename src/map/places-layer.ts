@@ -1,6 +1,6 @@
 import type {Map,GeoJSONSource} from 'maplibre-gl';
 import {RATING_TEXT,ratingGroup,type HygieneBundle,type HygienePlace} from '../../shared/hygiene';
-import {detail,escape} from '../ui/shell';
+import {detail,escape,layerGroup} from '../ui/shell';
 // Useful places, starting with food hygiene ratings. The bundle is built by `npm run data:hygiene` and
 // loaded only when the layer is first switched on.
 const COLOURS={good:'#2f7d4f',fair:'#d19a1c',poor:'#b3372b',none:'#9aa19a'} as const;
@@ -8,11 +8,11 @@ const FILTERS={all:'All',good:'Rated 4 or 5',poor:'Rated 0 to 2'} as const;
 const date=(d:string)=>d?new Date(d+'T12:00:00Z').toLocaleDateString('en-GB',{timeZone:'UTC',day:'numeric',month:'long',year:'numeric'}):'not given';
 export function connectPlaces(map:Map){
  const section=document.createElement('section');section.className='environment-control places-control';
- section.innerHTML=`<div class="layer-title">Useful places</div><label class="layer-row"><span><i>✚</i>Food hygiene ratings</span><input id="hygiene-layer" type="checkbox" role="switch"></label>
+ section.innerHTML=`<label class="layer-row"><span><i>✚</i>Food hygiene ratings</span><input id="hygiene-layer" type="checkbox" role="switch"></label>
   <div class="departure-views hygiene-filters" role="group" aria-label="Which ratings to show" hidden>${Object.entries(FILTERS).map(([id,label])=>`<button type="button" data-hygiene-filter="${id}" aria-pressed="${id==='all'}">${label}</button>`).join('')}</div>
   <details class="hygiene-find" hidden><summary>Find a food business</summary><label class="stop-search">Name or postcode<input type="search" aria-label="Find a food business" placeholder="Café, RG1…"></label><div class="stop-results" aria-live="polite"></div></details>
   <small id="hygiene-summary">Food Standards Agency ratings · off until switched on</small>`;
- document.querySelector('#layers')!.append(section);
+ layerGroup('places').append(section);
  const toggle=section.querySelector<HTMLInputElement>('#hygiene-layer')!,summary=section.querySelector('#hygiene-summary')!,filters=section.querySelector<HTMLElement>('.hygiene-filters')!,find=section.querySelector<HTMLElement>('.hygiene-find')!;
  let bundle:HygieneBundle|undefined,loading:Promise<void>|undefined,filter:keyof typeof FILTERS='all';
  const byId=new globalThis.Map<number,HygienePlace>();

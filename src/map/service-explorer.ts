@@ -1,4 +1,4 @@
-import {detail,escape} from '../ui/shell';
+import {detail,escape,toolSlot} from '../ui/shell';
 import {addDays,compareRouteLabels,currentServiceDate,type StopIndex} from '../../shared/timetable';
 import {networkAt,nightProfile,type NetworkAtTime,type RouteAtTime,type ServiceSummary} from '../../shared/scheduled-services';
 const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
@@ -9,7 +9,7 @@ const PRESETS=['18:00','20:00','22:00','00:00','02:00'];
 export async function connectServiceExplorer(){
  const section=document.createElement('section');section.className='route-control explorer-control';
  section.innerHTML='<button type="button" class="layer-row explorer-open" disabled><span><i>◷</i>Evening timetable<small>Scheduled</small></span><span aria-hidden="true">↗</span></button>';
- document.querySelector('#layers')!.insertBefore(section,document.querySelector('[data-layer=traffic]')!.closest('label'));
+ toolSlot('evening').append(section);
  const button=section.querySelector<HTMLButtonElement>('button')!;
  let index:StopIndex;
  try{const r=await fetch('/data/bus-stops.json',{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Stop snapshot unavailable');index=await r.json();}

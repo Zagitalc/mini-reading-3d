@@ -1,5 +1,5 @@
 import type {Map} from 'maplibre-gl';
-import {detail,escape} from '../ui/shell';
+import {detail,escape,layerGroup} from '../ui/shell';
 import {countdown,delayLabel,liveDepartures,liveKey,LIVE_MAX_AGE_MS,type LiveStatus,type RouteJourneys} from '../../shared/live-departures';
 import type {VehicleObservation} from '../../shared/types';
 import {subscribeVehicles} from './vehicle-feed';
@@ -8,7 +8,7 @@ const dateLabel=(date:string)=>`${date.slice(6,8)}/${date.slice(4,6)}/${date.sli
 export async function connectStopLayers(map:Map){
  const section=document.createElement('section');section.className='route-control stop-control';
  section.innerHTML='<label class="layer-row"><span><i>○</i>Bus stops</span><input type="checkbox" id="bus-stops-toggle" role="switch" checked disabled></label><details><summary>Find a stop</summary><label class="stop-search">Stop name or code<input type="search" aria-label="Find a bus stop" placeholder="Station, Oxford Road…"></label><div class="stop-results" aria-live="polite"></div></details><small class="stop-loading">Loading stop snapshot…</small><small class="timetable-status" role="status"></small>';
- document.querySelector('#layers')!.insertBefore(section,document.querySelector('[data-layer=traffic]')!.closest('label'));
+ layerGroup('move').append(section);
  let disposed=false,timer:ReturnType<typeof setInterval>|undefined,active:{element:HTMLElement;stop:BusStop;data?:StopTimetable}|undefined;
  map.on('remove',()=>{disposed=true;clearInterval(timer);});
  let view:'next'|'tonight'|'last'='next',visibleCount=30,lastDate:string|undefined;

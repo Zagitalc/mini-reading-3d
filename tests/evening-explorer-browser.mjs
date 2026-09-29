@@ -20,7 +20,7 @@ async function boot(viewport,servicesUrl='/data/timetables/explorer-fixture/serv
  await page.route('**/data/bus-stops.json',route=>route.fulfill({json:index(servicesUrl)}));
  await page.route('**/data/timetables/explorer-fixture/services.json',route=>route.fulfill({json:summary}));
  await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});
- if(viewport.width<600)await page.locator('#collapse-layers').click();
+ await page.locator('#tools-toggle').click();
  await expect(page.locator('.explorer-open')).toBeEnabled({timeout:30000});
  return {page,errors,requests};
 }
@@ -55,7 +55,7 @@ for(const viewport of [{width:1400,height:950},{width:390,height:844}]){
 {
  const {page,errors}=await boot({width:1400,height:950},null);
  await expect(page.locator('.explorer-open small')).toHaveText('After next refresh');
- await page.locator('.explorer-open').click();
+ await page.locator('#tools-toggle').click();await page.locator('.explorer-open').click();
  await expect(page.locator('#service-explorer')).toContainText('available after the next timetable refresh');
  assert.deepEqual(errors,[]);await page.close();
 }

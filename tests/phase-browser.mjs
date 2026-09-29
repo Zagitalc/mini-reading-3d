@@ -34,7 +34,7 @@ try{
  await page.locator('[data-route-layer=rail]').check();await page.getByRole('searchbox',{name:'Search train routes'}).fill('Earley');
  await page.getByLabel('Train routes selector',{exact:true}).selectOption('wokingham');await expect(page.getByText('Physical railway corridor.',{exact:false})).toBeVisible();await page.locator('#close-details').click();
  await page.locator('[data-layer=buses]').uncheck();await page.locator('[data-layer=trains]').uncheck();await expect(page.locator('[data-route-layer=bus]')).toBeChecked();await expect(page.locator('[data-route-layer=rail]')).toBeChecked();
- await page.locator('[data-layer=traffic]').uncheck();await expect(page.locator('#traffic-legend')).toBeHidden();await page.locator('[data-layer=traffic]').check();
+ await page.locator('summary',{hasText:'Traffic and roads'}).click();await page.locator('[data-layer=traffic]').uncheck();await expect(page.locator('#traffic-legend')).toBeHidden();await page.locator('[data-layer=traffic]').check();
  await page.screenshot({path:'test-results/routes-desktop.png'});
  await page.locator('[data-route-layer=bus]').uncheck();await page.locator('[data-route-layer=rail]').uncheck();
  await page.locator('#landmark-buttons button').filter({hasText:'Oracle'}).click();await page.waitForTimeout(2300);await page.screenshot({path:'test-results/oracle-oblique.png'});

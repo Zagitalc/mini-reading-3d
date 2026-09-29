@@ -1,12 +1,12 @@
 import type {Map,ExpressionSpecification} from 'maplibre-gl';
-import {detail,escape} from '../ui/shell';
+import {detail,escape,layerGroup} from '../ui/shell';
 import {routeMatches,uniqueRoutes,mapRouteLabel,type StaticRoute} from '../../shared/static-routes';
 export async function connectRouteLayers(map:Map){
  const groups:{mode:string;routes:StaticRoute[];selected:string;enabled:boolean}[]=[];
  for(const [mode,title,file] of [['bus','Bus routes','bus-routes'],['rail','Train routes','rail-corridors']]){
   const section=document.createElement('section');section.className='route-control';
   section.innerHTML=`<label class="layer-row"><span><i>${mode==='bus'?'⌁':'╫'}</i>${title}</span><input type="checkbox" data-route-layer="${mode}" role="switch" disabled></label><div class="route-options" hidden><label>Find ${mode==='bus'?'a route':'a corridor'}<input type="search" aria-label="Search ${title.toLowerCase()}" placeholder="${mode==='bus'?'Number or destination':'Corridor name'}"></label><button class="route-reset">All routes</button><select size="4" aria-label="${title} selector"></select><small>${mode==='rail'?'Infrastructure corridors, not train services.':'Snapshot routes, including timetable variants.'}</small></div><small class="route-loading">Loading route snapshot…</small>`;
-  document.querySelector('#layers')!.insertBefore(section,document.querySelector('[data-layer=traffic]')!.closest('label'));
+  layerGroup('move').append(section);
   try{
    const response=await fetch(`/data/${file}.json`);if(!response.ok)throw Error('Missing snapshot');
    const routes:StaticRoute[]=await response.json();routes.sort((a,b)=>a.label.localeCompare(b.label,undefined,{numeric:true}));

@@ -22,7 +22,7 @@ try{
   else body={data:[]};return route.fulfill({json:body});});
  await page.goto(base);await page.locator('#loading').waitFor({state:'hidden'});
  page.on('console',m=>{if(m.type()==='error')console.log('console:',m.text());});await expect(page.locator('#fuel-summary')).toContainText('6 forecourts',{timeout:30000});
- await page.locator('#fuel-layer').check();await page.locator('#fuel-compare').click();
+ await page.locator('#fuel-layer').check();await page.locator('#tools-toggle').click();await page.locator('#fuel-compare').click();
  const view=page.locator('#fuel-view');
  await expect(view).toContainText('Cheapest');await expect(view).toContainText('173.9p · Tesco Extra');
  await expect(view).toContainText('Left out as members only: Costco Reading 165.9p');
@@ -38,7 +38,7 @@ try{
  await page.locator('#fuel-pick').click();await page.mouse.click(900,500);await expect(view).toContainText('From the point you picked');
  await page.locator('#close-details').click();
  // Station detail with its recorded days.
- await page.locator('#hygiene-layer').check();await expect(page.locator('#hygiene-summary')).toContainText('3 premises · 1 rated 0 to 2');
+ await page.locator('summary',{hasText:'Useful places'}).click();await page.locator('#hygiene-layer').check();await expect(page.locator('#hygiene-summary')).toContainText('3 premises · 1 rated 0 to 2');
  await page.locator('.hygiene-find summary').click();await page.getByLabel('Find a food business').fill('poor');await page.getByRole('button',{name:'Poor Grill · rated 1'}).click();
  await expect(page.locator('#details')).toContainText('1 out of 5');await expect(page.locator('#details')).toContainText('Major improvement necessary');await expect(page.locator('#details')).toContainText('17 March 2026');
  await page.waitForTimeout(2500);await page.locator('#close-details').click();await page.locator('[data-hygiene-filter=poor]').click();await page.waitForTimeout(600);

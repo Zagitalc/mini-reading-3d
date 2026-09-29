@@ -25,7 +25,7 @@ try{
   await page.route('**/api/**',route=>{const u=new URL(route.request().url());if(u.pathname==='/api/v1/history'){historyRequests.push(u.search);return route.fulfill({json:history(+u.searchParams.get('days'))});}
    return route.fulfill({json:u.pathname.includes('/config')?{tomtom:false,weather:false,fuel:false}:{version:1,data:[],routes:{}}});});
   await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});
-  if(viewport.width<600)await page.locator('#collapse-layers').click();
+  await page.locator('#tools-toggle').click();
   assert.equal(historyRequests.length,0,'history loads only when the view opens');
   await page.getByRole('button',{name:/Reading over time/}).click();
   await expect(page.locator('#details .pill')).toHaveText('Recorded history · hourly');

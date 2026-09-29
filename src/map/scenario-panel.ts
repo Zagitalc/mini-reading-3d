@@ -1,5 +1,5 @@
 import type {Map,GeoJSONSource} from 'maplibre-gl';
-import {detail,escape} from '../ui/shell';
+import {detail,escape,toolSlot} from '../ui/shell';
 import {subscribeVehicles} from './vehicle-feed';
 import {addDays,compareRouteLabels,currentServiceDate,type StopIndex} from '../../shared/timetable';
 import type {ServiceSummary} from '../../shared/scheduled-services';
@@ -17,7 +17,7 @@ const EMPTY={type:'FeatureCollection' as const,features:[]};
 export async function connectScenarios(map:Map){
  const section=document.createElement('section');section.className='route-control scenario-control';
  section.innerHTML='<button type="button" class="layer-row scenario-open" disabled><span><i>⇄</i>What if…<small>Scenario</small></span><span aria-hidden="true">↗</span></button>';
- document.querySelector('#layers')!.insertBefore(section,document.querySelector('[data-layer=traffic]')!.closest('label'));
+ toolSlot('scenario').append(section);
  const button=section.querySelector<HTMLButtonElement>('button')!;
  let index:StopIndex;
  try{const r=await fetch('/data/bus-stops.json',{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Stop snapshot unavailable');index=await r.json();}
