@@ -57,7 +57,7 @@ function fuelChart(data:HistoryResponse){
  }
  const rows=data.fuel.slice(-7).reverse().flatMap(d=>Object.entries(d.grades).filter(([g])=>GRADES[g]).map(([g,v])=>`<tr><td>${escape(dayLabel(d.day))}</td><td>${escape(GRADES[g])}</td><td>${v.cheapest}p</td><td>${v.median}p</td><td>${v.dearest}p</td><td>${v.stations}</td></tr>`)).join('');
  const latest=data.fuel.at(-1)!;
- return `${chart}<table class="history-table"><caption>Daily fuel snapshot. Latest prices as of ${escape(hourLabel.format(Date.parse(latest.observedAt)))}</caption><thead><tr><th>Day</th><th>Grade</th><th>Cheapest</th><th>Median</th><th>Dearest</th><th>Stations</th></tr></thead><tbody>${rows}</tbody></table>`;
+ return `${chart}<table class="history-table"><caption>Daily fuel snapshot. Latest prices as of ${escape(hourLabel.format(Date.parse(latest.observedAt)))}. Includes Costco, which sells fuel to members only.</caption><thead><tr><th>Day</th><th>Grade</th><th>Cheapest</th><th>Median</th><th>Dearest</th><th>Stations</th></tr></thead><tbody>${rows}</tbody></table>`;
 }
 function dailyTable(data:HistoryResponse){
  const days=new Map<string,HourSummary[]>();

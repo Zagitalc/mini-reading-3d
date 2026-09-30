@@ -24,16 +24,17 @@ try{
  page.on('console',m=>{if(m.type()==='error')console.log('console:',m.text());});await expect(page.locator('#fuel-summary')).toContainText('6 forecourts',{timeout:30000});
  await page.locator('#fuel-layer').check();await page.locator('#tools-toggle').click();await page.locator('#fuel-compare').click();
  const view=page.locator('#fuel-view');
- await expect(view).toContainText('Cheapest');await expect(view).toContainText('173.9p · Tesco Extra');
- await expect(view).toContainText('Left out as members only: Costco Reading 165.9p');
+ await expect(view).toContainText('Cheapest');await expect(view).toContainText('165.9p · Costco Reading members only');
+ await expect(view).toContainText('Costco sells fuel to its members only');
+ await expect(view.locator('.fuel-saving')).toContainText('Without a Costco membership, the cheapest is Tesco Extra at 173.9p, which saves £0.55');
  await expect(view).toContainText('1 price is left out because it was reported more than seven days ago');
  await expect(view).toContainText('(motorway services)');
- // Tank of 55 litres: middle price of four current (174.9, 175.9) = 175.4p, so 1.5p a litre saves £0.83.
- await expect(view.locator('.fuel-saving')).toContainText('£0.83');await expect(view.locator('.fuel-saving')).toContainText('£13.75');
+ // Tank of 55 litres: middle price of five current is 174.9p, so Costco's 9p a litre saves £4.95, and 33p under the motorway £18.15.
+ await expect(view.locator('.fuel-saving')).toContainText('£4.95');await expect(view.locator('.fuel-saving')).toContainText('£18.15');
  await expect(view).toContainText('Nearest: Near forecourt');
  await expect(view).toContainText('By bus: £5.40');
  await expect(view.locator('#fuel-bus-link')).toContainText('Nearest stop:');
- await view.locator('[data-fuel-grade=B7S]').click();await expect(view).toContainText('197.9p · Tesco Extra');
+ await view.locator('[data-fuel-grade=B7S]').click();await expect(view).toContainText('189.9p · Costco Reading');
  await mkdir('test-results',{recursive:true});await page.screenshot({path:'test-results/fuel-panel.png'});
  await page.locator('#fuel-pick').click();await page.mouse.click(900,500);await expect(view).toContainText('From the point you picked');
  await page.locator('#close-details').click();
@@ -44,5 +45,5 @@ try{
  await page.waitForTimeout(2500);await page.locator('#close-details').click();await page.locator('[data-hygiene-filter=poor]').click();await page.waitForTimeout(600);
  await page.screenshot({path:'test-results/hygiene-layer.png'});
  if(errors.length)throw Error(errors.join('\n'));
- console.log('Browser: fuel spread, members-only and old prices, detour, car against bus, grade switch, start picking and the hygiene layer passed.');
+ console.log('Browser: fuel spread, Costco marked members only, old prices, detour, car against bus, grade switch, start picking and the hygiene layer passed.');
 }finally{await browser.close();}
