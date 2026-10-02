@@ -13,6 +13,11 @@ test('traffic tiles and vehicle positions stay off outside the modes that need t
  assert.equal(wantsVehicles(MODES.explore.layers,true),true,'an open stop board still gets live positions');
 });
 
+test('Eat & Drink shows food hygiene ratings and nothing live',()=>{
+ for(const l of MODE_LAYERS)assert.equal(MODES.eat.layers[l],l==='buildings'||l==='hygiene',l);
+ assert.equal(parseMode('eat'),'eat');
+});
+
 test('Transport is the default, so bus history keeps recording on ordinary visits',()=>{
  assert.equal(DEFAULT_MODE,'transport');
  assert.equal(initialMode('',null),'transport');

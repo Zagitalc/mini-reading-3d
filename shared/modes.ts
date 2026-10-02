@@ -3,7 +3,7 @@
 // every mode, so its switch keeps whatever the viewer chose.
 export const MODE_LAYERS=['buildings','buses','trains','stops','roadworks','traffic','signs','cameras','fuel','rivers','hygiene'] as const;
 export type ModeLayer=typeof MODE_LAYERS[number];
-export const MODE_IDS=['explore','transport','drive','environment','lab'] as const;
+export const MODE_IDS=['explore','transport','drive','environment','eat','lab'] as const;
 export type ModeId=typeof MODE_IDS[number];
 export type Mode={id:ModeId;icon:string;label:string;summary:string;layers:Record<ModeLayer,boolean>};
 const only=(...on:ModeLayer[])=>Object.fromEntries(MODE_LAYERS.map(l=>[l,on.includes(l)])) as Record<ModeLayer,boolean>;
@@ -12,6 +12,7 @@ export const MODES:Record<ModeId,Mode>={
  transport:{id:'transport',icon:'▰',label:'Transport',summary:'Live buses and trains, bus stops with departures, and roadworks.',layers:only('buildings','buses','trains','stops','roadworks')},
  drive:{id:'drive',icon:'≋',label:'Drive',summary:'Traffic, roadworks, speed limits, cameras and fuel prices.',layers:only('buildings','traffic','roadworks','signs','cameras','fuel')},
  environment:{id:'environment',icon:'≈',label:'Environment',summary:'Thames and Kennet levels and flood warnings.',layers:only('buildings','rivers')},
+ eat:{id:'eat',icon:'✚',label:'Eat & Drink',summary:'Food hygiene ratings for cafés, takeaways, pubs and restaurants. Ratings only: no opening hours, and premises without a mapped location are not shown.',layers:only('buildings','hygiene')},
  // "lab" internally, so future experimental layers have somewhere to live without reaching ordinary visitors.
  lab:{id:'lab',icon:'✱',label:'Everything',summary:'Every layer the other modes use, all at once. This uses more data and more of the shared feeds.',layers:only(...MODE_LAYERS)},
 };

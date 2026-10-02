@@ -48,6 +48,13 @@ const pressed=p=>p.locator('[data-mode][aria-pressed=true]').getAttribute('data-
 {const {page,counts}=await open('?mode=environment',undefined,'drive');
 if(await pressed(page)!=='environment'||counts.tiles||counts['vehicle-state'])throw Error('address mode');
  await expect(page.locator('#river-layer')).toBeChecked();await page.close();}
+// Eat & Drink: ratings on and their filters shown, no vehicles or traffic.
+{const {page,counts,errors}=await open('?mode=eat');
+ if(await pressed(page)!=='eat'||counts['vehicle-state']||counts.tiles)throw Error('eat fetched vehicles or tiles');
+ await expect(page.locator('#hygiene-layer')).toBeChecked();await expect(page.locator('.hygiene-filters')).toBeVisible();await expect(page.locator('#hygiene-summary')).toContainText('premises');
+ await page.locator('[data-hygiene-filter=poor]').click();await page.locator('[data-mode=explore]').click();await expect(page.locator('#hygiene-layer')).not.toBeChecked();
+ await page.screenshot({path:shots+'/modes-desktop-eat.png'});
+ if(errors.length)throw Error(errors.join('\n'));await page.close();}
 // Phone.
 {const {page}=await open('?mode=transport',{width:390,height:844});
  await page.screenshot({path:shots+'/modes-phone.png'});await page.close();}

@@ -7,6 +7,7 @@ const mode=()=>chosen??=initialMode(location.search,remembered());
 const switches=new globalThis.Map<ModeLayer,HTMLInputElement>();
 function remembered(){try{return localStorage.getItem(KEY);}catch{return null;}}
 /** Whether the current mode starts a layer switched on; the shell uses it to draw switches before their modules load. */
+export const currentMode=()=>mode();
 export const modeDefault=(layer:ModeLayer)=>MODES[mode()].layers[layer];
 const set=(input:HTMLInputElement,on:boolean)=>{if(input.disabled||input.checked===on)return;input.checked=on;input.dispatchEvent(new Event('change'));};
 /** A module calls this once its switch is enabled and its change handler wired. The switch is moved to the current
