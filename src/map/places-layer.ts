@@ -1,6 +1,7 @@
 import type {Map,GeoJSONSource} from 'maplibre-gl';
 import {RATING_TEXT,ratingGroup,type HygieneBundle,type HygienePlace} from '../../shared/hygiene';
 import {detail,escape,layerGroup} from '../ui/shell';
+import {registerSwitch} from '../ui/modes';
 // Useful places, starting with food hygiene ratings. The bundle is built by `npm run data:hygiene` and
 // loaded only when the layer is first switched on.
 const COLOURS={good:'#2f7d4f',fair:'#d19a1c',poor:'#b3372b',none:'#9aa19a'} as const;
@@ -38,7 +39,7 @@ export function connectPlaces(map:Map){
   summary.textContent=`${bundle.places.length.toLocaleString()} premises · ${count('poor')} rated 0 to 2 · council data from ${date(extract)} · zoom in to see them`;
  }
  const show=()=>{const on=toggle.checked;filters.hidden=!on||!bundle;find.hidden=!on||!bundle;for(const id of ['hygiene-points','hygiene-labels'])if(map.getLayer(id))map.setLayoutProperty(id,'visibility',on?'visible':'none');};
- toggle.addEventListener('change',()=>{if(toggle.checked&&!bundle){loading??=load().catch(e=>{loading=undefined;summary.textContent=e instanceof Error?e.message:'Ratings unavailable';toggle.checked=false;});void loading.then(show);}else show();});
+ toggle.addEventListener('change',()=>{if(toggle.checked&&!bundle){loading??=load().catch(e=>{loading=undefined;summary.textContent=e instanceof Error?e.message:'Ratings unavailable';toggle.checked=false;});void loading.then(show);}else show();});registerSwitch('hygiene',toggle);
  filters.querySelectorAll<HTMLButtonElement>('[data-hygiene-filter]').forEach(b=>b.addEventListener('click',()=>{filter=b.dataset.hygieneFilter as keyof typeof FILTERS;filters.querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));(map.getSource('hygiene') as GeoJSONSource|undefined)?.setData(data());}));
  const search=find.querySelector('input')!,results=find.querySelector<HTMLElement>('.stop-results')!;
  search.addEventListener('input',()=>{results.replaceChildren();const q=search.value.trim().toLowerCase();if(q.length<2||!bundle)return;

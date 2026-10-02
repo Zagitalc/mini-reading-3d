@@ -1,6 +1,7 @@
 import type {Map,GeoJSONSource,MapLayerMouseEvent} from 'maplibre-gl';
 import type {FloodWarning,RiverFeedItem,RiverGauge,RiverLevel} from '../../shared/types';
 import {detail,escape} from '../ui/shell';
+import {registerSwitch} from '../ui/modes';
 import {GAUGE_COLOUR,gaugeIcon} from './river-icon';
 // Measured levels and official warning areas only: nothing here estimates where water would spread.
 export const SEVERITY_COLOUR={1:'#a3261e',2:'#dd6a2a',3:'#e2b23a'} as const;
@@ -30,7 +31,7 @@ export function connectRivers(map:Map,section:HTMLElement,schedule:(run:()=>Prom
  map.addLayer({id:'river-gauge-labels',type:'symbol',source:'river-gauges',minzoom:13.5,layout:{'text-field':['get','text'],'text-size':11,'text-offset':[0,1.25],'text-anchor':'top','text-font':['Noto Sans Regular']},paint:{'text-color':'#24506b','text-halo-color':'#ffffff','text-halo-width':1.4}});
  const layers=['flood-area-fill','flood-area-line','river-gauge-points','river-gauge-labels'];
  const show=()=>{for(const id of layers)map.setLayoutProperty(id,'visibility',toggle.checked?'visible':'none');};
- toggle.disabled=!enabled;toggle.addEventListener('change',show);
+ toggle.disabled=!enabled;toggle.addEventListener('change',show);registerSwitch('rivers',toggle);
  const gaugeDetail=(g:RiverGauge)=>{const state=rangeState(g),now=Date.now();
   detail(`<span class="pill">River gauge · measured</span><h2>${escape(g.label)}</h2><p>${escape(g.river)}${g.town&&g.town!==g.label?` · ${escape(g.town)}`:''}</p><dl>${g.levels.map(l=>`<dt>${escape(l.qualifier)}</dt><dd>${l.value.toFixed(2)} ${escape(l.unit)}<small>Read ${escape(time(l.readAt))}${now-Date.parse(l.readAt)>OLD_READING?' · older than usual; the gauge may not have reported since':''}</small><small>${escape(unitNote(l.unit))}</small></dd>`).join('')}${g.typicalLow!==undefined&&g.typicalHigh!==undefined?`<dt>Typical range</dt><dd>${g.typicalLow.toFixed(2)}–${g.typicalHigh.toFixed(2)} m<small>${escape(RANGE_TEXT[state])}</small></dd>`:''}${g.highestRecent?`<dt>Highest recent level</dt><dd>${g.highestRecent.value.toFixed(2)} m<small>${escape(new Date(g.highestRecent.at).toLocaleDateString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',year:'numeric'}))}</small></dd>`:''}</dl><p>This is the level measured at the gauge. The map does not predict where water would go.</p><a href="${escape(g.sourceUrl)}" target="_blank" rel="noopener">This gauge on Check for flooding (GOV.UK)</a><p>Environment Agency real-time data · OGL v3.0. Readings may be delayed or unvalidated.</p>`);};
  const warningHtml=(w:FloodWarning)=>`<section class="feed-card"><span class="pill" style="background:${SEVERITY_COLOUR[w.severityLevel]}33;color:var(--ink)">${escape(w.severity)}</span><h2>${escape(w.label)}</h2>${w.river?`<p>${escape(w.river)}</p>`:''}${w.message?`<p class="flood-message">${escape(w.message)}</p>`:''}<small>${w.raisedAt?`Raised ${escape(time(w.raisedAt))}`:''}${w.changedAt?` · message updated ${escape(time(w.changedAt))}`:''}</small>${w.area?'':`<p>${w.areaTooLarge?'The official outline is too large to store here, so this warning is listed but not drawn; the GOV.UK link shows it.':'The official outline could not be loaded, so this warning is listed but not drawn.'}</p>`}<p><a href="${escape(w.sourceUrl)}" target="_blank" rel="noopener">Official warning on GOV.UK</a></p></section>`;

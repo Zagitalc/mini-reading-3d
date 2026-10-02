@@ -6,6 +6,7 @@ import {BUS_FARES,busReturn} from '../../shared/fares';
 import {LANDMARKS} from '../../shared/config';
 import {distance} from '../../shared/geo';
 import {detail,escape,startPick} from '../ui/shell';
+import {registerSwitch} from '../ui/modes';
 import {PUMP_COLOURS,fuelPumpIcon} from './fuel-icon';
 // Prices are shown as reported, each with its own submission time; nothing here estimates a price.
 type Settings={grade:string;tank:number;fill:number;mpg:number;parking:number;dest:string};
@@ -54,7 +55,7 @@ export function connectFuel(map:Map,section:HTMLElement,enabled:boolean){
  const toggle=section.querySelector<HTMLInputElement>('#fuel-layer')!,compare=document.querySelector<HTMLButtonElement>('#fuel-compare')!;
  toggle.disabled=!enabled;compare.disabled=!enabled;
  const show=(on:boolean)=>{for(const id of ['fuel-points','fuel-start-point'])map.setLayoutProperty(id,'visibility',on?'visible':'none');};
- toggle.addEventListener('change',()=>show(toggle.checked));
+ toggle.addEventListener('change',()=>show(toggle.checked));registerSwitch('fuel',toggle);
  map.on('mouseenter','fuel-points',()=>{map.getCanvas().style.cursor='pointer';});
  map.on('mouseleave','fuel-points',()=>{map.getCanvas().style.cursor='';});
  const draw=()=>{

@@ -37,6 +37,7 @@
     "test:stops-browser": "node tests/stops-browser.mjs",
     "test:tonight-browser": "node tests/tonight-stops-browser.mjs",
     "test:evening-browser": "node tests/evening-explorer-browser.mjs",
+    "test:modes-browser": "node tests/modes-browser.mjs",
     "test:live-browser": "node --import tsx tests/live-departures-browser.mjs",
     "test:places-browser": "node tests/places-fuel-browser.mjs",
     "test:history-browser": "node --import tsx tests/history-browser.mjs",

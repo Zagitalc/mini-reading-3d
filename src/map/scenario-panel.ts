@@ -3,7 +3,7 @@ import {detail,escape,toolSlot} from '../ui/shell';
 import {subscribeVehicles} from './vehicle-feed';
 import {addDays,compareRouteLabels,currentServiceDate,type StopIndex} from '../../shared/timetable';
 import type {ServiceSummary} from '../../shared/scheduled-services';
-import type {RouteJourneys} from '../../shared/live-departures';
+import {LIVE_MAX_AGE_MS,type RouteJourneys} from '../../shared/live-departures';
 import {ASSUMPTIONS,HEADWAY_LIMITS,frequencyScenario,positionAt,type ScenarioInput,type ScenarioResult,type Waits} from '../../shared/scenarios';
 import type {VehicleObservation} from '../../shared/types';
 const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
@@ -28,7 +28,8 @@ export async function connectScenarios(map:Map){
  let summary:Promise<ServiceSummary>|undefined;const routeData=new globalThis.Map<string,Promise<RouteJourneys>>();
  const load=()=>summary??=fetch(index.servicesUrl!,{signal:AbortSignal.timeout(15000)}).then(async r=>{if(!r.ok)throw Error('Service summary unavailable');const data:ServiceSummary=await r.json();if(data.schema!==1)throw Error('Invalid service summary');return data;}).catch(error=>{summary=undefined;throw error;});
  const journeysFor=(id:string)=>{let p=routeData.get(id);if(!p){p=fetch(index.routes[id].journeysUrl!,{signal:AbortSignal.timeout(15000)}).then(async r=>{if(!r.ok)throw Error('Journeys unavailable');const data:RouteJourneys=await r.json();if(data.schema!==1||data.routeId!==id)throw Error('Invalid journeys');return data;}).catch(error=>{routeData.delete(id);throw error;});routeData.set(id,p);}return p;};
- let live:VehicleObservation[]|null=null;subscribeVehicles(u=>{live=u.vehicles;});
+ // Positions stop arriving while the bus layer is off, so an old snapshot is not passed off as "right now".
+ let live:VehicleObservation[]|null=null,liveAt=0;subscribeVehicles(u=>{live=u.vehicles;liveAt=u.at;});
  // Map drawing: hollow grey dots for today's timetable, filled route-coloured dots for the scenario.
  const drawn=()=>map.getSource('scenario-buses') as GeoJSONSource|undefined;
  const ensureLayer=()=>{if(drawn())return;map.addSource('scenario-route',{type:'geojson',data:EMPTY});map.addSource('scenario-buses',{type:'geojson',data:EMPTY});
@@ -89,7 +90,7 @@ export async function connectScenarios(map:Map){
    const why=r.state==='invalid'?`Choose a window that ends after it starts, and an interval from ${HEADWAY_LIMITS[0]} to ${HEADWAY_LIMITS[1]} minutes.`:r.state==='uncovered'?'That night is outside the timetable snapshot.':`Route ${escape(label(input.routeId))} has no journeys on or around that night, so there is no timetable to base a scenario on.`;
    element.innerHTML=`${controls}<p class="schedule-notice">${why}</p>`;bind(element);clear();return;
   }
-  const now=Date.now(),liveCount=live?.some(v=>v.kind==='bus')&&now>=r.start&&now<r.end?live.filter(v=>v.kind==='bus'&&!v.cancelled&&v.label.trim().toLowerCase()===label(input.routeId).toLowerCase()).length:undefined;
+  const now=Date.now(),liveCount=now-liveAt<LIVE_MAX_AGE_MS&&live?.some(v=>v.kind==='bus')&&now>=r.start&&now<r.end?live.filter(v=>v.kind==='bus'&&!v.cancelled&&v.label.trim().toLowerCase()===label(input.routeId).toLowerCase()).length:undefined;
   element.innerHTML=`${controls}
    <p class="explorer-summary">${headline(r)}</p>
    ${table(r)}

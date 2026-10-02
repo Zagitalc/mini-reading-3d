@@ -12,3 +12,11 @@ export function subscribeVehicles(listener:(update:VehicleUpdate)=>void){
  document.addEventListener('reading-vehicles',handler);if(latest)listener(latest);
  return ()=>document.removeEventListener('reading-vehicles',handler);
 }
+let demand=0;
+/** Asks for vehicle updates while the bus and train layers are off, for a stop's live estimates for example.
+ * Returns the function that withdraws the request. */
+export function needVehicles(){
+ demand++;document.dispatchEvent(new Event('reading-vehicles-needed'));
+ let released=false;return ()=>{if(!released){released=true;demand--;}};
+}
+export const vehiclesNeeded=()=>demand>0;

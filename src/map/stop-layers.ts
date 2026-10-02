@@ -2,7 +2,8 @@ import type {Map} from 'maplibre-gl';
 import {detail,escape,layerGroup} from '../ui/shell';
 import {countdown,delayLabel,liveDepartures,liveKey,LIVE_MAX_AGE_MS,type LiveStatus,type RouteJourneys} from '../../shared/live-departures';
 import type {VehicleObservation} from '../../shared/types';
-import {subscribeVehicles} from './vehicle-feed';
+import {needVehicles,subscribeVehicles} from './vehicle-feed';
+import {registerSwitch} from '../ui/modes';
 import {addDays,compareRouteLabels,currentServiceDate,lastDepartures,localDate,scheduledDepartures,timetableExpired,timetableStatus,tonightDepartures,type BusStop,type StopIndex,type StopTimetable} from '../../shared/timetable';
 const dateLabel=(date:string)=>`${date.slice(6,8)}/${date.slice(4,6)}/${date.slice(0,4)}`;
 export async function connectStopLayers(map:Map){
@@ -15,6 +16,10 @@ export async function connectStopLayers(map:Map){
  const cache=new globalThis.Map<string,Promise<StopTimetable>>(),journeyCache=new globalThis.Map<string,Promise<RouteJourneys>>();
  // Live positions arrive from the vehicle layer's own refresh; undefined until the first one, null when it failed.
  let vehicles:VehicleObservation[]|null|undefined,vehiclesAt=0;
+ // With the bus layer off (outside Transport mode), an open board in the next-departures view asks for positions itself.
+ let releaseLive:(()=>void)|undefined;
+ const liveDemand=()=>{const want=!disposed&&view==='next'&&!!active?.element.isConnected&&!document.querySelector<HTMLElement>('#details')!.hidden;
+  if(want&&!releaseLive)releaseLive=needVehicles();else if(!want&&releaseLive){releaseLive();releaseLive=undefined;}};
  let journeys:{stopId:string;routes:globalThis.Map<string,RouteJourneys>;state:'loading'|'ready'|'missing'|'failed'}|undefined;
  const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
  const day=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short'});
@@ -66,7 +71,7 @@ export async function connectStopLayers(map:Map){
    const summary=upcoming.length?`Live estimates cover ${covered} of the ${upcoming.length} scheduled ${upcoming.length===1?'departure':'departures'} in the next hour. The others have no tracked bus running that journey yet, usually because it has not started.`:'No scheduled departures in the next hour.';
    return {statuses,html:`<section class="live-departures">${heading}${rows?`<ol class="departures live">${rows}</ol>`:'<p class="live-empty">No tracked bus is running any of this stop’s next departures at the moment. The times below are scheduled only.</p>'}<small>${summary} Each estimate is the scheduled time shifted by how late or early the bus is running now, judged from its GPS position against its own timetable. It is not an operator prediction and assumes the delay holds.</small></section>`};
   };
-  const render=()=>{freshness();
+  const render=()=>{freshness();liveDemand();
    if(disposed||document.hidden||!active?.element.isConnected||document.querySelector<HTMLElement>('#details')!.hidden||!active.data)return;
    // Periodic refreshes must not close a service-date menu the viewer is using.
    if(view==='last'){if(document.activeElement?.tagName!=='SELECT'||!active.element.contains(document.activeElement))renderLast(active.data,active.element,Date.now());return;}
@@ -97,7 +102,7 @@ export async function connectStopLayers(map:Map){
   map.addSource('bus-stops',{type:'geojson',data:{type:'FeatureCollection',features:index.stops.map(s=>({type:'Feature',geometry:{type:'Point',coordinates:s.position},properties:{id:s.id,name:s.name}}))}});
   map.addLayer({id:'bus-stop-dots',source:'bus-stops',type:'circle',minzoom:15,paint:{'circle-radius':['interpolate',['linear'],['zoom'],15,3,18,6],'circle-color':'#fffdf5','circle-stroke-color':'#416f85','circle-stroke-width':2}});
   map.addLayer({id:'bus-stop-labels',source:'bus-stops',type:'symbol',minzoom:17,layout:{'text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':10,'text-offset':[0,1.2],'text-anchor':'top'},paint:{'text-color':'#345d6c','text-halo-color':'#fffdf7','text-halo-width':2}});
-  const toggle=section.querySelector<HTMLInputElement>('#bus-stops-toggle')!;toggle.disabled=false;toggle.addEventListener('change',()=>{for(const id of ['bus-stop-dots','bus-stop-labels'])map.setLayoutProperty(id,'visibility',toggle.checked?'visible':'none');});
+  const toggle=section.querySelector<HTMLInputElement>('#bus-stops-toggle')!;toggle.disabled=false;toggle.addEventListener('change',()=>{for(const id of ['bus-stop-dots','bus-stop-labels'])map.setLayoutProperty(id,'visibility',toggle.checked?'visible':'none');});registerSwitch('stops',toggle);
   map.on('click','bus-stop-dots',e=>{const stop=byId.get(e.features?.[0]?.properties.id);if(stop)void open(stop);});
   map.on('mouseenter','bus-stop-dots',()=>map.getCanvas().style.cursor='pointer');map.on('mouseleave','bus-stop-dots',()=>map.getCanvas().style.cursor='');
   const search=section.querySelector<HTMLInputElement>('input[type=search]')!,results=section.querySelector<HTMLElement>('.stop-results')!;
@@ -106,5 +111,5 @@ export async function connectStopLayers(map:Map){
   const unsubscribe=subscribeVehicles(update=>{vehicles=update.vehicles;vehiclesAt=update.at;if(view==='next')render();});map.on('remove',unsubscribe);
   freshness();timer=setInterval(render,60_000);document.addEventListener('visibilitychange',render);map.on('remove',()=>document.removeEventListener('visibilitychange',render));
  }catch{section.querySelector('.stop-loading')!.textContent='Stop snapshot unavailable';}
- map.on('remove',()=>{disposed=true;clearInterval(timer);cache.clear();});
+ map.on('remove',()=>{disposed=true;clearInterval(timer);cache.clear();releaseLive?.();});
 }
