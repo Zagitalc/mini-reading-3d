@@ -1,6 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {hygieneBundle,parseAuthority,ratingGroup} from '../shared/hygiene';
+import {FOOD_CATEGORIES,RATING_FILTERS,foodCategory,foodMatches,hygieneBundle,parseAuthority,ratingGroup} from '../shared/hygiene';
+import {readFileSync} from 'node:fs';
 import {stationHistory,validStationId,type FuelDay} from '../shared/history';
 import {BOUNDS} from '../shared/config';
 // Shaped like the FSA open-data JSON read on 28 Sep 2026: Geocode is null when missing, lat/lon are strings.
@@ -17,6 +18,19 @@ test('hygiene files become compact places, counting but not mapping premises wit
  const b=hygieneBundle([{authority:{code:'884',name:'Reading'},json:file([record(9),record(1)])},{authority:{code:'887',name:'Wokingham'},json:file([record(1)])}],BOUNDS);
  assert.deepEqual(b.places.map(p=>p[0]),[1,9],'duplicates across councils appear once');assert.equal(b.authorities.length,2);
  assert.deepEqual(['5','4','3','2','0','Exempt'].map(ratingGroup),['good','good','fair','poor','poor','none']);
+});
+test('Food mode maps every FSA business type explicitly, and All food leaves out shops and institutions',()=>{
+ const bundled=JSON.parse(readFileSync(new URL('../public/data/hygiene.json',import.meta.url),'utf8')) as {types:string[]};
+ assert.deepEqual(bundled.types.filter(t=>!(t in FOOD_CATEGORIES)),[],'every type in the bundled data has a deliberate mapping');
+ assert.equal(foodCategory('Restaurant/Cafe/Canteen'),'restaurant-cafe');assert.equal(foodCategory('Pub/bar/nightclub'),'pub-bar');
+ assert.equal(foodCategory('School/college/university'),'excluded-institutional');assert.equal(foodCategory('A type the FSA adds later'),'excluded-institutional');
+ for(const t of ['School/college/university','Hospitals/Childcare/Caring Premises','Retailers - other','Retailers - supermarkets/hypermarkets','Manufacturers/packers'])
+  assert.equal(foodMatches(t,'5','all','all'),false,`All food is places to eat and drink, so ${t} is left out`);
+ assert.equal(foodMatches('Mobile caterer','5','all','all'),true);assert.equal(foodMatches('Mobile caterer','5','takeaway','all'),false);
+ assert.deepEqual(['5','4','3','Exempt','AwaitingInspection'].map(r=>foodMatches('Takeaway/sandwich shop',r,'takeaway','4')),[true,true,false,false,false]);
+ assert.deepEqual(['5','4','Exempt'].map(r=>foodMatches('Pub/bar/nightclub',r,'pub-bar','5')),[true,false,false]);
+ assert.deepEqual(['3','Exempt'].map(r=>foodMatches('Pub/bar/nightclub',r,'pub-bar','all')),[true,true]);
+ assert.deepEqual(RATING_FILTERS.map(([id])=>id),['all','4','5'],'chips read All, 4+, 5 from left to right');
 });
 test('a forecourt price history reads one station from the daily fuel rows',()=>{
  const day=(d:string,pence:number):FuelDay=>({schema:1,day:d,recordedAt:d+'T20:00:00Z',observedAt:d+'T15:00:00Z',grades:{},stations:[{id:'a',name:'A',brand:'B',postcode:'RG1',prices:{E10:{pence,submittedAt:d+'T09:00:00Z'}}},{id:'b',name:'B',brand:'B',postcode:'RG1',prices:{}}]});

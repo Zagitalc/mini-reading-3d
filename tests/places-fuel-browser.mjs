@@ -9,8 +9,8 @@ const stations=[station('near','Near forecourt','Esso',[-.9725,51.4575],175.9),s
  station('m4','Reading West Services M4','Moto',[-1.03,51.43],198.9),station('costco','Costco Reading','COSTCO',[-.93,51.44],165.9),station('old','Old price garage','MFG',[-.98,51.46],160.9,24*21)];
 const place=(id,name,rating,lon,lat)=>[id,name,0,'1 Broad Street, Reading','RG1 2AA',lon,lat,rating,'2026-03-17',0];
 const hygiene={schema:1,source:'Food Standards Agency food hygiene rating scheme',sourceUrl:'https://ratings.food.gov.uk/open-data',licence:'Open Government Licence v3.0',generatedAt:new Date().toISOString(),
- authorities:[{code:'884',name:'Reading',extractDate:'2026-09-16',total:3,mapped:3,inArea:3}],types:['Restaurant/Cafe/Canteen'],
- places:[place(1,'Good Cafe','5',-.9722,51.4580),place(2,'Poor Grill','1',-.9716,51.4586),place(3,'New Kitchen','AwaitingInspection',-.9712,51.4578)]};
+ authorities:[{code:'884',name:'Reading',extractDate:'2026-09-16',total:3,mapped:3,inArea:3}],types:['Restaurant/Cafe/Canteen','School/college/university','Pub/bar/nightclub','Retailers - supermarkets/hypermarkets'],
+ places:[place(1,'Good Cafe','5',-.9722,51.4580),place(2,'Poor Grill','1',-.9716,51.4586),place(3,'New Kitchen','AwaitingInspection',-.9712,51.4578),[4,'Hill School Kitchen',1,'2 School Road, Reading','RG1 5AA',-.9705,51.4575,'5','2026-02-01',0],[5,'Five Bells',2,'3 Broad Street, Reading','RG1 2AB',-.9718,51.4583,'4','2026-01-12',0],[6,'Corner Kitchen Supermarket',3,'4 Broad Street, Reading','RG1 2AC',-.9714,51.4581,'5','2026-01-20',0]]};
 try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[];
  page.on('pageerror',e=>errors.push(e.message));
@@ -39,10 +39,15 @@ try{
  await page.locator('#fuel-pick').click();await page.mouse.click(900,500);await expect(view).toContainText('From the point you picked');
  await page.locator('#close-details').click();
  // Station detail with its recorded days.
- await page.locator('summary',{hasText:'Useful places'}).click();await page.locator('#hygiene-layer').check();await expect(page.locator('#hygiene-summary')).toContainText('3 premises · 1 rated 0 to 2');
+ await page.locator('summary',{hasText:'Useful places'}).click();await page.locator('#hygiene-layer').check();await expect(page.locator('#hygiene-summary')).toContainText('4 food premises · 1 rated 0 to 2');
  await page.locator('.hygiene-find summary').click();await page.getByLabel('Find a food business').fill('poor');await page.getByRole('button',{name:'Poor Grill · rated 1'}).click();
  await expect(page.locator('#details')).toContainText('1 out of 5');await expect(page.locator('#details')).toContainText('Major improvement necessary');await expect(page.locator('#details')).toContainText('17 March 2026');
- await page.waitForTimeout(2500);await page.locator('#close-details').click();await page.locator('[data-hygiene-filter=poor]').click();await page.waitForTimeout(600);
+ await page.waitForTimeout(2500);await page.locator('#close-details').click();await page.locator('[data-hygiene-filter="4"]').click();await expect(page.locator('#hygiene-summary')).toContainText('2 of 4 food premises match');
+ await page.locator('[data-food-type=pub-bar]').click();await expect(page.locator('#hygiene-summary')).toContainText('1 of 4 food premises match');
+ await page.getByLabel('Find a food business').fill('school');await expect(page.locator('.hygiene-find .stop-results')).toContainText('No matching premises with these filters.');
+ await page.locator('[data-hygiene-filter="5"]').click();await expect(page.locator('#hygiene-summary')).toContainText('0 of 4 food premises match');
+ await page.locator('[data-food-type=all]').click();await page.locator('[data-hygiene-filter=all]').click();await page.getByLabel('Find a food business').fill('kitchen');
+ await expect(page.getByRole('button',{name:/New Kitchen/})).toBeVisible();await expect(page.getByRole('button',{name:/Hill School Kitchen/})).toHaveCount(0);await expect(page.getByRole('button',{name:/Corner Kitchen Supermarket/})).toHaveCount(0);await page.waitForTimeout(600);
  await page.screenshot({path:'test-results/hygiene-layer.png'});
  if(errors.length)throw Error(errors.join('\n'));
  console.log('Browser: fuel spread, Costco marked members only, old prices, detour, car against bus, grade switch, start picking and the hygiene layer passed.');

@@ -45,3 +45,31 @@ export function hygieneBundle(files:{authority:{code:string;name:string};json:un
 }
 /** Colour group for the map: good (4 to 5), fair (3), poor (0 to 2), or none for exempt and awaiting. */
 export const ratingGroup=(rating:string)=>/^[45]$/.test(rating)?'good':rating==='3'?'fair':/^[012]$/.test(rating)?'poor':'none';
+/** Food mode groups. The bundle keeps the FSA's own BusinessType text, so these can be refined without rebuilding it. */
+export type FoodCategory='restaurant-cafe'|'takeaway'|'pub-bar'|'other-public-food'|'excluded-institutional';
+/** Every FSA business type in the area files, mapped by hand. Food mode is about places to eat and drink, so shops are
+ * excluded along with schools, care homes, hospitals and trade-only premises. A type the FSA adds later stays excluded
+ * until it is mapped here. */
+export const FOOD_CATEGORIES:Readonly<Record<string,FoodCategory>>={
+ 'Restaurant/Cafe/Canteen':'restaurant-cafe',
+ 'Takeaway/sandwich shop':'takeaway',
+ 'Pub/bar/nightclub':'pub-bar',
+ 'Other catering premises':'other-public-food','Mobile caterer':'other-public-food','Hotel/bed & breakfast/guest house':'other-public-food',
+ 'Retailers - supermarkets/hypermarkets':'excluded-institutional','Retailers - other':'excluded-institutional',
+ 'Hospitals/Childcare/Caring Premises':'excluded-institutional','School/college/university':'excluded-institutional',
+ 'Manufacturers/packers':'excluded-institutional','Distributors/Transporters':'excluded-institutional',
+ 'Importers/Exporters':'excluded-institutional','Farmers/growers':'excluded-institutional',
+};
+export const foodCategory=(type:string):FoodCategory=>FOOD_CATEGORIES[type]??'excluded-institutional';
+/** "All food" means every place to eat or drink, not every FSA record. */
+export const FOOD_TYPES={all:'All food','restaurant-cafe':'Restaurant & café',takeaway:'Takeaway','pub-bar':'Pub & bar'} as const;
+export type FoodTypeFilter=keyof typeof FOOD_TYPES;
+/** Thresholds, one at a time: 4+ includes 5, and exempt or unrated premises show only under All ratings. */
+// A list, not an object: number-like keys would jump ahead of "all" in an object's order.
+export const RATING_FILTERS=[['all','All ratings'],['4','Rated 4+'],['5','Rated 5']] as const;
+export type RatingFilter=typeof RATING_FILTERS[number][0];
+export function foodMatches(type:string,rating:string,kind:FoodTypeFilter,min:RatingFilter){
+ const c=foodCategory(type);
+ if(c==='excluded-institutional'||(kind!=='all'&&c!==kind))return false;
+ return min==='all'||(/^[0-5]$/.test(rating)&&Number(rating)>=Number(min));
+}

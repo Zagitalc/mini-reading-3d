@@ -12,15 +12,16 @@ export const MODES:Record<ModeId,Mode>={
  transport:{id:'transport',icon:'▰',label:'Transport',summary:'Live buses and trains, bus stops with departures, and roadworks.',layers:only('buildings','buses','trains','stops','roadworks')},
  drive:{id:'drive',icon:'≋',label:'Drive',summary:'Traffic, roadworks, speed limits, cameras and fuel prices.',layers:only('buildings','traffic','roadworks','signs','cameras','fuel')},
  environment:{id:'environment',icon:'≈',label:'Environment',summary:'Thames and Kennet levels and flood warnings.',layers:only('buildings','rivers')},
- eat:{id:'eat',icon:'✚',label:'Eat & Drink',summary:'Food hygiene ratings for cafés, takeaways, pubs and restaurants. Ratings only: no opening hours, and premises without a mapped location are not shown.',layers:only('buildings','hygiene')},
+ // "eat" internally, so links shared before the rename still open it; "food" is accepted too.
+ eat:{id:'eat',icon:'✚',label:'Food',summary:'Restaurants, cafés, takeaways and pubs with their food hygiene ratings. Ratings only: no opening hours, and premises without a mapped location are not shown.',layers:only('buildings','hygiene')},
  // "lab" internally, so future experimental layers have somewhere to live without reaching ordinary visitors.
  lab:{id:'lab',icon:'✱',label:'Everything',summary:'Every layer the other modes use, all at once. This uses more data and more of the shared feeds.',layers:only(...MODE_LAYERS)},
 };
 /** Transport is the default because bus history in Reading over time is recorded only while someone has buses on. */
 export const DEFAULT_MODE:ModeId='transport';
-/** Accepts a mode id from the address bar or storage; anything else gives undefined. "everything" is an alias for lab. */
+/** Accepts a mode id from the address bar or storage; anything else gives undefined. "everything" is an alias for lab, "food" for eat. */
 export function parseMode(value:string|null|undefined):ModeId|undefined{
- const v=value?.trim().toLowerCase();if(!v)return undefined;if(v==='everything')return 'lab';
+ const v=value?.trim().toLowerCase();if(!v)return undefined;if(v==='everything')return 'lab';if(v==='food')return 'eat';
  return (MODE_IDS as readonly string[]).includes(v)?v as ModeId:undefined;
 }
 /** The address wins over the remembered mode, so a shared link opens in the view it was shared from. */
