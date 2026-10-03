@@ -33,7 +33,8 @@ export function parseVehicleTrips(bytes:Uint8Array):VehicleTrip[]{
 
 export async function fetchVehicleTrips(key:string){
  const url=new URL('https://data.bus-data.dft.gov.uk/api/v1/gtfsrtdatafeed/');url.searchParams.set('api_key',key);url.searchParams.set('boundingBox','-1.09,51.38,-0.83,51.51');
- const r=await fetch(url,{headers:{'User-Agent':'MiniReading3D/1.0 (+https://github.com/Zagitalc/mini-reading-3d)','Accept':'application/x-protobuf, application/octet-stream'},redirect:'manual',signal:AbortSignal.timeout(12000)});
+ // BODS labels the feed application/bin and answers 406 unless the request also accepts */* (seen 3 Oct 2026).
+ const r=await fetch(url,{headers:{'User-Agent':'MiniReading3D/1.0 (+https://github.com/Zagitalc/mini-reading-3d)','Accept':'application/x-protobuf, application/octet-stream, */*;q=0.5'},redirect:'manual',signal:AbortSignal.timeout(12000)});
  if(!r.ok)throw Error(`GTFS-RT provider returned HTTP ${r.status}`);
  return parseVehicleTrips(new Uint8Array(await r.arrayBuffer()));
 }
