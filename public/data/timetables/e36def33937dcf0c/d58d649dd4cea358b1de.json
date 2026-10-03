@@ -1,0 +1,1 @@
+{"schema":1,"stopId":"030055570001","timezone":"Europe/London","services":[{"start":"20261003","end":"20261003","weekdays":"1111111","exceptions":{}}],"trips":[{"id":"VJ40f178e5e80fb4f2cb991ac4276c7d4ab52ea63d","service":0,"routeId":"38954","headsign":"Theale, Brewery Court","direction":"0"}],"times":[[0,63000,24,1,0]]}

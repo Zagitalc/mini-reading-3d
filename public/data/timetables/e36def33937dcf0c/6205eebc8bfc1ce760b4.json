@@ -1,0 +1,1 @@
+{"schema":1,"stopId":"039028260001","timezone":"Europe/London","services":[{"start":"20261003","end":"20261003","weekdays":"1111111","exceptions":{}}],"trips":[{"id":"VJ9c310a759b5c5157bb441f04c884d7d502b31bc0","service":0,"routeId":"38957","headsign":"Reading West Station, A329 under bridge","direction":"0"}],"times":[[0,62580,6,1,0]]}

@@ -1,0 +1,1 @@
+{"schema":1,"stopId":"035082240001","timezone":"Europe/London","services":[{"start":"20261003","end":"20261003","weekdays":"1111111","exceptions":{}}],"trips":[{"id":"VJ12954dc0b57683df5e5685f8c092054cfcf6a797","service":0,"routeId":"38959","headsign":"Football Stadium","direction":"1"}],"times":[[0,48360,10,1,0]]}
