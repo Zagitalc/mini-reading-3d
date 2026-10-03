@@ -77,3 +77,15 @@ Never fill a reference from GTFS or from the app. If a later dated operator publ
 - All sampled GTFS departures carry `timepoint=0`, so minute-level agreement is not a guarantee of exact departure times.
 - Not covered: public holidays, school-day variants, clock-change nights (25 October is the last date in this bundle), connections between services, and any "last journey home" calculation.
 - The Reading station board is live Darwin data and is not part of this timetable audit. Its correctness depends on the provider; the app only reformats it.
+
+## Friday 2 October reading
+
+Read at 22:41 BST on Friday 2 October from the owner's computer. The same board read at 19:00 BST was cut off at 30 departures (last entry 21:46), so the case was left unverified; by 22:41 the board was complete (15 departures).
+
+| Stop | Route → destination | Board | Timetable | Result |
+| --- | --- | --- | --- | --- |
+| Blagrave Street (039028150002) | 11 → Coley Park | 23:46 (last 11 listed, still marked Scheduled) | 23:46 | Match |
+
+Read late in the evening, a busy board shows the whole rest of the day; read in the early evening it can hide the last departures. Boards should be read after about 22:30.
+
+**A caution about 24-hour routes.** The Kendrick Student Village boards (route 21) also changed between 19:00 and 22:41. At 19:00 the last 21 to Lower Earley was 03:04 and to Central Reading 02:46; at 22:41 the boards listed 05:03 and 05:46 as well. Those later times may belong to Saturday's service rather than Friday's, and the board does not say which service day a time after midnight is on. No Friday Kendrick case was added, because the fixture's service-date rule cannot yet tell the two apart. The existing Saturday case (21, Sat 3 Oct) should be read the same way, late in the evening, and compared with both the 03:04 and the 05:03 times.

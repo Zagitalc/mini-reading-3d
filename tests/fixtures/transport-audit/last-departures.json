@@ -161,7 +161,13 @@
       "routeLabel": "11",
       "headsign": "Coley Park",
       "why": "Ordinary Friday evening finish",
-      "reference": null
+      "reference": {
+        "time": "23:46",
+        "kind": "stop-board",
+        "url": "https://www.reading-buses.co.uk/stops/039028150002",
+        "read": "2026-10-02T21:41:33Z",
+        "note": "Complete board (15 departures, read 22:41 BST). 23:46 is the last route 11 listed, still marked Scheduled rather than Live; the rest of the board is route 17 to 03:42."
+      }
     },
     {
       "id": "21-20261003-039026610001",
