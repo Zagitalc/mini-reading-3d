@@ -1,5 +1,5 @@
 import type {Map,ExpressionSpecification} from 'maplibre-gl';
-import {detail,escape,layerGroup} from '../ui/shell';
+import {detail,escape,layerGroup,sourceFooter} from '../ui/shell';
 import {routeMatches,uniqueRoutes,mapRouteLabel,type StaticRoute} from '../../shared/static-routes';
 export async function connectRouteLayers(map:Map){
  const groups:{mode:string;routes:StaticRoute[];selected:string;enabled:boolean}[]=[];
@@ -24,7 +24,7 @@ export async function connectRouteLayers(map:Map){
     for(const part of ['outline','lines'])map.setPaintProperty(`${mode}-route-${part}`,'line-opacity',opacity);
     map.setPaintProperty(`${mode}-route-labels`,'text-opacity',opacity);
     const r=routes.find(r=>r.id===id);if(!r)return;
-    detail(`<span class="pill">${mode==='bus'?'Bus route':'Railway infrastructure corridor'}</span><h2>${escape(r.label)}</h2>${mode==='rail'?'<p>Physical railway corridor. This does not establish passenger services or operator coverage.</p>':''}<dl>${r.operator?`<dt>Operator</dt><dd>${escape(r.operator)}</dd>`:''}<dt>${mode==='bus'?'Available destinations':'Mapped endpoints'}</dt><dd>${r.destinations.map(escape).join('<br>')||'Not supplied'}</dd><dt>Source</dt><dd><a href="${escape(r.sourceUrl)}" target="_blank" rel="noopener">${escape(r.source)}</a></dd><dt>Snapshot</dt><dd>${escape(r.snapshot.slice(0,10))}</dd><dt>Colour</dt><dd>${escape(r.colourSource)}</dd></dl>`);
+    detail(`<span class="pill">${mode==='bus'?'Bus route':'Railway infrastructure corridor'}</span><h2>${escape(r.label)}</h2>${mode==='rail'?'<p>Physical railway corridor. This does not establish passenger services or operator coverage.</p>':''}<dl>${r.operator?`<dt>Operator</dt><dd>${escape(r.operator)}</dd>`:''}<dt>${mode==='bus'?'Available destinations':'Mapped endpoints'}</dt><dd>${r.destinations.map(escape).join('<br>')||'Not supplied'}</dd></dl>${sourceFooter([['Source',`<a href="${escape(r.sourceUrl)}" target="_blank" rel="noopener">${escape(r.source)}</a>`],['Snapshot',escape(r.snapshot.slice(0,10))],['Colour',escape(r.colourSource)]])}`);
    };
    Object.assign(group,{choose});
    if(mode==='bus'){const show=(e:Event)=>{toggle.checked=true;toggle.dispatchEvent(new Event('change'));choose((e as CustomEvent<string>).detail);};document.addEventListener('reading-show-bus-route',show);map.on('remove',()=>document.removeEventListener('reading-show-bus-route',show));}

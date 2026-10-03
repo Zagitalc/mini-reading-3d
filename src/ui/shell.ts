@@ -35,6 +35,8 @@ export const toolSlot=(id:'evening'|'scenario'|'history'|'fuel')=>document.query
 /** Phones get the details panel as a bottom sheet and the layers as a pull-down; only one is open at a time. */
 const phone=()=>matchMedia('(max-width:680px)').matches;
 function closeLayersSheet(){const panel=document.querySelector('.explore-panel')!;if(!panel.classList.contains('mobile-open'))return;panel.classList.remove('mobile-open');const b=document.querySelector('#collapse-layers')!;b.textContent='+';b.setAttribute('aria-expanded','false');}
+/** Where a card's data came from and how fresh it is, as one quiet footer under the facts that matter. Values are HTML, already escaped. */
+export const sourceFooter=(rows:[string,string][])=>`<dl class="card-source">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
 export function escape(s:unknown){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));}
 export function detail(html:string){document.querySelector('#details-content')!.innerHTML=html;const el=document.querySelector<HTMLElement>('#details')!;if(phone())closeLayersSheet();el.hidden=false;el.focus({preventScroll:true});}
 export function toast(text:string){const el=document.querySelector<HTMLElement>('#toast')!;el.textContent=text;el.hidden=false;setTimeout(()=>el.hidden=true,4500);}
