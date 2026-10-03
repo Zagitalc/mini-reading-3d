@@ -74,7 +74,7 @@ export function journeyProgress(o:Pick<VehicleObservation,'position'|'observedAt
 }
 
 const sameLabel=(a:string,b:string)=>a.trim().toLowerCase()===b.trim().toLowerCase();
-const readingOperator=(o:VehicleObservation)=>!o.operatorId||/^(RGB|RBUS|READING)$/i.test(o.operatorId);
+export const readingOperator=(o:Pick<VehicleObservation,'operatorId'>)=>!o.operatorId||/^(RGB|RBUS|READING)$/i.test(o.operatorId);
 
 /**
  * Whether a live bus is running this timetabled journey. Only the GTFS-RT trip reference counts, and the
@@ -118,6 +118,35 @@ export function liveDepartures(departures:Departure[],vehicles:VehicleObservatio
   result.set(key(d),{state:'estimate',estimate:{tripId:d.tripId,sequence:d.sequence,scheduled:d.time,expected:passed?d.time+progress.delaySeconds*1000:Math.max(d.time+progress.delaySeconds*1000,now),delaySeconds:progress.delaySeconds,vehicleId:vehicle.id,observedAt:vehicle.observedAt,passed}});
  }
  return result;
+}
+
+export interface NextBusStop {stopId:string;scheduled:number;expected:number;delaySeconds:number;serviceDate:string;last:boolean}
+/**
+ * The next call of the journey a live bus is running: the first stop on the journey's road beyond where its position
+ * puts it, timed by the timetable shifted by its current delay. A journey after midnight belongs to the day before, so
+ * each candidate service date is tried and the one giving a believable delay is kept. Undefined when the bus is off
+ * the journey's road or has passed the journey's last call inside the map area.
+ */
+export function nextBusStop(o:Pick<VehicleObservation,'position'|'observedAt'>,journeys:RouteJourneys,tripId:string,serviceDates:string[]):NextBusStop|undefined{
+ const trip=journeys.trips.find(t=>t[0]===tripId),pattern=trip&&journeys.patterns[trip[1]];if(!trip||!pattern)return undefined;
+ let best:{along:number;delaySeconds:number;date:string}|undefined;
+ for(const date of serviceDates){const p=journeyProgress(o,journeys,trip,date);if(p&&(!best||Math.abs(p.delaySeconds)<Math.abs(best.delaySeconds)))best={...p,date};}
+ if(!best)return undefined;
+ // The same 20 m margin as a passed stop in liveDepartures, so a bus at a stop counts as having left it.
+ const i=pattern.along.findIndex(a=>a>best!.along+20);if(i<0)return undefined;
+ const scheduled=serviceOrigin(best.date,journeys.timezone)+trip[2][i]*1000;
+ return {stopId:pattern.stops[i],scheduled,expected:Math.max(scheduled+best.delaySeconds*1000,Date.parse(o.observedAt)),delaySeconds:best.delaySeconds,serviceDate:best.date,last:i===pattern.stops.length-1};
+}
+
+/**
+ * Health text for the bus feed. Positions keep arriving when the journey feed fails, which quietly turns every stop's
+ * live estimates off (as on 3 October 2026, when BODS began refusing our Accept header), so the matching is reported too.
+ */
+export function busHealthMessage(items:VehicleObservation[]){
+ const base='Connected; shared refresh at most once per minute while the map is open',reading=items.filter(o=>o.kind==='bus'&&readingOperator(o));
+ if(!reading.length)return base;
+ const matched=reading.filter(o=>o.timetableTripId).length;
+ return matched?`${base}; ${matched} of ${reading.length} Reading Buses vehicles matched to a timetabled journey`:`${base}. Journey matching is down: none of ${reading.length} Reading Buses vehicles is linked to a timetabled journey, so stops show scheduled times only`;
 }
 
 /** "3 min late", "on time" or "2 min early"; within a minute either way counts as on time. */

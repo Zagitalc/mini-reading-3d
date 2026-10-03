@@ -6,14 +6,19 @@ import {feedFailureReason} from '../shared/feed-errors';
 
 const now=Date.parse('2026-09-16T08:05:00Z');
 const rail=new RailNetwork([{properties:{railway:'rail'},geometry:{type:'LineString',coordinates:[STATIONS.RDG,[-.981,51.457],STATIONS.RDW]}}]);
-const service={serviceID:'rdm-train',serviceType:'train',std:'09:00',etd:'On time',operator:'GWR',destination:[{locationName:'Reading West',crs:'RDW'}],subsequentCallingPoints:[{serviceType:'train',callingPoint:[{crs:'RDW',st:'09:10',et:'On time'}]}]};
-const board=(services:unknown[]=[service])=>({crs:'RDG',generatedAt:new Date(now).toISOString(),trainServices:services});
+const service={serviceID:'rdm-train',serviceType:'train',std:'09:00',etd:'On time',operator:'GWR',destination:[{locationName:'Reading West',crs:'RDW'}],platform:'4',subsequentCallingPoints:[{serviceType:'train',callingPoint:[{crs:'RDW',locationName:'Reading West',st:'09:10',et:'09:12'}]}]};
+const board=(services:unknown[]=[service])=>({crs:'RDG',locationName:'Reading',generatedAt:new Date(now).toISOString(),trainServices:services});
 
 test('RDM JSON arrays produce timed estimates and destinations on connected track',()=>{
  const data=estimateBoard(parseRdmBoard(board(),'RDG'),'RDG',rail,now);
  assert.equal(data.observations.length,1);const train=data.observations[0];
  assert.equal(train.status,'estimated');assert.equal(train.destination,'Reading West');assert.equal(train.observedAt,new Date(now).toISOString());
  assert.ok(train.position[0]<STATIONS.RDG[0]&&train.position[0]>STATIONS.RDW[0]);assert.equal(data.routes['rdm-train'].length,3);
+});
+
+test('a moving train carries its next timed call: the station, the time used to place it, and the timetable time',()=>{
+ const train=estimateBoard(parseRdmBoard(board(),'RDG'),'RDG',rail,now).observations[0];
+ assert.deepEqual(train.nextStop,{name:'Reading West',at:'2026-09-16T08:12:00.000Z',scheduled:'09:10'});
 });
 
 test('RDM cancellations, unknown delays, future departures and replacement buses do not become moving trains',()=>{
@@ -26,6 +31,7 @@ test('RDM cancellations, unknown delays, future departures and replacement buses
 test('RDM station holds and midnight retain London timing',()=>{
  const held={...service,sta:'09:04',eta:'On time',std:'09:07'};
  assert.equal(estimateBoard(parseRdmBoard(board([held]),'RDG'),'RDG',rail,now).observations[0].stopUntil,'2026-09-16T08:07:00.000Z');
+ assert.deepEqual(estimateBoard(parseRdmBoard(board([held]),'RDG'),'RDG',rail,now).observations[0].nextStop,{name:'Reading',at:'2026-09-16T08:07:00.000Z',dwell:true,scheduled:'09:07',platform:'4'},'a train standing at the station shows it and its departure');
  const midnight=Date.parse('2026-09-16T23:01:00Z');
  const late={...service,std:'23:59',subsequentCallingPoints:[{callingPoint:[{crs:'RDW',st:'00:05',et:'On time'}]}]};
  assert.equal(estimateBoard(parseRdmBoard({...board([late]),generatedAt:new Date(midnight).toISOString()},'RDG'),'RDG',rail,midnight).observations.length,1);

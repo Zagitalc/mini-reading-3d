@@ -4,6 +4,7 @@ import {fetchWeather} from '../server/providers/weather';
 import {fetchFuel} from '../server/providers/fuel';
 import {fetchRivers} from '../server/providers/rivers';
 import { fetchBuses } from '../server/providers/buses';
+import { busHealthMessage } from '../shared/live-departures';
 import { fetchRailSnapshot } from '../server/providers/trains';
 import { fetchTraffic } from '../server/providers/traffic';
 import { RailNetwork } from '../server/rail-network';
@@ -42,7 +43,7 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
       // A partial rail response can repeat a service across station boards.
       const unique = [...new Map(items.map(item => [item.id, item])).values()];
       const health: FeedStatus = {id,label,intervalMs,state:'live',lastAttempt,lastSuccess:new Date().toISOString(),count:unique.length,
-        message:unique.length?(id==='buses'?'Connected; shared refresh at most once per minute while the map is open':`Connected; refresh interval ${intervalMs/60000} minutes`):'Connected; no current observations in this area'};
+        message:unique.length?(id==='buses'?busHealthMessage(unique as VehicleObservation[]):`Connected; refresh interval ${intervalMs/60000} minutes`):'Connected; no current observations in this area'};
       await store.saveFeed(id, unique, health, routes, states);
     } catch (error) {
       const reason=feedFailureReason(error);

@@ -8,7 +8,7 @@
 @media(max-width:680px){.explore-panel #layers{display:none}.explore-panel.mobile-open #layers:not([hidden]){display:block;max-height:calc(100dvh - 354px);overflow:auto}.panel-foot{font-size:12px}.places-dock #landmark-buttons button{font-size:13px}.explore-panel{width:245px}.search-wrap input{font-size:14px}.layer-row{font-size:14px}}
 .details-panel h2+p{font-size:16px}.layer-title,.dock-label,.panel-heading,.eyebrow,.panel-foot,.bottom-note,#view-coordinates{font-size:12px}.map-label{font-size:12px}
 
-.environment-control{border-top:1px solid var(--border);padding:8px 0}.environment-summary{display:block;width:calc(100% - 36px);text-align:left;border:0;background:var(--fill);border-radius:6px;padding:9px 10px;margin:0 18px 8px;font-size:13px;color:var(--ink);cursor:pointer}.environment-control small{display:block;padding:0 18px 8px;font-size:12px;color:var(--muted)}dd small{display:block;font-size:11px;color:var(--muted)}
+.environment-control{border-top:1px solid var(--border);padding:8px 0}.environment-summary{display:block;width:calc(100% - 36px);text-align:left;border:0;background:var(--fill);border-radius:6px;padding:9px 10px;margin:0 18px 8px;font-size:13px;color:var(--ink);cursor:pointer}.environment-control small{display:block;padding:0 18px 8px;font-size:12px;color:var(--muted)}dd small{display:block;font-size:11px;color:var(--muted)}dd small.inline{display:inline}
 
 .sign-badge.speed-info{border:1px solid #637877;border-radius:5px;background:#eef4f1;color:#365753;font-size:17px}
 

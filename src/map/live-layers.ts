@@ -2,6 +2,8 @@ import {CADENCE} from '../../shared/feed-policy';
 import {publishVehicles,vehiclesNeeded} from './vehicle-feed';
 import {wantsVehicles,type ModeLayer} from '../../shared/modes';
 import {registerSwitch} from '../ui/modes';
+import {findNextBusStop} from './next-stop';
+import {delayLabel,readingOperator} from '../../shared/live-departures';
 import{Marker,type Map,type GeoJSONSource}from'maplibre-gl';import type{ReadingScene}from'../scene/layer';import type{StaticFeatures,GeographyManifest,FeedStatus,VehicleObservation,RoadEvent,TrafficSegment,LngLat}from'../../shared/types';import{detail,escape,toast}from'../ui/shell';import{VehicleTracker}from'../movement/tracker';import{VehicleMeshes}from'../scene/vehicles';import{RoadFurniture}from'../scene/road-furniture';import{eventDuration,formatDate}from'../../shared/road-events';import{registerMapTools}from'../ui/webmcp';
 export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFeatures,manifest:GeographyManifest){// Switches start as the shell drew them, from the chosen mode, so nothing is requested for a layer the mode leaves off.
  const LAYERS=['buildings','buses','trains','traffic','roadworks','signs','cameras'] as const;
@@ -29,7 +31,23 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
  };
  for(const input of document.querySelectorAll<HTMLInputElement>('[data-layer]'))input.addEventListener('change',()=>{setLayer(input.dataset.layer!,input.checked);if(input.checked){const feed=feeds.find(f=>f.id===input.dataset.layer);if(feed&&feed.state==='unavailable')toast(feed.message);}});
  scene.animate=()=>{poses=tracker.poses().filter(p=>p.observation.kind!=='bus'||!selectedBusRoute||p.observation.routeGroupId===selectedBusRoute);vehicles.update(poses,map.getZoom());return poses.length>0;};
- map.on('click',e=>{let closest=20,best:typeof poses[number]|undefined;for(const p of poses){if(!(p.observation.kind==='bus'?state.buses:state.trains))continue;const s=map.project(p.position),d=Math.hypot(s.x-e.point.x,s.y-e.point.y);if(d<closest){closest=d;best=p;}}if(best){const o=best.observation;detail(`<span class="pill">${o.kind==='bus'?'Bus':'Train'} · ${best.stale?'stale':o.status==='estimated'?'estimated position':'live observation'}</span><h2>${escape(o.label)}</h2><p>${escape(o.destination??'')}</p><dl>${o.kind==='bus'?`<dt>Route match</dt><dd>${escape(o.routeMatch==='shared'?'Shared route section; branch uncertain':o.routeMatch==='trip'?'Matched journey':o.routeMatch==='direction'?'Matched route and direction':'Unmatched; showing reported position')}</dd>`:''}<dt>Source</dt><dd>${escape(o.source)}</dd><dt>Observed</dt><dd>${escape(formatDate(o.observedAt))}</dd></dl>${o.routeGroupId?'<button id=show-bus-line class=status-button>Show bus line</button>':''}${o.kind==='train'?'<p>Position interpolated along the railway between timed calling points.</p>':''}`);document.querySelector('#show-bus-line')?.addEventListener('click',()=>document.dispatchEvent(new CustomEvent('reading-show-bus-route',{detail:o.routeGroupId})));}});
+ // Trains carry their next timed call from Darwin. A bus's next stop is worked out here from the journey it is matched to.
+ const hhmm=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
+ const nextStopRow=(o:VehicleObservation)=>{
+  if(o.kind==='bus')return o.timetableTripId&&readingOperator(o)?'<dt>Next stop</dt><dd id="vehicle-next-stop">Working it out…</dd>':'';
+  const n=o.nextStop;if(!n)return '';
+  const at=hhmm.format(Date.parse(n.at)),scheduled=n.scheduled&&n.scheduled!==at?` · scheduled ${escape(n.scheduled)}`:'',platform=n.platform?` · platform ${escape(n.platform)}`:'';
+  return n.dwell?`<dt>Now at</dt><dd>${escape(n.name)}<small>Departs ${at}${scheduled}${platform}</small></dd>`:`<dt>Next stop</dt><dd>${escape(n.name)}<small>${n.scheduled&&n.scheduled!==at?'Expected':'Due'} ${at}${scheduled}${platform}</small></dd>`;
+ };
+ let shown=0;
+ const fillBusNextStop=(o:VehicleObservation)=>{
+  const ticket=++shown,cell=()=>ticket===shown?document.querySelector<HTMLElement>('#vehicle-next-stop'):null;
+  if(!cell())return;
+  findNextBusStop(o).then(n=>{const el=cell();if(!el)return;
+   el.innerHTML=n?`${escape(n.name)}${n.code?` <small class="inline">Stop ${escape(n.code)}</small>`:''}<small>Due about ${hhmm.format(n.expected)} · ${delayLabel(n.delaySeconds)}${n.last?' · last stop on the map':''}</small><small>From its position at ${hhmm.format(Date.parse(o.observedAt))}, against its own timetable</small>`:'Not known: the bus is not on its journey’s road, or has passed its last stop on the map.';
+  },()=>{const el=cell();if(el)el.textContent='Not available: the timetable could not load.';});
+ };
+ map.on('click',e=>{let closest=20,best:typeof poses[number]|undefined;for(const p of poses){if(!(p.observation.kind==='bus'?state.buses:state.trains))continue;const s=map.project(p.position),d=Math.hypot(s.x-e.point.x,s.y-e.point.y);if(d<closest){closest=d;best=p;}}if(best){const o=best.observation;detail(`<span class="pill">${o.kind==='bus'?'Bus':'Train'} · ${best.stale?'stale':o.status==='estimated'?'estimated position':'live observation'}</span><h2>${escape(o.label)}</h2><p>${escape(o.destination??'')}</p><dl>${o.kind==='bus'?`<dt>Route match</dt><dd>${escape(o.routeMatch==='shared'?'Shared route section; branch uncertain':o.routeMatch==='trip'?'Matched journey':o.routeMatch==='direction'?'Matched route and direction':'Unmatched; showing reported position')}</dd>`:''}${nextStopRow(o)}<dt>Source</dt><dd>${escape(o.source)}</dd><dt>Observed</dt><dd>${escape(formatDate(o.observedAt))}</dd></dl>${o.routeGroupId?'<button id=show-bus-line class=status-button>Show bus line</button>':''}${o.kind==='train'?'<p>Position interpolated along the railway between timed calling points.</p>':''}`);document.querySelector('#show-bus-line')?.addEventListener('click',()=>document.dispatchEvent(new CustomEvent('reading-show-bus-route',{detail:o.routeGroupId})));fillBusNextStop(o);}});
  async function get(url:string){const r=await fetch(url,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('API unavailable');return r.json();}
  let slowUpdated=0,trafficUpdated=0,refreshing=false,again=false,kicked=false;
  // A mode change flips several switches in one go; they share a single early refresh.

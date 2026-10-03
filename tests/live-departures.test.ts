@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {countdown,delayLabel,liveDepartures,liveKey,runsJourney,stopDistances,type RouteJourneys} from '../shared/live-departures';
+import {busHealthMessage,countdown,delayLabel,liveDepartures,liveKey,nextBusStop,runsJourney,stopDistances,type RouteJourneys} from '../shared/live-departures';
 import {serviceOrigin,type Departure} from '../shared/timetable';
 import {compileTimetable} from '../scripts/compile-timetable';
 import {withTimetableTrips} from '../server/providers/buses';
@@ -120,4 +120,28 @@ test('the compiler writes per-route journeys with their timed calls inside the m
  const [data]=[...result.journeyFiles.values()];
  assert.deepEqual(data.trips,[['T1',0,[h(17),h(17,10),h(17,20)]]],'the call outside the map is left out');
  assert.deepEqual(data.patterns[0].stops,['A','B','C']);assert.deepEqual(data.patterns[0].sequences,[2,3,4]);
+});
+
+test('a matched bus gets the next stop ahead of it, timed by its own delay',()=>{
+ // A quarter of the way to C at 17:07, where the timetable puts it at 17:05: two minutes late, next stop B.
+ const now=origin+h(17,7)*1000,next=nextBusStop(bus(at(.25),now),journeys,'T1',[date]);
+ assert.equal(next?.stopId,'B');assert.equal(next?.delaySeconds,120);assert.equal(next?.expected,origin+h(17,12)*1000);assert.equal(next?.last,false);
+ // Standing at B counts as having left it; past C there is no next stop on the map.
+ assert.equal(nextBusStop(bus(at(.5),origin+h(17,10)*1000),journeys,'T1',[date])?.stopId,'C');
+ assert.equal(nextBusStop(bus(at(.5),origin+h(17,10)*1000),journeys,'T1',[date])?.last,true);
+ assert.equal(nextBusStop(bus(at(1),origin+h(17,20)*1000),journeys,'T1',[date]),undefined);
+ assert.equal(nextBusStop(bus([-0.97,51.46],now),journeys,'T1',[date]),undefined,'off the road');
+ assert.equal(nextBusStop(bus(at(.25),now),journeys,'missing',[date]),undefined);
+});
+
+test('the next stop uses whichever service date gives a believable delay',()=>{
+ const now=origin+h(17,7)*1000,next=nextBusStop(bus(at(.25),now),journeys,'T1',['20261003',date]);
+ assert.equal(next?.serviceDate,date);assert.equal(next?.delaySeconds,120);
+});
+
+test('bus health says when no Reading Buses vehicle is matched to a journey',()=>{
+ const now=Date.now();
+ assert.match(busHealthMessage([bus(at(0),now),bus(at(.5),now,{id:'bods:RBUS:702',timetableTripId:undefined})]),/1 of 2 Reading Buses vehicles matched/);
+ assert.match(busHealthMessage([bus(at(0),now,{timetableTripId:undefined})]),/Journey matching is down/);
+ assert.doesNotMatch(busHealthMessage([bus(at(0),now,{operatorId:'TVLY',timetableTripId:undefined})]),/down/,'other operators have no Reading timetable');
 });
