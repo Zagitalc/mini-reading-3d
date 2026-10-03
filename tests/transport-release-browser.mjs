@@ -29,7 +29,8 @@ try{
   const nextDayRows=await page.locator('.last-departures li').count();
   await mkdir('test-results',{recursive:true});await page.screenshot({path:`test-results/last-departures-${label}.png`});
   await page.locator('#close-details').click();
-  if(label==='mobile')await page.locator('#collapse-layers').click();
+  // Since 29 September a phone closes the layers sheet itself when a card opens; only close it if it is still open.
+  if(label==='mobile'&&await page.locator('.explore-panel.mobile-open').count())await page.locator('#collapse-layers').click();
   await page.getByRole('button',{name:'↗ Station'}).click();await page.waitForTimeout(2500);
   await page.locator('.landmark-pin[aria-label="Reading station"]').click();
   await expect(page.locator('#details h2')).toHaveText('Reading station');
