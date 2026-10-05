@@ -2,6 +2,7 @@ import type {Map,GeoJSONSource} from 'maplibre-gl';
 import {FOOD_TYPES,RATING_FILTERS,RATING_TEXT,foodCategory,foodMatches,ratingGroup,type FoodTypeFilter,type HygieneBundle,type HygienePlace,type RatingFilter} from '../../shared/hygiene';
 import {detail,escape,layerGroup} from '../ui/shell';
 import {currentMode,registerSwitch} from '../ui/modes';
+import {onLinked,setSelection} from '../ui/share';
 // Useful places, starting with food hygiene ratings. The bundle is built by `npm run data:hygiene` and
 // loaded only when the layer is first switched on.
 const COLOURS={good:'#2f7d4f',fair:'#d19a1c',poor:'#b3372b',none:'#9aa19a'} as const;
@@ -22,7 +23,7 @@ export function connectPlaces(map:Map){
    <p class="hygiene-rating ${group}"><strong>${/^[0-5]$/.test(rating)?`${rating} out of 5`:escape(RATING_TEXT[rating]??rating)}</strong>${/^[0-5]$/.test(rating)?` · ${escape(RATING_TEXT[rating])}`:''}</p>
    <dl><dt>Inspected</dt><dd>${escape(date(p[8]))}</dd></dl>${p[9]?'<p>A new rating is pending: the business has been inspected again, and the rating may change once it is published.</p>':''}
    <p class="explorer-note">The rating covers hygiene, the state of the premises and how food safety is managed on the day of inspection. It says nothing about the quality of the food. Council data as of ${escape(date(extract))}.</p>
-   <a href="https://ratings.food.gov.uk/business/${p[0]}" target="_blank" rel="noopener">Full record on the FSA website</a><p class="explorer-note">Food Standards Agency data, Open Government Licence v3.0.</p>`);};
+   <a href="https://ratings.food.gov.uk/business/${p[0]}" target="_blank" rel="noopener">Full record on the FSA website</a><p class="explorer-note">Food Standards Agency data, Open Government Licence v3.0.</p>`);setSelection({kind:'food',id:String(p[0])});};
  const shown=()=>(bundle?.places??[]).filter(p=>foodMatches(bundle!.types[p[2]]??'',p[7],kind,min));
  const data=()=>({type:'FeatureCollection' as const,features:shown().map(p=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[p[5],p[6]]},properties:{id:p[0],group:ratingGroup(p[7]),label:/^[0-5]$/.test(p[7])?p[7]:''}}))});
  async function load(){
@@ -49,6 +50,8 @@ export function connectPlaces(map:Map){
  const group=layerGroup('places').closest('details')!,others=[...document.querySelectorAll<HTMLDetailsElement>('.layer-group')].filter(d=>d!==group);
  let remembered:boolean[]|undefined;
  const openForMode=()=>{if(currentMode()==='eat'){remembered??=others.map(d=>d.open);others.forEach(d=>d.open=false);group.open=true;}else if(remembered){others.forEach((d,i)=>d.open=remembered![i]);remembered=undefined;}};document.addEventListener('reading-mode',openForMode);map.on('remove',()=>document.removeEventListener('reading-mode',openForMode));openForMode();registerSwitch('hygiene',toggle);
+ // A shared link to a premises switches the ratings on, waits for them, then opens its card.
+ onLinked('food',async(id,fly)=>{if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}await loading;const p=byId.get(Number(id));if(!p)return false;if(fly)map.flyTo({center:[p[5],p[6]],zoom:17.5,pitch:45});open(p);return true;});
  const search=find.querySelector('input')!,results=find.querySelector<HTMLElement>('.stop-results')!;
  // Each row is one choice at a time: a type, and a rating threshold.
  for(const row of filters)row.querySelectorAll<HTMLButtonElement>('button').forEach(b=>b.addEventListener('click',()=>{

@@ -38,6 +38,7 @@
     "test:tonight-browser": "node tests/tonight-stops-browser.mjs",
     "test:evening-browser": "node tests/evening-explorer-browser.mjs",
     "test:modes-browser": "node tests/modes-browser.mjs",
+    "test:share-browser": "node tests/share-view-browser.mjs",
     "test:live-browser": "node --import tsx tests/live-departures-browser.mjs",
     "test:next-stop-browser": "node --import tsx tests/next-stop-browser.mjs",
     "test:places-browser": "node tests/places-fuel-browser.mjs",

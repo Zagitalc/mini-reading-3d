@@ -4,6 +4,7 @@ import {countdown,delayLabel,liveDepartures,liveKey,LIVE_MAX_AGE_MS,type LiveSta
 import type {VehicleObservation} from '../../shared/types';
 import {needVehicles,subscribeVehicles} from './vehicle-feed';
 import {registerSwitch} from '../ui/modes';
+import {onLinked,setSelection} from '../ui/share';
 import {addDays,compareRouteLabels,currentServiceDate,lastDepartures,localDate,scheduledDepartures,timetableExpired,timetableStatus,tonightDepartures,type BusStop,type StopIndex,type StopTimetable} from '../../shared/timetable';
 const dateLabel=(date:string)=>`${date.slice(6,8)}/${date.slice(4,6)}/${date.slice(0,4)}`;
 export async function connectStopLayers(map:Map){
@@ -90,6 +91,7 @@ export async function connectStopLayers(map:Map){
   };
   const open=async(stop:BusStop)=>{
    detail(`<span class="pill">Bus stop · timetable</span><h2>${escape(stop.name)}</h2><p>Stop ${escape(stop.code)}</p><h3>Routes in this snapshot</h3><p>${stop.routeIds.map(id=>`<span class="stop-route">${escape(index.routes[id]?.label??id)}</span>`).join(' ')}</p><small>Routes recorded at this stop, including drop-off-only services. Service varies by date.</small><h3>Departures</h3><div class="departure-views" role="group" aria-label="Departure time window"><button type="button" data-departure-view="next" aria-pressed="${view==='next'}">Next departures</button><button type="button" data-departure-view="tonight" aria-pressed="${view==='tonight'}">Tonight / overnight</button><button type="button" data-departure-view="last" aria-pressed="${view==='last'}">Last departures</button></div><div id="stop-departures" aria-live="polite"><p>Loading this stop’s timetable…</p></div><p class="explorer-note">The timetable does not show cancellations. Live estimates come from bus GPS positions published on the Bus Open Data Service and cover only journeys already under way. Terminal and drop-off-only calls are excluded. Untimed and frequency-based services are not listed.</p>${sourceFooter([['Source',`<a href="${escape(index.sourceUrl)}" target="_blank" rel="noopener">${escape(index.source)} GTFS</a> · ${escape(index.licence)}`],['Snapshot retrieved',escape(new Date(index.retrievedAt).toLocaleDateString('en-GB',{timeZone:index.timezone}))],['Service dates in dataset',`${dateLabel(index.validFrom)}–${dateLabel(index.validUntil)}`]])}`);
+   setSelection({kind:'stop',id:stop.id});
    const element=document.querySelector<HTMLElement>('#stop-departures')!;active={element,stop};loadJourneys(stop);visibleCount=30;lastDate=undefined;
    document.querySelectorAll<HTMLButtonElement>('[data-departure-view]').forEach(button=>button.addEventListener('click',()=>{view=button.dataset.departureView as typeof view;visibleCount=30;document.querySelectorAll<HTMLButtonElement>('[data-departure-view]').forEach(b=>b.setAttribute('aria-pressed',String(b===button)));render();}));
    if(!stop.timetableUrl){element.textContent='No timed departures supplied for this stop.';return;}
@@ -108,6 +110,7 @@ export async function connectStopLayers(map:Map){
   const search=section.querySelector<HTMLInputElement>('input[type=search]')!,results=section.querySelector<HTMLElement>('.stop-results')!;
   search.addEventListener('input',()=>{results.replaceChildren();const q=search.value.trim().toLowerCase();if(q.length<2)return;const matches=index.stops.filter(s=>`${s.name} ${s.code} ${s.id}`.toLowerCase().includes(q)).slice(0,12);if(!matches.length)results.textContent='No matching stops in this snapshot.';for(const stop of matches){const button=document.createElement('button');button.textContent=`${stop.name} · ${stop.code}`;button.addEventListener('click',()=>{toggle.checked=true;toggle.dispatchEvent(new Event('change'));map.flyTo({center:stop.position,zoom:17,pitch:45});void open(stop);});results.append(button);}});
   section.querySelector('.stop-loading')!.textContent=`${index.stops.length.toLocaleString()} stops · visible when zoomed in`;
+  onLinked('stop',(id,fly)=>{const stop=byId.get(id);if(!stop)return false;if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}if(fly)map.flyTo({center:stop.position,zoom:17,pitch:45});void open(stop);return true;});
   const unsubscribe=subscribeVehicles(update=>{vehicles=update.vehicles;vehiclesAt=update.at;if(view==='next')render();});map.on('remove',unsubscribe);
   freshness();timer=setInterval(render,60_000);document.addEventListener('visibilitychange',render);map.on('remove',()=>document.removeEventListener('visibilitychange',render));
  }catch{section.querySelector('.stop-loading')!.textContent='Stop snapshot unavailable';}

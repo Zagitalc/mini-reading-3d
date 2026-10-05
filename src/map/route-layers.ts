@@ -1,6 +1,8 @@
 import type {Map,ExpressionSpecification} from 'maplibre-gl';
 import {detail,escape,layerGroup,sourceFooter} from '../ui/shell';
 import {routeMatches,uniqueRoutes,mapRouteLabel,type StaticRoute} from '../../shared/static-routes';
+import {sameLabel} from '../../shared/share-view';
+import {currentSelection,onLinked,setSelection} from '../ui/share';
 export async function connectRouteLayers(map:Map){
  const groups:{mode:string;routes:StaticRoute[];selected:string;enabled:boolean}[]=[];
  for(const [mode,title,file] of [['bus','Bus routes','bus-routes'],['rail','Train routes','rail-corridors']]){
@@ -23,8 +25,9 @@ export async function connectRouteLayers(map:Map){
     const opacity:ExpressionSpecification=['case',['any',['literal',!id],['==',['get','id'],id]],.95,.13];
     for(const part of ['outline','lines'])map.setPaintProperty(`${mode}-route-${part}`,'line-opacity',opacity);
     map.setPaintProperty(`${mode}-route-labels`,'text-opacity',opacity);
-    const r=routes.find(r=>r.id===id);if(!r)return;
+    const kind=mode==='bus'?'route':'rail',r=routes.find(r=>r.id===id);if(!r){if(currentSelection()?.kind===kind)setSelection(undefined);return;}
     detail(`<span class="pill">${mode==='bus'?'Bus route':'Railway infrastructure corridor'}</span><h2>${escape(r.label)}</h2>${mode==='rail'?'<p>Physical railway corridor. This does not establish passenger services or operator coverage.</p>':''}<dl>${r.operator?`<dt>Operator</dt><dd>${escape(r.operator)}</dd>`:''}<dt>${mode==='bus'?'Available destinations':'Mapped endpoints'}</dt><dd>${r.destinations.map(escape).join('<br>')||'Not supplied'}</dd></dl>${sourceFooter([['Source',`<a href="${escape(r.sourceUrl)}" target="_blank" rel="noopener">${escape(r.source)}</a>`],['Snapshot',escape(r.snapshot.slice(0,10))],['Colour',escape(r.colourSource)]])}`);
+    setSelection({kind,id:r.label});
    };
    Object.assign(group,{choose});
    if(mode==='bus'){const show=(e:Event)=>{toggle.checked=true;toggle.dispatchEvent(new Event('change'));choose((e as CustomEvent<string>).detail);};document.addEventListener('reading-show-bus-route',show);map.on('remove',()=>document.removeEventListener('reading-show-bus-route',show));}
@@ -35,6 +38,11 @@ export async function connectRouteLayers(map:Map){
     document.addEventListener('reading-scheduled-routes',scheduled);map.on('remove',()=>document.removeEventListener('reading-scheduled-routes',scheduled));}
    search.addEventListener('input',list);select.addEventListener('change',()=>choose(select.value));section.querySelector('button')!.addEventListener('click',()=>{search.value='';list();choose('');});list();
    toggle.disabled=false;section.querySelector('.route-loading')!.remove();toggle.addEventListener('change',()=>{group.enabled=toggle.checked;if(mode==='bus')document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:group.enabled?group.selected:''}));section.querySelector<HTMLElement>('.route-options')!.hidden=!toggle.checked;for(const part of ['outline','lines','labels'])map.setLayoutProperty(`${mode}-route-${part}`,'visibility',toggle.checked?'visible':'none');});
+   // A shared link names the route by its label; with no camera in the link, the map frames the whole route.
+   onLinked(mode==='bus'?'route':'rail',(label,fly)=>{const r=routes.find(r=>sameLabel(r.label,label));if(!r)return false;
+    if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}choose(r.id);
+    const points=r.coordinates.flat();if(fly&&points.length){const lng=points.map(p=>p[0]),lat=points.map(p=>p[1]);map.fitBounds([[Math.min(...lng),Math.min(...lat)],[Math.max(...lng),Math.max(...lat)]],{padding:innerWidth>680?{top:125,left:330,right:430,bottom:130}:40,pitch:30,duration:1200});}
+    return true;});
   }catch{section.querySelector('.route-loading')!.textContent='Route snapshot unavailable';}
  }
  map.on('click',e=>{
