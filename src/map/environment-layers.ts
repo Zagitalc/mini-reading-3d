@@ -10,6 +10,8 @@ import type {ReadingScene} from '../scene/layer';
 import {fuelPumpLegend} from './fuel-icon';
 import {connectFuel} from './fuel-panel';
 import {connectRivers} from './river-layers';
+import {publishFact} from '../ui/summary';
+import {fuelFact} from '../../shared/summary';
 export async function connectEnvironment(map:Map,scene:ReadingScene){
  const effects=new WeatherEffects(scene);const prior=scene.animate;scene.animate=()=>{const a=prior?.()??false;return effects.update()||a;};
  let disposed=false;const timers=new Set<ReturnType<typeof setTimeout>>();const controllers=new Set<AbortController>();
@@ -36,13 +38,13 @@ export async function connectEnvironment(map:Map,scene:ReadingScene){
  const weatherText=section.querySelector<HTMLButtonElement>('#weather-summary')!;let weather:Weather|undefined;
  section.querySelector<HTMLInputElement>('#weather-effects')!.addEventListener('change',e=>{effects.enabled=(e.target as HTMLInputElement).checked;map.triggerRepaint();});
  weatherText.addEventListener('click',()=>{if(weather)detail(`<span class="pill">Estimated weather for Reading</span><h2>${weather.temperature.toFixed(1)}°C</h2><p>Cloud cover ${weather.cloudCover}% · Wind ${weather.windKph.toFixed(0)} km/h</p><p>${precipitationText(weather)}</p><p>Model time: ${escape(new Date(weather.observedAt).toLocaleString('en-GB'))}</p><p>The number of clouds follows the reported cover, and rain or snow is drawn only while the model reports it falling. Cloud positions are illustrative: the model gives one value for the whole area, so it does not locate individual clouds or showers.</p><a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo · CC BY 4.0</a>`);});
- if(config.weather)schedule(async()=>{try{const data=await get('/api/v1/weather');if(disposed)return;weather=data.data[0];effects.set(weather);weatherText.textContent=weather?`${weather.temperature.toFixed(0)}°C · ${weather.cloudCover}% cloud${weather.snowCm>0?' · snow':rainRate(weather.rainMm,weather.intervalSeconds)>0?' · rain':''} · estimated`:'Weather unavailable';return !!weather;}catch{if(!disposed){weather=undefined;effects.set();weatherText.textContent='Weather unavailable';}return false;}},CADENCE.weather);else weatherText.textContent='Weather disabled';
+ if(config.weather)schedule(async()=>{try{const data=await get('/api/v1/weather');if(disposed)return;weather=data.data[0];effects.set(weather);publishFact('weather',weather?{temperature:weather.temperature,cloudCover:weather.cloudCover,precipitation:weather.snowCm>0?'snow':rainRate(weather.rainMm,weather.intervalSeconds)>0?'rain':'none',at:Date.parse(weather.observedAt)||Date.now()}:undefined);weatherText.textContent=weather?`${weather.temperature.toFixed(0)}°C · ${weather.cloudCover}% cloud${weather.snowCm>0?' · snow':rainRate(weather.rainMm,weather.intervalSeconds)>0?' · rain':''} · estimated`:'Weather unavailable';return !!weather;}catch{if(!disposed){weather=undefined;effects.set();publishFact('weather',undefined);weatherText.textContent='Weather unavailable';}return false;}},CADENCE.weather);else weatherText.textContent='Weather disabled';
  const fuel=connectFuel(map,section,config.fuel);
  const fuelToggle=section.querySelector<HTMLInputElement>('#fuel-layer')!;
  fuelToggle.closest('label')!.querySelector('span')!.innerHTML=`${fuelPumpLegend}Fuel prices`;
  const fuelSummary=section.querySelector('#fuel-summary')!;
- if(config.fuel)schedule(async()=>{try{const data=await get('/api/v1/fuel');if(disposed)return;fuel.set(data.data);const list=fuel.stations,latest=list.map(s=>s.observedAt).sort().at(-1);
+ if(config.fuel)schedule(async()=>{try{const data=await get('/api/v1/fuel');if(disposed)return;fuel.set(data.data);const list=fuel.stations;publishFact('fuel',fuelFact(list,Date.now()));const latest=list.map(s=>s.observedAt).sort().at(-1);
   fuelSummary.textContent=latest?`${list.length} forecourts · prices as of ${new Date(latest).toLocaleString('en-GB',{timeZone:'Europe/London',weekday:'short',hour:'2-digit',minute:'2-digit'})}`:'Fuel snapshot unavailable';return list.length>0;}
-  catch{if(!disposed){fuelSummary.textContent='Fuel snapshot unavailable';if(fuel.stations.some(s=>Date.now()-Date.parse(s.observedAt)>=48*3600000))fuel.set([]);}return false;}},CADENCE.fuel);
+  catch{if(!disposed){fuelSummary.textContent='Fuel snapshot unavailable';if(fuel.stations.some(s=>Date.now()-Date.parse(s.observedAt)>=48*3600000)){fuel.set([]);publishFact('fuel',undefined);}}return false;}},CADENCE.fuel);
  connectRivers(map,section,schedule,get,config.rivers===true,CADENCE.rivers,()=>disposed);
 }

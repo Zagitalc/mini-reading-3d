@@ -20,7 +20,7 @@ export function setMode(id:ModeId){
  for(const [layer,input] of switches)set(input,MODES[id].layers[layer]);
  showMode();document.dispatchEvent(new CustomEvent('reading-mode',{detail:id}));
 }
-export const modeBar=()=>`<div class="mode-bar" role="group" aria-label="Map mode">${MODE_IDS.map(id=>`<button type="button" data-mode="${id}" aria-pressed="${id===mode()}" title="${MODES[id].summary}"><span aria-hidden="true">${MODES[id].icon}</span>${MODES[id].label}</button>`).join('')}</div><p id="mode-summary" class="mode-summary${mode()==='lab'?' lab':''}">${MODES[mode()].summary}</p>`;
+export const modeBar=()=>`<div class="mode-bar" role="group" aria-label="Map mode">${MODE_IDS.map(id=>`<button type="button" data-mode="${id}" aria-pressed="${id===mode()}" title="${MODES[id].summary}"><span aria-hidden="true">${MODES[id].icon}</span>${MODES[id].label}</button>`).join('')}</div><p id="mode-summary" class="mode-summary${mode()==='lab'?' lab':''}">${MODES[mode()].summary}</p><details id="mode-card" class="mode-card" open><summary id="mode-card-title">Right now</summary><div id="mode-card-body" aria-live="polite"></div></details>`;
 function showMode(){
  for(const b of document.querySelectorAll<HTMLButtonElement>('[data-mode]'))b.setAttribute('aria-pressed',String(b.dataset.mode===mode()));
  const summary=document.querySelector<HTMLElement>('#mode-summary')!;summary.textContent=MODES[mode()].summary;summary.classList.toggle('lab',mode()==='lab');

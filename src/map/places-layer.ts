@@ -4,6 +4,7 @@ import {detail,escape,layerGroup} from '../ui/shell';
 import {currentMode,registerSwitch} from '../ui/modes';
 import {onLinked,setSelection} from '../ui/share';
 import {MAX_HITS,registerSearch} from '../ui/search';
+import {publishFact} from '../ui/summary';
 import {rank} from '../../shared/search';
 // Useful places, starting with food hygiene ratings. The bundle is built by `npm run data:hygiene` and
 // loaded only when the layer is first switched on.
@@ -33,7 +34,11 @@ export function connectPlaces(map:Map){
  const fetchBundle=()=>fetching??=(async()=>{
   const r=await fetch('/data/hygiene.json',{signal:AbortSignal.timeout(20000)});
   if(!r.ok)throw Error(r.status===404?'Ratings not built yet: run npm run data:hygiene':'Ratings unavailable');
-  const data=await r.json() as HygieneBundle;for(const p of data.places)byId.set(p[0],p);bundle=data;return data;
+  const data=await r.json() as HygieneBundle;for(const p of data.places)byId.set(p[0],p);bundle=data;
+  // Customer-facing premises only, the same set All food shows, for the Food mode card.
+  const food=data.places.filter(p=>foodCategory(data.types[p[2]]??'')!=='excluded-institutional'),count=(c:string)=>food.filter(p=>foodCategory(data.types[p[2]]??'')===c).length;
+  publishFact('food',{total:food.length,restaurant:count('restaurant-cafe'),takeaway:count('takeaway'),pub:count('pub-bar'),rated5:food.filter(p=>p[7]==='5').length,authorityDate:date(data.authorities.map(a=>a.extractDate).sort()[0]??'')});
+  return data;
  })().catch(e=>{fetching=undefined;throw e;});
  async function load(){
   summary.textContent='Loading ratings…';

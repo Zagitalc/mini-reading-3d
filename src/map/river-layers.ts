@@ -3,6 +3,7 @@ import type {FloodWarning,RiverFeedItem,RiverGauge,RiverLevel} from '../../share
 import {detail,escape} from '../ui/shell';
 import {registerSwitch} from '../ui/modes';
 import {MAX_HITS,registerSearch} from '../ui/search';
+import {publishFact} from '../ui/summary';
 import {rank} from '../../shared/search';
 import {GAUGE_COLOUR,gaugeIcon} from './river-icon';
 // Measured levels and official warning areas only: nothing here estimates where water would spread.
@@ -56,6 +57,11 @@ export function connectRivers(map:Map,section:HTMLElement,schedule:(run:()=>Prom
   const counts=[1,2,3].map(s=>warnings.filter(w=>w.severityLevel===s).length);
   summary.textContent=warnings.length?[`${counts[0]} severe flood warning${counts[0]===1?'':'s'}`,`${counts[1]} flood warning${counts[1]===1?'':'s'}`,`${counts[2]} flood alert${counts[2]===1?'':'s'}`].filter((_,i)=>counts[i]).join(' · ')+' in force':!gauges.length?'River data unavailable':warningsKnown?`${gauges.length} gauges · no flood warnings in force`:`${gauges.length} gauges · flood warnings unavailable`;
   summary.classList.toggle('flood-active',warnings.length>0);
+  // The same readings, boiled down for the mode cards. Gauges with no typical range are counted apart, never as normal.
+  if(!gauges.length&&!warnings.length)publishFact('rivers',undefined);
+  else{const state=(g:RiverGauge)=>rangeState(g),name=(g:RiverGauge)=>g.label;
+   publishFact('rivers',{gauges:gauges.length,high:gauges.filter(g=>state(g)==='high').map(name),low:gauges.filter(g=>state(g)==='low').map(name),normal:gauges.filter(g=>state(g)==='normal').length,unknown:gauges.filter(g=>state(g)==='unknown').length,
+    warnings:{severe:counts[0],warning:counts[1],alert:counts[2]},warningsKnown,at:Math.max(0,...gauges.map(g=>Date.parse(mainLevel(g)?.readAt??'')).filter(Number.isFinite))||now});}
  };
  if(!enabled){summary.textContent='River levels disabled';return;}
  schedule(async()=>{try{const data=await get('/api/v1/rivers');if(disposed())return;gauges=data.data.filter((i):i is RiverGauge=>i.kind==='gauge');warnings=data.data.filter((i):i is FloodWarning=>i.kind==='warning').sort((a,b)=>a.severityLevel-b.severityLevel);warningsKnown=data.warningsCurrent===true;render();return gauges.length>0;}

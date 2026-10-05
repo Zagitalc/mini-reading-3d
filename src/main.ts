@@ -1,7 +1,7 @@
-import './style.css';import * as maplibregl from'maplibre-gl';import{shell,detail,escape,toast}from'./ui/shell';import{storyHtml}from'./ui/landmark-story';import{BOUNDS,INITIAL_VIEW,LANDMARKS}from'../shared/config';import type{GeographyManifest,StaticFeatures,FeedStatus}from'../shared/types';import{mapStyle,followColourScheme}from'./map/style';import{ReadingScene}from'./scene/layer';import{connectShare,linkedCamera,onLinked,setSelection}from'./ui/share';import{connectSearch,registerSearch,MAX_HITS}from'./ui/search';import{rank}from'../shared/search';
+import './style.css';import * as maplibregl from'maplibre-gl';import{shell,detail,escape,toast}from'./ui/shell';import{storyHtml}from'./ui/landmark-story';import{BOUNDS,INITIAL_VIEW,LANDMARKS}from'../shared/config';import type{GeographyManifest,StaticFeatures,FeedStatus}from'../shared/types';import{mapStyle,followColourScheme}from'./map/style';import{ReadingScene}from'./scene/layer';import{connectShare,linkedCamera,onLinked,setSelection}from'./ui/share';import{connectSearch,registerSearch,MAX_HITS}from'./ui/search';import{connectSummary,publishFact}from'./ui/summary';import{rank}from'../shared/search';import{distance}from'../shared/geo';
 import mapWorkerUrl from 'maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url';
 maplibregl.setWorkerUrl(mapWorkerUrl);
-shell();
+shell();connectSummary();
 async function start(){const [manifest,features]:[GeographyManifest,StaticFeatures]=await Promise.all(['/data/manifest.json','/data/features.json'].map(async u=>{const r=await fetch(u);if(!r.ok)throw Error('Local geography is missing. Run npm run data:build.');return r.json();}))as any;
  const componentResponse=await fetch('/data/landmark-components.json');if(!componentResponse.ok)throw Error('Landmark geometry unavailable');const componentData=await componentResponse.json();
  const shared=linkedCamera(),map=new maplibregl.Map({container:'map',style:mapStyle(),...(shared??INITIAL_VIEW),maxBounds:[[BOUNDS[0],BOUNDS[1]],[BOUNDS[2],BOUNDS[3]]],minZoom:11,maxZoom:19,maxPitch:70,canvasContextAttributes:{antialias:true},renderWorldCopies:false});
@@ -19,7 +19,9 @@ async function start(){const [manifest,features]:[GeographyManifest,StaticFeatur
  const landmarkIds=new Set(LANDMARKS.map(l=>l.id)),places=features.places.filter(p=>!landmarkIds.has(p.id)),kindName=(k:string)=>(k[0]?.toUpperCase()??'')+k.slice(1).replace(/_/g,' ');
  registerSearch('place',q=>rank(places,q,p=>[p.name],p=>p.name,MAX_HITS).map(({item:p})=>({title:p.name,detail:kindName(p.kind),open:()=>{stopOrbit();map.flyTo({center:p.position,zoom:16,pitch:58});caption(p.name);}})));
  registerSearch('landmark',q=>rank(LANDMARKS,q,l=>[l.name,l.kind],l=>l.name,MAX_HITS).map(({item:l})=>({title:l.name,detail:l.id==='station'?'Live departures':l.kind,open:()=>{stopOrbit();map.flyTo({center:l.position,zoom:17.7,pitch:60});caption(l.name);void landmarkOpeners.get(l.id)?.();}})));
- const showCoordinates=()=>{const c=map.getCenter();document.querySelector('#view-coordinates')!.textContent=`${c.lat.toFixed(4)}° N · ${Math.abs(c.lng).toFixed(4)}° W`;};map.on('moveend',showCoordinates);showCoordinates();
+ const showCoordinates=()=>{const c=map.getCenter();document.querySelector('#view-coordinates')!.textContent=`${c.lat.toFixed(4)}° N · ${Math.abs(c.lng).toFixed(4)}° W`;
+  // Explore card: the modelled landmark nearest the middle of the map.
+  const nearest=LANDMARKS.map(l=>({name:l.name,metres:distance([c.lng,c.lat],l.position)})).sort((a,b)=>a.metres-b.metres)[0];publishFact('explore',{buildings:manifest.stats.buildings,landmarks:LANDMARKS.length,nearest});};map.on('moveend',showCoordinates);showCoordinates();
  window.addEventListener('pagehide',()=>{stopOrbit();map.remove();},{once:true});
 }
 start().catch(error=>{const loading=document.querySelector('#loading')!;loading.innerHTML='<strong>Reading could not load</strong><span></span><button onclick="location.reload()">Try again</button>';loading.querySelector('span')!.textContent=error.message;console.error(error);});
