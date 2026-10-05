@@ -10,7 +10,9 @@ const report=[];
 try{
  for(const [label,width,height]of [['desktop',1440,1000],['mobile',390,844]]){
   const page=await browser.newPage({viewport:{width,height}}),errors=[],requests=[];
-  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().includes('/data/timetables/'))requests.push(r.url());});
+  // A phone closes the layers sheet when a card opens (since 29 September), so it is reopened to reach the search results.
+  const pick=async()=>{if(label==='mobile'&&!await page.locator('.explore-panel.mobile-open').count())await page.locator('#collapse-layers').click();await page.getByRole('button',{name:`${stop.name} · ${stop.code}`,exact:true}).click();};
+  page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().includes('/data/timetables/')&&!r.url().includes('/journeys-'))requests.push(r.url());});// Route journey files (for live estimates, since 28 September) load beside the stop timetable; only the timetable counts here.
   await page.clock.setFixedTime(offsetDate(index.validFrom,2));
   await page.route('**/api/**',r=>r.fulfill({json:r.request().url().includes('/config')?{tomtom:false,weather:false,fuel:false}:{version:1,data:[],routes:{}}}));
   await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});await expect(page.locator('#bus-stops-toggle')).toBeEnabled();
@@ -21,12 +23,12 @@ try{
   await page.locator('#close-details').click();
   if(label==='desktop'){
    await page.waitForTimeout(1800);await page.mouse.click(width/2,height/2);await expect(page.locator('#details h2')).toHaveText(stop.name);await expect(page.locator('#details')).toBeVisible();await expect(page.locator('.departures li').first()).toBeVisible();
-  }else await page.getByRole('button',{name:`${stop.name} · ${stop.code}`,exact:true}).click();
+  }else await pick();
   if(requests.length!==1)throw Error(`Timetable fetched ${requests.length} times for repeat selection`);
   await mkdir('test-results',{recursive:true});await page.screenshot({path:`test-results/stops-${label}.png`});
-  await page.locator('#close-details').click();await page.clock.setFixedTime(offsetDate(index.validUntil,-2));await page.getByRole('button',{name:`${stop.name} · ${stop.code}`,exact:true}).click();await expect(page.locator('.timetable-status')).toContainText('expires in 2 days');
-  await page.locator('#close-details').click();await page.clock.setFixedTime(offsetDate(index.validUntil,2));await page.getByRole('button',{name:`${stop.name} · ${stop.code}`,exact:true}).click();await expect(page.locator('#stop-departures')).toContainText('snapshot has expired');await expect(page.locator('.departures li')).toHaveCount(0);
-  await page.locator('#close-details').click();await page.clock.setFixedTime(offsetDate(index.validFrom,-2));await page.getByRole('button',{name:`${stop.name} · ${stop.code}`,exact:true}).click();await expect(page.locator('#stop-departures')).toContainText('has not started yet');await expect(page.locator('.departures li')).toHaveCount(0);
+  await page.locator('#close-details').click();await page.clock.setFixedTime(offsetDate(index.validUntil,-2));await pick();await expect(page.locator('.timetable-status')).toContainText('expires in 2 days');
+  await page.locator('#close-details').click();await page.clock.setFixedTime(offsetDate(index.validUntil,2));await pick();await expect(page.locator('#stop-departures')).toContainText('snapshot has expired');await expect(page.locator('.departures li')).toHaveCount(0);
+  await page.locator('#close-details').click();await page.clock.setFixedTime(offsetDate(index.validFrom,-2));await pick();await expect(page.locator('#stop-departures')).toContainText('has not started yet');await expect(page.locator('.departures li')).toHaveCount(0);
   if(errors.length)throw Error(errors.join('\n'));report.push({label,departures:count,timetableRequests:requests.length,expired:true,future:true});await page.close();
  }
  await writeFile('test-results/stops-browser.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report));

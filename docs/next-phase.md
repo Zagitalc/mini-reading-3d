@@ -36,6 +36,7 @@ Validation before promotion: 34 regression tests passed with staged assets; desk
 2. Historical transit charts: observed headways, bunching and service coverage; rail delays only when supported by collected observations. Assess retention and storage costs first.
 3. Environmental context: river levels, flood warnings and locally available measurements, with station locations and freshness.
 4. A separate simulation mode: road closures, bus frequency changes and estimated accessibility impacts, with visible assumptions and uncertainty. Assess computation budgets independently.
+5. Trains as linked cars rather than one block: a simple carriage model repeated along the track behind the estimated position, each car following the railway's curve. Darwin's board gives a carriage count (`length`) for most services; on 3 October 2026 the Reading board had GWR trains of 3 to 10 cars, while the Elizabeth line reported 0 (unknown). Use the count when given, otherwise draw 3 cars.
 
 Rankings must name the measured criterion, such as frequency or food hygiene. Do not call these popularity, ridership or customer satisfaction without corresponding evidence. No historical storage or simulation is implemented in this release.
 
