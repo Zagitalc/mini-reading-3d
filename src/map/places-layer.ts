@@ -3,6 +3,8 @@ import {FOOD_TYPES,RATING_FILTERS,RATING_TEXT,foodCategory,foodMatches,ratingGro
 import {detail,escape,layerGroup} from '../ui/shell';
 import {currentMode,registerSwitch} from '../ui/modes';
 import {onLinked,setSelection} from '../ui/share';
+import {MAX_HITS,registerSearch} from '../ui/search';
+import {rank} from '../../shared/search';
 // Useful places, starting with food hygiene ratings. The bundle is built by `npm run data:hygiene` and
 // loaded only when the layer is first switched on.
 const COLOURS={good:'#2f7d4f',fair:'#d19a1c',poor:'#b3372b',none:'#9aa19a'} as const;
@@ -26,11 +28,16 @@ export function connectPlaces(map:Map){
    <a href="https://ratings.food.gov.uk/business/${p[0]}" target="_blank" rel="noopener">Full record on the FSA website</a><p class="explorer-note">Food Standards Agency data, Open Government Licence v3.0.</p>`);setSelection({kind:'food',id:String(p[0])});};
  const shown=()=>(bundle?.places??[]).filter(p=>foodMatches(bundle!.types[p[2]]??'',p[7],kind,min));
  const data=()=>({type:'FeatureCollection' as const,features:shown().map(p=>({type:'Feature' as const,geometry:{type:'Point' as const,coordinates:[p[5],p[6]]},properties:{id:p[0],group:ratingGroup(p[7]),label:/^[0-5]$/.test(p[7])?p[7]:''}}))});
- async function load(){
-  summary.textContent='Loading ratings…';
+ // The ratings file is fetched once, either when the layer is first switched on or when search first needs it.
+ let fetching:Promise<HygieneBundle>|undefined;
+ const fetchBundle=()=>fetching??=(async()=>{
   const r=await fetch('/data/hygiene.json',{signal:AbortSignal.timeout(20000)});
   if(!r.ok)throw Error(r.status===404?'Ratings not built yet: run npm run data:hygiene':'Ratings unavailable');
-  bundle=await r.json() as HygieneBundle;for(const p of bundle.places)byId.set(p[0],p);
+  const data=await r.json() as HygieneBundle;for(const p of data.places)byId.set(p[0],p);bundle=data;return data;
+ })().catch(e=>{fetching=undefined;throw e;});
+ async function load(){
+  summary.textContent='Loading ratings…';
+  await fetchBundle();
   map.addSource('hygiene',{type:'geojson',data:data(),attribution:'Food Standards Agency · OGL 3.0'});
   const colour=['match',['get','group'],'good',COLOURS.good,'fair',COLOURS.fair,'poor',COLOURS.poor,COLOURS.none] as never;
   map.addLayer({id:'hygiene-points',type:'circle',source:'hygiene',minzoom:12,paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,2.5,16,5.5,18,8],'circle-color':colour,'circle-stroke-color':'#fffdf5','circle-stroke-width':1.2}});
@@ -46,10 +53,16 @@ export function connectPlaces(map:Map){
   summary.textContent=`${lead} · council data from ${date(extract)} · zoom in to see them`;
  }
  const show=()=>{const on=toggle.checked;for(const f of filters)f.hidden=!on||!bundle;find.hidden=!on||!bundle;for(const id of ['hygiene-points','hygiene-labels'])if(map.getLayer(id))map.setLayoutProperty(id,'visibility',on?'visible':'none');};
- toggle.addEventListener('change',()=>{if(toggle.checked&&!bundle){loading??=load().catch(e=>{loading=undefined;summary.textContent=e instanceof Error?e.message:'Ratings unavailable';toggle.checked=false;});void loading.then(show);}else show();});// In Food mode the filters and search are the point: the other groups fold away so they are in view, and come back on leaving.
+ toggle.addEventListener('change',()=>{if(toggle.checked&&!loading){loading??=load().catch(e=>{loading=undefined;summary.textContent=e instanceof Error?e.message:'Ratings unavailable';toggle.checked=false;});void loading.then(show);}else show();});// In Food mode the filters and search are the point: the other groups fold away so they are in view, and come back on leaving.
  const group=layerGroup('places').closest('details')!,others=[...document.querySelectorAll<HTMLDetailsElement>('.layer-group')].filter(d=>d!==group);
  let remembered:boolean[]|undefined;
  const openForMode=()=>{if(currentMode()==='eat'){remembered??=others.map(d=>d.open);others.forEach(d=>d.open=false);group.open=true;}else if(remembered){others.forEach((d,i)=>d.open=remembered![i]);remembered=undefined;}};document.addEventListener('reading-mode',openForMode);map.on('remove',()=>document.removeEventListener('reading-mode',openForMode));openForMode();registerSwitch('hygiene',toggle);
+ // Search: customer-facing premises (what All food shows) by name or postcode, whatever the Food filters say, from two
+ // characters. Opening one switches the ratings on.
+ registerSearch('food',async q=>{if(q.length<2)return [];const data=await fetchBundle();
+  const food=data.places.filter(p=>foodCategory(data.types[p[2]]??'')!=='excluded-institutional');
+  return rank(food,q,p=>[p[1],p[4]],p=>p[1],MAX_HITS).map(({item:p})=>({title:p[1],detail:`${/^[0-5]$/.test(p[7])?`Hygiene rating ${p[7]}`:RATING_TEXT[p[7]]??p[7]} · ${[p[3].split(',')[0]?.trim(),p[4]].filter(Boolean).join(', ')}`,
+   open:()=>{if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}map.flyTo({center:[p[5],p[6]],zoom:17.5,pitch:45});void loading?.then(()=>open(p));}}));});
  // A shared link to a premises switches the ratings on, waits for them, then opens its card.
  onLinked('food',async(id,fly)=>{if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}await loading;const p=byId.get(Number(id));if(!p)return false;if(fly)map.flyTo({center:[p[5],p[6]],zoom:17.5,pitch:45});open(p);return true;});
  const search=find.querySelector('input')!,results=find.querySelector<HTMLElement>('.stop-results')!;

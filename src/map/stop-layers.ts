@@ -5,6 +5,8 @@ import type {VehicleObservation} from '../../shared/types';
 import {needVehicles,subscribeVehicles} from './vehicle-feed';
 import {registerSwitch} from '../ui/modes';
 import {onLinked,setSelection} from '../ui/share';
+import {MAX_HITS,registerSearch} from '../ui/search';
+import {rank} from '../../shared/search';
 import {addDays,compareRouteLabels,currentServiceDate,lastDepartures,localDate,scheduledDepartures,timetableExpired,timetableStatus,tonightDepartures,type BusStop,type StopIndex,type StopTimetable} from '../../shared/timetable';
 const dateLabel=(date:string)=>`${date.slice(6,8)}/${date.slice(4,6)}/${date.slice(0,4)}`;
 export async function connectStopLayers(map:Map){
@@ -110,6 +112,10 @@ export async function connectStopLayers(map:Map){
   const search=section.querySelector<HTMLInputElement>('input[type=search]')!,results=section.querySelector<HTMLElement>('.stop-results')!;
   search.addEventListener('input',()=>{results.replaceChildren();const q=search.value.trim().toLowerCase();if(q.length<2)return;const matches=index.stops.filter(s=>`${s.name} ${s.code} ${s.id}`.toLowerCase().includes(q)).slice(0,12);if(!matches.length)results.textContent='No matching stops in this snapshot.';for(const stop of matches){const button=document.createElement('button');button.textContent=`${stop.name} · ${stop.code}`;button.addEventListener('click',()=>{toggle.checked=true;toggle.dispatchEvent(new Event('change'));map.flyTo({center:stop.position,zoom:17,pitch:45});void open(stop);});results.append(button);}});
   section.querySelector('.stop-loading')!.textContent=`${index.stops.length.toLocaleString()} stops · visible when zoomed in`;
+  const routeList=(stop:BusStop)=>[...new Set(stop.routeIds.map(id=>index.routes[id]?.label??id))].sort(compareRouteLabels);
+  // Search: stops by name or code, from two characters, since short queries match hundreds of names.
+  registerSearch('stop',q=>q.length<2?[]:rank(index.stops,q,s=>[s.name,s.code],s=>s.name,MAX_HITS).map(({item:stop})=>{const routes=routeList(stop);
+   return {title:stop.name,detail:`Stop ${stop.code}${routes.length?` · ${routes.slice(0,6).join(', ')}${routes.length>6?'…':''}`:''}`,open:()=>{if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}map.flyTo({center:stop.position,zoom:17,pitch:45});void open(stop);}};}));
   onLinked('stop',(id,fly)=>{const stop=byId.get(id);if(!stop)return false;if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}if(fly)map.flyTo({center:stop.position,zoom:17,pitch:45});void open(stop);return true;});
   const unsubscribe=subscribeVehicles(update=>{vehicles=update.vehicles;vehiclesAt=update.at;if(view==='next')render();});map.on('remove',unsubscribe);
   freshness();timer=setInterval(render,60_000);document.addEventListener('visibilitychange',render);map.on('remove',()=>document.removeEventListener('visibilitychange',render));

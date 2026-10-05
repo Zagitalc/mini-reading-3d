@@ -2,6 +2,8 @@ import type {Map,GeoJSONSource,MapLayerMouseEvent} from 'maplibre-gl';
 import type {FloodWarning,RiverFeedItem,RiverGauge,RiverLevel} from '../../shared/types';
 import {detail,escape} from '../ui/shell';
 import {registerSwitch} from '../ui/modes';
+import {MAX_HITS,registerSearch} from '../ui/search';
+import {rank} from '../../shared/search';
 import {GAUGE_COLOUR,gaugeIcon} from './river-icon';
 // Measured levels and official warning areas only: nothing here estimates where water would spread.
 export const SEVERITY_COLOUR={1:'#a3261e',2:'#dd6a2a',3:'#e2b23a'} as const;
@@ -34,6 +36,10 @@ export function connectRivers(map:Map,section:HTMLElement,schedule:(run:()=>Prom
  toggle.disabled=!enabled;toggle.addEventListener('change',show);registerSwitch('rivers',toggle);
  const gaugeDetail=(g:RiverGauge)=>{const state=rangeState(g),now=Date.now();
   detail(`<span class="pill">River gauge · measured</span><h2>${escape(g.label)}</h2><p>${escape(g.river)}${g.town&&g.town!==g.label?` · ${escape(g.town)}`:''}</p><dl>${g.levels.map(l=>`<dt>${escape(l.qualifier)}</dt><dd>${l.value.toFixed(2)} ${escape(l.unit)}<small>Read ${escape(time(l.readAt))}${now-Date.parse(l.readAt)>OLD_READING?' · older than usual; the gauge may not have reported since':''}</small><small>${escape(unitNote(l.unit))}</small></dd>`).join('')}${g.typicalLow!==undefined&&g.typicalHigh!==undefined?`<dt>Typical range</dt><dd>${g.typicalLow.toFixed(2)}–${g.typicalHigh.toFixed(2)} m<small>${escape(RANGE_TEXT[state])}</small></dd>`:''}${g.highestRecent?`<dt>Highest recent level</dt><dd>${g.highestRecent.value.toFixed(2)} m<small>${escape(new Date(g.highestRecent.at).toLocaleDateString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',year:'numeric'}))}</small></dd>`:''}</dl><p>This is the level measured at the gauge. The map does not predict where water would go.</p><a href="${escape(g.sourceUrl)}" target="_blank" rel="noopener">This gauge on Check for flooding (GOV.UK)</a><p>Environment Agency real-time data · OGL v3.0. Readings may be delayed or unvalidated.</p>`);};
+ // Search: gauges by name, river or town, so "Thames" lists every Thames gauge.
+ registerSearch('river',q=>rank(gauges,q,g=>[g.label,g.river,g.town??''],g=>g.label,MAX_HITS).map(({item:g})=>{const l=mainLevel(g);
+  return {title:g.label,detail:`${g.river}${l?` · ${l.value.toFixed(2)} m · ${RANGE_TEXT[rangeState(g)].toLowerCase()}`:''}`,
+   open:()=>{if(!toggle.checked&&!toggle.disabled){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}map.flyTo({center:g.position,zoom:15,pitch:45});gaugeDetail(g);}};}));
  const warningHtml=(w:FloodWarning)=>`<section class="feed-card"><span class="pill" style="background:${SEVERITY_COLOUR[w.severityLevel]}33;color:var(--ink)">${escape(w.severity)}</span><h2>${escape(w.label)}</h2>${w.river?`<p>${escape(w.river)}</p>`:''}${w.message?`<p class="flood-message">${escape(w.message)}</p>`:''}<small>${w.raisedAt?`Raised ${escape(time(w.raisedAt))}`:''}${w.changedAt?` · message updated ${escape(time(w.changedAt))}`:''}</small>${w.area?'':`<p>${w.areaTooLarge?'The official outline is too large to store here, so this warning is listed but not drawn; the GOV.UK link shows it.':'The official outline could not be loaded, so this warning is listed but not drawn.'}</p>`}<p><a href="${escape(w.sourceUrl)}" target="_blank" rel="noopener">Official warning on GOV.UK</a></p></section>`;
  const warningDetail=(list:FloodWarning[])=>detail(`<span class="pill">Environment Agency</span>${list.map(warningHtml).join('')}<p>Shaded areas are the Environment Agency’s fixed warning areas, not a measured or modelled flood extent.</p><p>Contains Environment Agency data · OGL v3.0.</p>`);
  summary.addEventListener('click',()=>{if(warnings.length){warningDetail(warnings);return;}

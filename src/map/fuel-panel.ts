@@ -7,6 +7,8 @@ import {LANDMARKS} from '../../shared/config';
 import {distance} from '../../shared/geo';
 import {detail,escape,startPick} from '../ui/shell';
 import {registerSwitch} from '../ui/modes';
+import {MAX_HITS,registerSearch} from '../ui/search';
+import {rank} from '../../shared/search';
 import {PUMP_COLOURS,fuelPumpIcon} from './fuel-icon';
 // Prices are shown as reported, each with its own submission time; nothing here estimates a price.
 type Settings={grade:string;tank:number;fill:number;mpg:number;parking:number;dest:string};
@@ -109,7 +111,7 @@ export function connectFuel(map:Map,section:HTMLElement,enabled:boolean){
   detail(`<span class="pill">Fuel and trips · reported prices</span><h2>What fuel costs in Reading</h2><div id="fuel-view" aria-live="polite"></div>`);render();
  }
  compare.addEventListener('click',open);
- map.on('click','fuel-points',e=>{if(map.getCanvas().style.cursor==='crosshair')return;const station=stations.find(s=>s.id===e.features?.[0]?.properties.id);if(!station)return;
+ const openStation=(station:FuelStation)=>{
   const {median}=spread(stations,settings.grade,settings.tank),p=station.prices[settings.grade];
   detail(`<span class="pill">Fuel prices · as reported</span><h2>${escape(station.name)}</h2><p>${escape(station.brand)} · ${escape(station.postcode)}${motorway(station)?' · motorway services':''}</p>${membersOnly(station)?`<p class="schedule-notice">${MEMBERS_NOTE}</p>`:''}${station.quiet?'<p>No prices submitted at this site for at least 14 days.</p>':''}
    <dl>${Object.entries(station.prices).map(([grade,x])=>{const days=Math.round((Date.now()-Date.parse(x.submittedAt))/86_400_000);return `<dt>${escape(gradeName(grade))}</dt><dd>${pence(x.pence)} a litre<small>Reported ${escape(when(x.submittedAt))}${days>7?` · ${days} days old, so it may have changed`:''}</small></dd>`;}).join('')}</dl>
@@ -119,7 +121,12 @@ export function connectFuel(map:Map,section:HTMLElement,enabled:boolean){
    <p class="explorer-note">Source snapshot: ${escape(when(station.observedAt))}. ${station.locationRepaired?'The source reports a corrected location. ':''}<a href="https://cheapfuelnearme.uk/api/" target="_blank" rel="noopener">Fuel Finder via Cheap Fuel Near Me</a>; contains public sector information licensed under OGL v3.0.</p>`);
   document.querySelector('#fuel-open-compare')!.addEventListener('click',open);
   void loadHistory(station.id);
- });
+ };
+ map.on('click','fuel-points',e=>{if(map.getCanvas().style.cursor==='crosshair')return;const station=stations.find(s=>s.id===e.features?.[0]?.properties.id);if(station)openStation(station);});
+ // Search: forecourts by name, brand or postcode, with the price in the chosen grade.
+ registerSearch('fuel',q=>rank(stations,q,s=>[s.name,s.brand,s.postcode],s=>s.name,MAX_HITS).map(({item:station})=>{const p=station.prices[settings.grade];
+  return {title:station.name,detail:[station.brand,station.postcode,p?`${gradeName(settings.grade)} ${pence(p.pence)}`:'',membersOnly(station)?'members only':''].filter(Boolean).join(' · '),
+   open:()=>{if(!toggle.checked&&!toggle.disabled){toggle.checked=true;show(true);}map.flyTo({center:station.position,zoom:16,pitch:45});openStation(station);}};}));
  return {
   set(list:FuelStation[]){stations=list;draw();render();},
   get stations(){return stations;},

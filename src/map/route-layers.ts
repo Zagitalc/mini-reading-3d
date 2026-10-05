@@ -3,8 +3,12 @@ import {detail,escape,layerGroup,sourceFooter} from '../ui/shell';
 import {routeMatches,uniqueRoutes,mapRouteLabel,type StaticRoute} from '../../shared/static-routes';
 import {sameLabel} from '../../shared/share-view';
 import {currentSelection,onLinked,setSelection} from '../ui/share';
+import {MAX_HITS,registerSearch} from '../ui/search';
+import {rank} from '../../shared/search';
 export async function connectRouteLayers(map:Map){
  const groups:{mode:string;routes:StaticRoute[];selected:string;enabled:boolean}[]=[];
+ // Opens a route's card with its layer on; with `fly`, the map frames the whole route. Filled in per mode below.
+ const showRoute=new globalThis.Map<StaticRoute,(fly:boolean)=>void>();
  for(const [mode,title,file] of [['bus','Bus routes','bus-routes'],['rail','Train routes','rail-corridors']]){
   const section=document.createElement('section');section.className='route-control';
   section.innerHTML=`<label class="layer-row"><span><i>${mode==='bus'?'⌁':'╫'}</i>${title}</span><input type="checkbox" data-route-layer="${mode}" role="switch" disabled></label><div class="route-options" hidden><label>Find ${mode==='bus'?'a route':'a corridor'}<input type="search" aria-label="Search ${title.toLowerCase()}" placeholder="${mode==='bus'?'Number or destination':'Corridor name'}"></label><button class="route-reset">All routes</button><select size="4" aria-label="${title} selector"></select><small>${mode==='rail'?'Infrastructure corridors, not train services.':'Snapshot routes, including timetable variants.'}</small></div><small class="route-loading">Loading route snapshot…</small>`;
@@ -39,12 +43,16 @@ export async function connectRouteLayers(map:Map){
    search.addEventListener('input',list);select.addEventListener('change',()=>choose(select.value));section.querySelector('button')!.addEventListener('click',()=>{search.value='';list();choose('');});list();
    toggle.disabled=false;section.querySelector('.route-loading')!.remove();toggle.addEventListener('change',()=>{group.enabled=toggle.checked;if(mode==='bus')document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:group.enabled?group.selected:''}));section.querySelector<HTMLElement>('.route-options')!.hidden=!toggle.checked;for(const part of ['outline','lines','labels'])map.setLayoutProperty(`${mode}-route-${part}`,'visibility',toggle.checked?'visible':'none');});
    // A shared link names the route by its label; with no camera in the link, the map frames the whole route.
-   onLinked(mode==='bus'?'route':'rail',(label,fly)=>{const r=routes.find(r=>sameLabel(r.label,label));if(!r)return false;
+   for(const r of routes)showRoute.set(r,fly=>{
     if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}choose(r.id);
     const points=r.coordinates.flat();if(fly&&points.length){const lng=points.map(p=>p[0]),lat=points.map(p=>p[1]);map.fitBounds([[Math.min(...lng),Math.min(...lat)],[Math.max(...lng),Math.max(...lat)]],{padding:innerWidth>680?{top:125,left:330,right:430,bottom:130}:40,pitch:30,duration:1200});}
-    return true;});
+   });
+   onLinked(mode==='bus'?'route':'rail',(label,fly)=>{const r=routes.find(r=>sameLabel(r.label,label));if(!r)return false;showRoute.get(r)!(fly);return true;});
   }catch{section.querySelector('.route-loading')!.textContent='Route snapshot unavailable';}
  }
+ // Search: bus routes by number, destination or operator, and rail corridors by name.
+ registerSearch('route',q=>rank(groups.flatMap(g=>g.routes),q,r=>[r.label,...r.destinations,r.operator??''],r=>r.label,MAX_HITS)
+  .map(({item:r})=>({title:r.kind==='rail'?r.label:`Route ${r.label}`,detail:r.kind==='rail'?'Railway corridor':r.destinations.join(' · '),open:()=>showRoute.get(r)?.(true)})));
  map.on('click',e=>{
   const layers=groups.filter(g=>g.enabled).map(g=>`${g.mode}-route-lines`);if(!layers.length)return;
   const hits=map.queryRenderedFeatures([[e.point.x-6,e.point.y-6],[e.point.x+6,e.point.y+6]],{layers});
