@@ -45,20 +45,28 @@ function feedChart(list:Slot[],days:number){
   const cls=v>=.95?'up':v>=.5?'patchy':'down';return `<rect class="${cls}" x="${(70+i*bar*(W-70)/W).toFixed(1)}" y="${r*row+1}" width="${Math.max(.6,bar*(W-70)/W-.4).toFixed(1)}" height="${row-3}"><title>${FEEDS[id]}, ${hourLabel.format(s.at)}: live ${Math.round(v*100)}% of recorded minutes</title></rect>`;}).join('')).join('');
  return `<figure class="history-chart feeds"><figcaption>Feed health, share of each hour a feed was live</figcaption><div class="history-legend"><span class="up">Live all hour</span><span class="patchy">Partly</span><span class="down">Mostly down</span></div><svg viewBox="0 0 ${W} ${height}" role="img" aria-label="Feed health by hour for ${ids.map(id=>FEEDS[id]).join(', ')}.">${rows}</svg></figure>`;
 }
-function fuelChart(data:HistoryResponse){
+/** Fuel range shown, in days; the table stays short whatever the range. */
+let fuelRange=7;
+const FUEL_RANGES=[7,30] as const,TABLE_DAYS=7;
+const addDays=(day:string,by:number)=>new Date(Date.parse(day+'T12:00:00Z')+by*86_400_000).toISOString().slice(0,10);
+function fuelBlock(data:HistoryResponse,range:number){
  if(!data.fuel.length)return '<p class="explorer-note">No fuel prices recorded yet. The first daily snapshot is taken once the fuel feed has refreshed.</p>';
- const grades=['E10','B7S'].filter(g=>data.fuel.some(d=>d.grades[g]));
+ const latest=data.fuel.at(-1)!,shown=data.fuel.filter(d=>d.day>addDays(latest.day,-range));
+ const grades=['E10','B7S'].filter(g=>shown.some(d=>d.grades[g]));
+ const picker=`<div class="departure-views" role="group" aria-label="Fuel range">${FUEL_RANGES.map(d=>`<button type="button" data-fuel-range="${d}" aria-pressed="${d===range}">${d} days of fuel</button>`).join('')}</div>`;
  let chart='';
- if(data.fuel.length>1&&grades.length){
-  const values=data.fuel.flatMap(d=>grades.flatMap(g=>d.grades[g]?[d.grades[g].median]:[])),lo=Math.floor(Math.min(...values)-1),hi=Math.ceil(Math.max(...values)+1);
-  const x=(i:number)=>12+i*(W-70)/(data.fuel.length-1),y=(v:number)=>6+(hi-v)/(hi-lo)*(BASE-12);
-  const lines=grades.map(g=>{const pts=data.fuel.map((d,i)=>d.grades[g]?[x(i),y(d.grades[g].median),d] as const:null).filter(p=>p!==null);const last=pts.at(-1);
-   return `<g class="grade ${g}"><polyline points="${pts.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')}"/>${pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="4"><title>${GRADES[g]}, ${dayLabel(p[2].day)}: median ${p[2].grades[g].median}p, cheapest ${p[2].grades[g].cheapest}p across ${p[2].grades[g].stations} stations (prices as of ${hourLabel.format(Date.parse(p[2].observedAt))})</title></circle>`).join('')}${last?`<text class="direct" x="${(last[0]+7).toFixed(1)}" y="${(last[1]+3).toFixed(1)}">${GRADES[g]}</text>`:''}</g>`;}).join('');
-  chart=`<figure class="history-chart fuel"><figcaption>Median pump price in Reading, pence per litre</figcaption><div class="history-legend">${grades.map(g=>`<span class="${g}">${GRADES[g]}</span>`).join('')}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily median fuel prices over ${data.fuel.length} days."><text class="scale" x="0" y="8">${hi}p</text><text class="scale" x="0" y="${BASE}">${lo}p</text>${lines}</svg></figure>`;
+ if(shown.length>1&&grades.length){
+  const values=shown.flatMap(d=>grades.flatMap(g=>d.grades[g]?[d.grades[g].median]:[])),lo=Math.floor(Math.min(...values)-1),hi=Math.ceil(Math.max(...values)+1);
+  const x=(i:number)=>12+i*(W-70)/(shown.length-1),y=(v:number)=>6+(hi-v)/(hi-lo)*(BASE-12),r=shown.length>10?2.5:4;
+  const lines=grades.map(g=>{const pts=shown.map((d,i)=>d.grades[g]?[x(i),y(d.grades[g].median),d] as const:null).filter(p=>p!==null);const last=pts.at(-1);
+   return `<g class="grade ${g}"><polyline points="${pts.map(p=>`${p[0].toFixed(1)},${p[1].toFixed(1)}`).join(' ')}"/>${pts.map(p=>`<circle cx="${p[0].toFixed(1)}" cy="${p[1].toFixed(1)}" r="${r}"><title>${GRADES[g]}, ${dayLabel(p[2].day)}: median ${p[2].grades[g].median}p, cheapest ${p[2].grades[g].cheapest}p across ${p[2].grades[g].stations} stations (prices as of ${hourLabel.format(Date.parse(p[2].observedAt))})</title></circle>`).join('')}${last?`<text class="direct" x="${(last[0]+7).toFixed(1)}" y="${(last[1]+3).toFixed(1)}">${GRADES[g]}</text>`:''}</g>`;}).join('');
+  chart=`<figure class="history-chart fuel"><figcaption>Median pump price in Reading, pence per litre</figcaption><div class="history-legend">${grades.map(g=>`<span class="${g}">${GRADES[g]}</span>`).join('')}</div><svg viewBox="0 0 ${W} ${H}" role="img" aria-label="Daily median fuel prices over ${shown.length} days."><text class="scale" x="0" y="8">${hi}p</text><text class="scale" x="0" y="${BASE}">${lo}p</text>${lines}</svg></figure>`;
  }
- const rows=data.fuel.slice(-7).reverse().flatMap(d=>Object.entries(d.grades).filter(([g])=>GRADES[g]).map(([g,v])=>`<tr><td>${escape(dayLabel(d.day))}</td><td>${escape(GRADES[g])}</td><td>${v.cheapest}p</td><td>${v.median}p</td><td>${v.dearest}p</td><td>${v.stations}</td></tr>`)).join('');
- const latest=data.fuel.at(-1)!;
- return `${chart}<table class="history-table"><caption>Daily fuel snapshot. Latest prices as of ${escape(hourLabel.format(Date.parse(latest.observedAt)))}. Includes Costco, which sells fuel to members only.</caption><thead><tr><th>Day</th><th>Grade</th><th>Cheapest</th><th>Median</th><th>Dearest</th><th>Stations</th></tr></thead><tbody>${rows}</tbody></table>`;
+ // One row per day with petrol and diesel side by side: seven rows, the rest behind a button.
+ const cell=(d:typeof shown[number],g:string,k:'cheapest'|'median')=>d.grades[g]?`${d.grades[g][k]}p`:'—';
+ const rows=[...shown].reverse().map((d,i)=>`<tr${i>=TABLE_DAYS?' class="older" hidden':''}><td>${escape(dayLabel(d.day))}</td><td>${cell(d,'E10','cheapest')}</td><td>${cell(d,'E10','median')}</td><td>${cell(d,'B7S','cheapest')}</td><td>${cell(d,'B7S','median')}</td></tr>`).join('');
+ const older=shown.length-TABLE_DAYS;
+ return `${picker}${chart}<table class="history-table"><caption>Daily fuel snapshot, petrol E10 and diesel. Latest prices as of ${escape(hourLabel.format(Date.parse(latest.observedAt)))}. Includes Costco, which sells fuel to members only.</caption><thead><tr><th rowspan="2">Day</th><th colspan="2">Petrol E10</th><th colspan="2">Diesel</th></tr><tr><th>Cheapest</th><th>Median</th><th>Cheapest</th><th>Median</th></tr></thead><tbody>${rows}</tbody></table>${older>0?`<button type="button" class="status-button" data-fuel-older aria-expanded="false">Show ${plural(older,'older day')}</button>`:''}`;
 }
 function dailyTable(data:HistoryResponse){
  const days=new Map<string,HourSummary[]>();
@@ -79,11 +87,17 @@ function render(element:HTMLElement,data:HistoryResponse,days:number,week:Histor
  element.innerHTML=`<div class="departure-views" role="group" aria-label="Time range">${[1,7].map(d=>`<button type="button" data-history-days="${d}" aria-pressed="${d===days}">${d===1?'Last 24 hours':'Last 7 days'}</button>`).join('')}</div>
   ${headlinesBlock(week)}
   ${data.recordingSince?`<p class="explorer-note">Recording since ${escape(hourLabel.format(Date.parse(data.recordingSince)))}. ${plural(recorded,'hour')} recorded in this range; hours without a bar were not recorded.</p>`:'<p class="schedule-notice">Nothing has been recorded yet. The first hourly figures appear a minute after recording starts.</p>'}
-  ${busChart(list,days)}${railChart(list,days)}${feedChart(list,days)}${fuelChart(data)}${recorded?dailyTable(data):''}`;
+  ${busChart(list,days)}${railChart(list,days)}${feedChart(list,days)}<div id="history-fuel">${fuelBlock(data,fuelRange)}</div>${recorded?dailyTable(data):''}`;
+ const fuel=element.querySelector<HTMLElement>('#history-fuel');
+ const wireFuel=()=>{if(!fuel)return;
+  fuel.querySelectorAll<HTMLButtonElement>('[data-fuel-range]').forEach(b=>b.addEventListener('click',()=>{fuelRange=+b.dataset.fuelRange!;fuel.innerHTML=fuelBlock(data,fuelRange);wireFuel();}));
+  fuel.querySelector<HTMLButtonElement>('[data-fuel-older]')?.addEventListener('click',e=>{const b=e.currentTarget as HTMLButtonElement,open=b.getAttribute('aria-expanded')!=='true',n=fuel.querySelectorAll('tr.older').length;
+   fuel.querySelectorAll<HTMLElement>('tr.older').forEach(r=>r.hidden=!open);b.setAttribute('aria-expanded',String(open));b.textContent=open?'Hide older days':`Show ${plural(n,'older day')}`;});};
+ wireFuel();
  element.querySelectorAll<HTMLButtonElement>('[data-history-days]').forEach(b=>b.addEventListener('click',()=>void load(element,+b.dataset.historyDays!)));
 }
 async function fetchHistory(days:number){
- const r=await fetch(`/api/v1/history?days=${days}`,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('History unavailable');return await r.json() as HistoryResponse;
+ const r=await fetch(`/api/v1/history?days=${days}&fuelDays=30`,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('History unavailable');return await r.json() as HistoryResponse;
 }
 async function load(element:HTMLElement,days:number){
  try{const data=await fetchHistory(days),week=days===7?data:await fetchHistory(7).catch(()=>undefined);if(element.isConnected)render(element,data,days,week);}

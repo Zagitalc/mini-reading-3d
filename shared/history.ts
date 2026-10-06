@@ -103,6 +103,8 @@ export function fuelDay(stations:FuelStation[],now:number):FuelDay|null {
 }
 export interface HistoryResponse {version:1;generatedAt:string;from:string;recordingSince:string|null;hours:HourSummary[];fuel:Omit<FuelDay,'stations'>[]}
 export const HISTORY_MAX_DAYS=14;
+/** Daily fuel rows are small, so the fuel series can reach further back than the hourly one. */
+export const FUEL_MAX_DAYS=30;
 /** Distinct routes among observations, for the bus sample. */
 export const routeCount=(items:{routeGroupId?:string;routeId?:string}[])=>new Set(items.map(o=>o.routeGroupId??o.routeId).filter(Boolean)).size;
 /** Storage the recorder needs; D1 in the Worker, node:sqlite locally. */
@@ -123,9 +125,11 @@ export async function recordMinute(store:HistoryStore,input:MinuteInput,fuel:Fue
  const day=fuelDay(fuel,input.now);
  if(day&&day.observedAt>((await store.fuelObservedAt(day.day))??''))await store.saveFuel(day);
 }
-export async function historyResponse(store:HistoryStore,days:number,now=Date.now()):Promise<HistoryResponse> {
+/** `fuelDays` asks for more fuel days than hourly days, up to FUEL_MAX_DAYS; it never asks for fewer. */
+export async function historyResponse(store:HistoryStore,days:number,now=Date.now(),fuelDays?:number):Promise<HistoryResponse> {
  const span=Math.min(HISTORY_MAX_DAYS,Math.max(1,Math.round(days)||7)),from=hourKey(now-span*86_400_000+3_600_000);
- const data=await store.range(from,londonDay(now-span*86_400_000));
+ const fuelSpan=Math.min(FUEL_MAX_DAYS,Math.max(span,Math.round(fuelDays??0)||span));
+ const data=await store.range(from,londonDay(now-fuelSpan*86_400_000));
  return {version:1,generatedAt:new Date(now).toISOString(),from,recordingSince:data.since,
   hours:data.hours.filter(h=>h.schema===HISTORY_SCHEMA).sort((a,b)=>a.hour.localeCompare(b.hour)).map(summariseHour),
   fuel:data.fuel.sort((a,b)=>a.day.localeCompare(b.day)).map(({stations:_,...day})=>day)};

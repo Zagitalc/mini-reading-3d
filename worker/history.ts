@@ -43,7 +43,7 @@ export async function recordHistory(env:Env,store:CloudStore,feeds:FeedStatus[],
   board:railHealth?await store.state<StationBoard>('rail-board:RDG')??null:null},fuel);
 }
 
-export const historyFor=(env:Env,days:number)=>historyResponse(d1History(env.DB),days);
+export const historyFor=(env:Env,days:number,fuelDays?:number)=>historyResponse(d1History(env.DB),days,Date.now(),fuelDays);
 
 /** One station's recorded daily prices, for the forecourt's own chart. */
 export async function fuelHistoryFor(env:Env,id:string,days:number) {

@@ -96,3 +96,14 @@ test('the local SQLite store round-trips hours and fuel days',async()=>{
  assert.equal(db.prepare('SELECT count(*) AS n FROM history_fuel').get()!.n,1);
  db.close();
 });
+test('fuelDays reaches further back for fuel than for hours, never fewer and never past 30',async()=>{
+ const db=new DatabaseSync(':memory:'),store=sqliteHistory(db),day=86_400_000;
+ for(const back of [0,5,20,29,40])await store.saveFuel(fuelDay([station('a',{E10:140})],now-back*day)!);
+ const days=async(d:number,f?:number)=>(await historyResponse(store,d,now,f)).fuel.map(x=>x.day).length;
+ assert.equal(await days(7),2,'without fuelDays the fuel follows the hourly range');
+ assert.equal(await days(7,30),4,'30 days of fuel beside 7 days of hours');
+ assert.equal(await days(7,999),4,'capped at 30 days');
+ assert.equal(await days(14,3),2,'fuelDays below the hourly range is ignored');
+ assert.equal((await historyResponse(store,7,now,30)).from,(await historyResponse(store,7,now)).from,'hours are unchanged');
+ db.close();
+});

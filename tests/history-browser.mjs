@@ -14,7 +14,7 @@ for(let t=now-4*86400000;t<=now;t+=15*60000){
   board:{schema:1,station:'RDG',name:'Reading',generatedAt:new Date(t).toISOString(),services,messages:[],source:'RDM',sourceUrl:'https://example.test'},
   feeds:[{id:'trains',state:'live'},{id:'weather',state:'live'},{id:'fuel',state:'live'},{id:'rivers',state:t>=now-29.5*3600000&&t<now-28.5*3600000?'unavailable':'live'}].map(f=>({...f,label:f.id,message:'',count:0,intervalMs:60000}))});
 }
-const fuel=[3,2,1,0].map((d,i)=>{const day=fuelDay([{id:'a',name:'A',brand:'A',postcode:'RG1',position:[-.97,51.45],quiet:false,source:'t',observedAt:new Date(now-d*86400000-3600000).toISOString(),prices:{E10:{pence:139.9+i,submittedAt:'2026-10-01T09:00:00Z'},B7S:{pence:149.9-i,submittedAt:'2026-10-01T09:00:00Z'}}},{id:'b',name:'B',brand:'B',postcode:'RG2',position:[-.96,51.45],quiet:false,source:'t',observedAt:new Date(now-d*86400000-3600000).toISOString(),prices:{E10:{pence:143.9+i,submittedAt:'2026-10-01T09:00:00Z'}}}],now-d*86400000);const {stations:_,...rest}=day;return rest;});
+const fuel=[11,10,9,8,7,6,5,4,3,2,1,0].map((d,i)=>{const day=fuelDay([{id:'a',name:'A',brand:'A',postcode:'RG1',position:[-.97,51.45],quiet:false,source:'t',observedAt:new Date(now-d*86400000-3600000).toISOString(),prices:{E10:{pence:139.9+i,submittedAt:'2026-10-01T09:00:00Z'},B7S:{pence:149.9-i,submittedAt:'2026-10-01T09:00:00Z'}}},{id:'b',name:'B',brand:'B',postcode:'RG2',position:[-.96,51.45],quiet:false,source:'t',observedAt:new Date(now-d*86400000-3600000).toISOString(),prices:{E10:{pence:143.9+i,submittedAt:'2026-10-01T09:00:00Z'}}}],now-d*86400000);const {stations:_,...rest}=day;return rest;});
 const history=days=>{const from=hourKey(now-days*86400000+3600000);return {version:1,generatedAt:new Date(now).toISOString(),from,recordingSince:[...rows.keys()].sort()[0],hours:[...rows.values()].filter(r=>r.hour>=from&&Date.parse(r.hour)<=now).sort((a,b)=>a.hour.localeCompare(b.hour)).map(summariseHour),fuel};};
 const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE??'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
 try{
@@ -30,7 +30,7 @@ try{
   await page.getByRole('button',{name:/Reading over time/}).click();
   await expect(page.locator('#details .pill')).toHaveText('Recorded history · hourly');
   await expect(page.locator('#history-view')).toContainText('Recording since Thu, 1 Oct');
-  assert.deepEqual(historyRequests,['?days=7']);
+  assert.deepEqual(historyRequests,['?days=7&fuelDays=30']);
   // 7 days of hourly slots; bars only where buses were sampled.
   const busBars=await page.locator('.history-chart.buses rect').count();assert.equal(busBars,4*16+1,'no bars for hours without bus samples');
   await expect(page.locator('.history-chart.rail .history-legend')).toHaveText(/On time.*5\+ min late.*Cancelled/);
@@ -39,6 +39,15 @@ try{
   await expect(page.locator('.history-chart.fuel .direct')).toHaveText(['Petrol E10','Diesel']);
   // Headlines: fuel against the earliest day three or more days back; rail says what is missing because this fixture samples every 15 minutes.
   await expect(page.locator('.history-headlines li.fuel')).toHaveCount(2);await expect(page.locator('.history-headlines li.fuel').first()).toContainText(/Petrol E10: median .*p a litre, (down|up|unchanged)/);
+  // Fuel: seven days by default with a short table, 30 on request, and older table rows only behind a button.
+  await expect(page.locator('#history-fuel [data-fuel-range="7"]')).toHaveAttribute('aria-pressed','true');
+  assert.equal(await page.locator('.history-chart.fuel circle').count(),14,'seven days, two grades');
+  await expect(page.locator('#history-fuel tbody tr:not([hidden])')).toHaveCount(7);await expect(page.locator('[data-fuel-older]')).toHaveCount(0);
+  await page.locator('#history-fuel [data-fuel-range="30"]').click();assert.equal(await page.locator('.history-chart.fuel circle').count(),24,'all twelve recorded days');
+  await expect(page.locator('#history-fuel tbody tr:not([hidden])')).toHaveCount(7);
+  await page.getByRole('button',{name:'Show 5 older days'}).click();await expect(page.locator('#history-fuel tbody tr:not([hidden])')).toHaveCount(12);
+  await expect(page.getByRole('button',{name:'Hide older days'})).toHaveAttribute('aria-expanded','true');
+  await page.locator('#history-fuel [data-fuel-range="7"]').click();
   await expect(page.locator('.history-headlines')).toContainText('Rail and fuel only');await expect(page.locator('.history-headlines')).not.toContainText(/bus(es)? (are|were) (busiest|up|down)/);
   await expect(page.locator('.history-table').first()).toContainText('Latest prices as of Mon, 5 Oct, 11:30');
   await page.locator('.history-details summary').click();await expect(page.locator('.history-details tbody tr')).toHaveCount(5);

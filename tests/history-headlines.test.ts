@@ -32,6 +32,10 @@ test('fuel compares with a week ago, or the nearest earlier day, and calls tiny 
  f=fuelHeadlines(base([],[fuelDay('2026-10-05',130),fuelDay('2026-10-06',131)]));assert.equal(f.headlines.length,0);assert.match(f.missing!,/three or more days/);
  assert.match(fuelHeadlines(base([])).missing!,/No fuel prices/);
 });
+test('with a month of fuel days the comparison day is the one nearest a week back',()=>{
+ const f=fuelHeadlines(base([],[fuelDay('2026-09-10',120),fuelDay('2026-10-01',132),fuelDay('2026-10-06',133)]));
+ assert.match(f.headlines[0].text,/up 1\.0p since Thu 1 Oct/);
+});
 test('headlines combine both and list what is missing',()=>{
  const h=historyHeadlines(base(day('2026-10-06',1),[fuelDay('2026-09-29',135),fuelDay('2026-10-06',134)]),now);
  assert.equal(h.items.length,2);assert.equal(h.missing.length,1);assert.ok(h.items.every(i=>i.kind==='fuel'));

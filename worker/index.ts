@@ -141,7 +141,7 @@ export default {
       if(path==='/api/v1/health')return json(snapshot(await feedHealth(store,env)));
       if(path==='/api/v1/history'){
         // Summaries only: per-station fuel prices and per-service rail rows stay in D1.
-        try{return json(await historyFor(env,Number(new URL(request.url).searchParams.get('days')??7)));}
+        try{return json(await historyFor(env,Number(new URL(request.url).searchParams.get('days')??7),Number(new URL(request.url).searchParams.get('fuelDays'))||undefined));}
         catch{return json({error:'History is not recorded yet; apply the D1 migrations'},503);}
       }
       if(path==='/api/v1/fuel-history'){

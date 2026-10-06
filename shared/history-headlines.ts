@@ -44,7 +44,7 @@ export function railHeadline(data:HistoryResponse,now:number):{headline?:Headlin
 export function fuelHeadlines(data:HistoryResponse):{headlines:Headline[];missing?:string} {
  const days=[...data.fuel].sort((a,b)=>a.day.localeCompare(b.day)),latest=days.at(-1);
  if(!latest)return {headlines:[],missing:'No fuel prices have been recorded yet.'};
- const week=shiftDay(latest.day,-7),earlier=days.find(d=>d.day===week)??days.find(d=>d.day<=shiftDay(latest.day,-3));
+ const week=shiftDay(latest.day,-7),earlier=days.find(d=>d.day===week)??days.filter(d=>d.day<=shiftDay(latest.day,-3)).sort((a,b)=>Math.abs(Date.parse(a.day)-Date.parse(week))-Math.abs(Date.parse(b.day)-Date.parse(week))).at(0);
  if(!earlier)return {headlines:[],missing:'Fuel comparisons need prices recorded on at least two days, three or more days apart.'};
  const headlines:Headline[]=[];
  for(const grade of Object.keys(GRADE_NAMES)){
