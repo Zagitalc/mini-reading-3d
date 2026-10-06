@@ -37,11 +37,15 @@ try{
   assert.equal(await page.locator('.history-chart.rail rect.cancelled').count(),4);assert.equal(await page.locator('.history-chart.rail rect.late').count(),4);
   assert.equal(await page.locator('.history-chart.feeds rect.down').count(),1,'the rivers outage hour');
   await expect(page.locator('.history-chart.fuel .direct')).toHaveText(['Petrol E10','Diesel']);
+  // Headlines: fuel against the earliest day three or more days back; rail says what is missing because this fixture samples every 15 minutes.
+  await expect(page.locator('.history-headlines li.fuel')).toHaveCount(2);await expect(page.locator('.history-headlines li.fuel').first()).toContainText(/Petrol E10: median .*p a litre, (down|up|unchanged)/);
+  await expect(page.locator('.history-headlines')).toContainText('Rail and fuel only');await expect(page.locator('.history-headlines')).not.toContainText(/bus(es)? (are|were) (busiest|up|down)/);
   await expect(page.locator('.history-table').first()).toContainText('Latest prices as of Mon, 5 Oct, 11:30');
   await page.locator('.history-details summary').click();await expect(page.locator('.history-details tbody tr')).toHaveCount(5);
   await page.locator('#details').evaluate(e=>e.scrollTop=0);await page.screenshot({path:`${process.env.SHOT_DIR??'.'}/history-${viewport.width}-top.png`});await page.locator('#details').evaluate(e=>e.scrollTop=e.scrollHeight);await page.screenshot({path:`${process.env.SHOT_DIR??'.'}/history-${viewport.width}.png`});
   await page.locator('[data-history-days="1"]').click();await expect(page.locator('[data-history-days="1"]')).toHaveAttribute('aria-pressed','true');
   assert.equal(await page.locator('.history-chart.buses rect').count(),16,'24 hours: buses from 12:00 to 22:00 yesterday and 07:00 to 11:00 today, UTC');
+  await expect(page.locator('.history-headlines li.fuel')).toHaveCount(2);
   const overflow=await page.locator('#details').evaluate(e=>e.scrollWidth-e.clientWidth);assert.ok(overflow<=1,`details panel must not scroll sideways (${overflow}px)`);
   assert.deepEqual(errors,[]);await page.close();
  }

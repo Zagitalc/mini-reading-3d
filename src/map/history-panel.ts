@@ -1,5 +1,6 @@
 import {detail,escape,toolSlot} from '../ui/shell';
 import type {HistoryResponse,HourSummary} from '../../shared/history';
+import {historyHeadlines} from '../../shared/history-headlines';
 const hourLabel=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'});
 const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
 const weekday=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short'});
@@ -67,15 +68,25 @@ function dailyTable(data:HistoryResponse){
   return `<tr><td>${escape(dayLabel(d))}</td><td>${hours.length} h</td><td>${bus.length?Math.max(...bus.map(h=>h.buses!.max)):'—'}</td><td>${rail.d}</td><td>${rail.l}</td><td>${rail.c}</td></tr>`;}).join('');
  return `<details class="history-details"><summary>Show daily figures as a table</summary><table class="history-table"><caption>Most buses is the highest count in any sampled minute; days with few map viewers have fewer bus samples.</caption><thead><tr><th>Day</th><th>Recorded</th><th>Most buses</th><th>Departures</th><th>Late</th><th>Cancelled</th></tr></thead><tbody>${rows}</tbody></table></details>`;
 }
-function render(element:HTMLElement,data:HistoryResponse,days:number){
+/** The headlines need yesterday and a week of fuel days, so they always read the seven-day history, whichever range is charted. */
+function headlinesBlock(data:HistoryResponse|undefined){
+ if(!data)return '<p class="explorer-note">Headlines could not be worked out because the seven-day history did not load.</p>';
+ const {items,missing}=historyHeadlines(data);
+ return `<section class="history-headlines" aria-label="Headlines"><h3>Headlines</h3>${items.length?`<ul>${items.map(i=>`<li class="${i.kind}">${escape(i.text)}<small>${escape(i.note??'')}</small></li>`).join('')}</ul>`:''}${missing.map(m=>`<p class="explorer-note">${escape(m)}</p>`).join('')}<p class="explorer-note">Rail and fuel only. Bus counts are not compared because buses are recorded only while someone has the map open.</p></section>`;
+}
+function render(element:HTMLElement,data:HistoryResponse,days:number,week:HistoryResponse|undefined){
  const now=Date.now(),list=slots(data,now),recorded=data.hours.length;
  element.innerHTML=`<div class="departure-views" role="group" aria-label="Time range">${[1,7].map(d=>`<button type="button" data-history-days="${d}" aria-pressed="${d===days}">${d===1?'Last 24 hours':'Last 7 days'}</button>`).join('')}</div>
+  ${headlinesBlock(week)}
   ${data.recordingSince?`<p class="explorer-note">Recording since ${escape(hourLabel.format(Date.parse(data.recordingSince)))}. ${plural(recorded,'hour')} recorded in this range; hours without a bar were not recorded.</p>`:'<p class="schedule-notice">Nothing has been recorded yet. The first hourly figures appear a minute after recording starts.</p>'}
   ${busChart(list,days)}${railChart(list,days)}${feedChart(list,days)}${fuelChart(data)}${recorded?dailyTable(data):''}`;
  element.querySelectorAll<HTMLButtonElement>('[data-history-days]').forEach(b=>b.addEventListener('click',()=>void load(element,+b.dataset.historyDays!)));
 }
+async function fetchHistory(days:number){
+ const r=await fetch(`/api/v1/history?days=${days}`,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('History unavailable');return await r.json() as HistoryResponse;
+}
 async function load(element:HTMLElement,days:number){
- try{const r=await fetch(`/api/v1/history?days=${days}`,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('History unavailable');const data:HistoryResponse=await r.json();if(element.isConnected)render(element,data,days);}
+ try{const data=await fetchHistory(days),week=days===7?data:await fetchHistory(7).catch(()=>undefined);if(element.isConnected)render(element,data,days,week);}
  catch{if(element.isConnected)element.innerHTML='<p>The recorded history could not load. Open this view again to retry.</p>';}
 }
 /** Recorded hourly figures for buses, trains, feed health and daily fuel prices. */
