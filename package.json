@@ -40,6 +40,7 @@
     "test:modes-browser": "node tests/modes-browser.mjs",
     "test:share-browser": "node tests/share-view-browser.mjs",
     "test:search-browser": "node tests/search-browser.mjs",
+    "test:direct-browser": "node tests/direct-finder-browser.mjs",
     "test:summary-browser": "node tests/summary-browser.mjs",
     "test:live-browser": "node --import tsx tests/live-departures-browser.mjs",
     "test:next-stop-browser": "node --import tsx tests/next-stop-browser.mjs",
