@@ -1,9 +1,11 @@
 import {chromium,expect} from '@playwright/test';
-import {mkdir,writeFile} from 'node:fs/promises';
+import {mkdir,readFile,writeFile} from 'node:fs/promises';
 import geojsonvt from 'geojson-vt';
 import vtpbf from 'vt-pbf';
 const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE??'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
 const base=process.env.APP_URL??'http://127.0.0.1:8790';
+// Route ids come from the timetable snapshot (they are GTFS ids, not names), so look them up by label.
+const busRoutes=JSON.parse(await readFile('public/data/bus-routes.json','utf8')),routeId=label=>busRoutes.find(r=>r.label===label).id,route17=routeId('17'),route5=routeId('5');
 try{
  const page=await browser.newPage({viewport:{width:1440,height:1000}}),errors=[],counts={};
  page.on('pageerror',e=>errors.push(e.message));
@@ -13,7 +15,7 @@ try{
   const path=new URL(route.request().url()).pathname;counts[path]=(counts[path]??0)+1;const now=new Date().toISOString();let body;
   if(path.endsWith('/config'))body={tomtom:true,weather:true,fuel:true,rivers:true};
   else if(path.includes('/traffic-tiles/')){const [z,x,y]=path.split('/').slice(-3).map(Number),tile=tileIndex.getTile(z,x,y);return route.fulfill({contentType:'application/vnd.mapbox-vector-tile',body:Buffer.from(vtpbf.fromGeojsonVt({'Traffic flow':tile??{features:[]}}))});}
-  else if(path.endsWith('/vehicle-state'))body={data:[{id:'fixture:bus',kind:'bus',label:'17',position:[-.972,51.457],bearing:90,observedAt:now,source:'Browser test fixture',status:'observed',routeGroupId:'RBUS:17',routeColour:'#784699'}],routes:{}};
+  else if(path.endsWith('/vehicle-state'))body={data:[{id:'fixture:bus',kind:'bus',label:'17',position:[-.972,51.457],bearing:90,observedAt:now,source:'Browser test fixture',status:'observed',routeGroupId:route17,routeColour:'#784699'}],routes:{}};
   else if(path.endsWith('/health'))body={data:[{id:'buses',label:'Buses',state:'live',count:1,intervalMs:60000,message:'Fixture',lastSuccess:now},{id:'traffic',state:'connecting',message:'Tiles load on demand',count:0}]};
   else if(path.endsWith('/road-events'))return route.fulfill({status:503,body:'{}'});
   else if(path.endsWith('/weather'))body={data:[{id:'reading',temperature:15,cloudCover:70,rainMm:.3,snowCm:0,intervalSeconds:900,code:61,windKph:12,windDirection:200,isDay:true,observedAt:now,source:'Weather fixture'}]};
@@ -25,9 +27,9 @@ try{
  await page.clock.install();await page.goto(base);await page.locator('#loading').waitFor({state:'hidden'});await expect(page.locator('#weather-summary')).toContainText('15°C');await expect(page.locator('#fuel-summary')).toContainText('1 forecourts');
  await expect(page.locator('#river-summary')).toHaveText('1 flood alert in force');await page.locator('#river-summary').click();await expect(page.getByRole('heading',{name:'River Thames at Caversham'})).toBeVisible();await expect(page.locator('#details')).toContainText('not a measured or modelled flood extent');await page.locator('#close-details').click();
  await expect.poll(()=>page.evaluate(()=>window.readingTools.reading_get_map_state({}).rendering.busInstances)).toBe(1);
- await page.locator('[data-route-layer=bus]').check();await page.getByLabel('Bus routes selector',{exact:true}).selectOption('RBUS:17');
+ await page.locator('[data-route-layer=bus]').check();await page.getByLabel('Bus routes selector',{exact:true}).selectOption(route17);
  await expect.poll(()=>page.evaluate(()=>window.readingTools.reading_get_map_state({}).rendering.busInstances)).toBe(1);
- await page.getByLabel('Bus routes selector',{exact:true}).selectOption('RBUS:5');await expect.poll(()=>page.evaluate(()=>window.readingTools.reading_get_map_state({}).rendering.busInstances)).toBe(0);
+ await page.getByLabel('Bus routes selector',{exact:true}).selectOption(route5);await expect.poll(()=>page.evaluate(()=>window.readingTools.reading_get_map_state({}).rendering.busInstances)).toBe(0);
  await page.locator('[data-route-layer=bus]').uncheck();await page.locator('#close-details').click();
  await expect.poll(()=>page.evaluate(()=>window.readingTools.reading_get_map_state({}).rendering.busInstances)).toBe(1);
  await page.locator('#fuel-layer').check();await page.locator('#weather-summary').click();await expect(page.getByRole('heading',{name:'15.0°C'})).toBeVisible();await page.locator('#close-details').click();

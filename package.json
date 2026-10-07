@@ -41,6 +41,7 @@
     "test:share-browser": "node tests/share-view-browser.mjs",
     "test:search-browser": "node tests/search-browser.mjs",
     "test:direct-browser": "node tests/direct-finder-browser.mjs",
+    "test:landmark-pin-browser": "node tests/landmark-pin-browser.mjs",
     "test:graphics-browser": "node tests/graphics-test-browser.mjs",
     "test:summary-browser": "node tests/summary-browser.mjs",
     "test:live-browser": "node --import tsx tests/live-departures-browser.mjs",
@@ -53,7 +54,11 @@
   },
   "overrides": {
     "miniflare": {
-      "undici": "^7.29.0"
+      "undici": "^7.29.0",
+      "sharp": "^0.35.5"
+    },
+    "concurrently": {
+      "shell-quote": "^1.12.0"
     }
   },
   "dependencies": {
