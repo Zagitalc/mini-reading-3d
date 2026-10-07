@@ -1,11 +1,14 @@
 name: Refresh fuel prices
 # The fuel mirror rebuilds at about 09:45 and 15:45 UTC. This trims its national file to the map area
 # and uploads the result, so forecourts filed under Earley, Winnersh or Tilehurst are not missed.
-# The 22:05 and 04:05 runs re-send the latest snapshot so the upload never looks stale overnight and the
-# Worker's fallback (the Reading town file, which misses those forecourts) stays off.
+# The 19:17 run catches the afternoon build when the 16:17 run starts late or is dropped. The 22:17 and
+# 04:17 runs re-send the latest snapshot so the upload never looks stale overnight and the Worker's
+# fallback (the Reading town file, which misses those forecourts) stays off.
+# GitHub starts scheduled runs late, or skips them, when busy, and is busiest on the hour and at :05,
+# hence the odd minute.
 on:
   schedule:
-    - cron: '5 4,10,16,22 * * *'
+    - cron: '17 4,10,16,19,22 * * *'
   workflow_dispatch:
 permissions:
   contents: read
