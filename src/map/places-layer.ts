@@ -1,5 +1,5 @@
 import type {Map,GeoJSONSource} from 'maplibre-gl';
-import {FOOD_TYPES,RATING_FILTERS,RATING_TEXT,foodCategory,foodMatches,ratingGroup,type FoodTypeFilter,type HygieneBundle,type HygienePlace,type RatingFilter} from '../../shared/hygiene';
+import {CLUSTER_SHARE,FOOD_TYPES,RATING_FILTERS,RATING_TEXT,foodCategory,foodMatches,ratingGroup,type FoodTypeFilter,type HygieneBundle,type HygienePlace,type RatingFilter} from '../../shared/hygiene';
 import {detail,escape,layerGroup} from '../ui/shell';
 import {currentMode,registerSwitch} from '../ui/modes';
 import {onLinked,setSelection} from '../ui/share';
@@ -16,9 +16,10 @@ export function connectPlaces(map:Map){
   <div class="departure-views hygiene-filters" role="group" aria-label="Which kind of food premises" hidden>${Object.entries(FOOD_TYPES).map(([id,label])=>`<button type="button" data-food-type="${id}" aria-pressed="${id==='all'}">${label}</button>`).join('')}</div>
   <div class="departure-views hygiene-filters" role="group" aria-label="Lowest hygiene rating to show" hidden>${RATING_FILTERS.map(([id,label])=>`<button type="button" data-hygiene-filter="${id}" aria-pressed="${id==='all'}">${label}</button>`).join('')}</div>
   <details class="hygiene-find" hidden><summary>Find a food business</summary><label class="stop-search">Name or postcode<input type="search" aria-label="Find a food business" placeholder="Café, RG1…"></label><div class="stop-results" aria-live="polite"></div></details>
+  <small class="hygiene-cluster-note" hidden>Zoomed out, circles group nearby premises: the number is how many, and the colour is the share of rated premises scoring 4 or 5 (green 85% or more, amber 70 to 84%, red below 70%; grey when fewer than 5 are rated).</small>
   <small id="hygiene-summary">Food Standards Agency ratings · off until switched on</small>`;
  layerGroup('places').append(section);
- const toggle=section.querySelector<HTMLInputElement>('#hygiene-layer')!,summary=section.querySelector('#hygiene-summary')!,filters=[...section.querySelectorAll<HTMLElement>('.hygiene-filters')],find=section.querySelector<HTMLElement>('.hygiene-find')!;
+ const toggle=section.querySelector<HTMLInputElement>('#hygiene-layer')!,summary=section.querySelector('#hygiene-summary')!,filters=[...section.querySelectorAll<HTMLElement>('.hygiene-filters,.hygiene-cluster-note')],find=section.querySelector<HTMLElement>('.hygiene-find')!;
  let bundle:HygieneBundle|undefined,loading:Promise<void>|undefined,kind:FoodTypeFilter='all',min:RatingFilter='all';
  const byId=new globalThis.Map<number,HygienePlace>();
  const open=(p:HygienePlace)=>{const rating=p[7],group=ratingGroup(rating),extract=bundle!.authorities.map(x=>x.extractDate).sort()[0]??'';
@@ -43,12 +44,19 @@ export function connectPlaces(map:Map){
  async function load(){
   summary.textContent='Loading ratings…';
   await fetchBundle();
-  map.addSource('hygiene',{type:'geojson',data:data(),attribution:'Food Standards Agency · OGL 3.0'});
+  // Nearby premises group into one circle until zoom 15: the number is how many, the colour the share rated 4 or 5.
+  map.addSource('hygiene',{type:'geojson',data:data(),attribution:'Food Standards Agency · OGL 3.0',cluster:true,clusterMaxZoom:14,clusterRadius:34,
+   clusterProperties:{good:['+',['case',['==',['get','group'],'good'],1,0]],rated:['+',['case',['==',['get','group'],'none'],0,1]]}});
   const colour=['match',['get','group'],'good',COLOURS.good,'fair',COLOURS.fair,'poor',COLOURS.poor,COLOURS.none] as never;
-  map.addLayer({id:'hygiene-points',type:'circle',source:'hygiene',minzoom:12,paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,2.5,16,5.5,18,8],'circle-color':colour,'circle-stroke-color':'#fffdf5','circle-stroke-width':1.2}});
-  map.addLayer({id:'hygiene-labels',type:'symbol',source:'hygiene',minzoom:16,layout:{'text-field':['get','label'],'text-size':9,'text-font':['Noto Sans Regular'],'text-allow-overlap':true},paint:{'text-color':'#ffffff'}});
+  const share:any=['/',['get','good'],['max',1,['get','rated']]];
+  map.addLayer({id:'hygiene-clusters',type:'circle',source:'hygiene',minzoom:12,filter:['has','point_count'],paint:{'circle-radius':['step',['get','point_count'],11,10,14,40,18,150,23],
+   'circle-color':['case',['<',['get','rated'],CLUSTER_SHARE.minRated],COLOURS.none,['>=',share,CLUSTER_SHARE.good],COLOURS.good,['>=',share,CLUSTER_SHARE.fair],COLOURS.fair,COLOURS.poor],'circle-stroke-color':'#fffdf5','circle-stroke-width':1.5,'circle-opacity':.92}});
+  map.addLayer({id:'hygiene-cluster-count',type:'symbol',source:'hygiene',minzoom:12,filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],'text-size':11,'text-font':['Noto Sans Regular'],'text-allow-overlap':true},paint:{'text-color':'#ffffff'}});
+  map.addLayer({id:'hygiene-points',type:'circle',source:'hygiene',minzoom:12,filter:['!',['has','point_count']],paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,2.5,16,5.5,18,8],'circle-color':colour,'circle-stroke-color':'#fffdf5','circle-stroke-width':1.2}});
+  map.addLayer({id:'hygiene-labels',type:'symbol',source:'hygiene',minzoom:16,filter:['!',['has','point_count']],layout:{'text-field':['get','label'],'text-size':9,'text-font':['Noto Sans Regular'],'text-allow-overlap':true},paint:{'text-color':'#ffffff'}});
   map.on('click','hygiene-points',e=>{const p=byId.get(Number(e.features?.[0]?.properties.id));if(p)open(p);});
-  map.on('mouseenter','hygiene-points',()=>{map.getCanvas().style.cursor='pointer';});map.on('mouseleave','hygiene-points',()=>{map.getCanvas().style.cursor='';});
+  map.on('click','hygiene-clusters',async e=>{const f=e.features?.[0];if(!f)return;const zoom=await (map.getSource('hygiene') as GeoJSONSource).getClusterExpansionZoom(Number(f.properties.cluster_id));map.easeTo({center:(f.geometry as GeoJSON.Point).coordinates as [number,number],zoom:Math.min(zoom+.5,18)});});
+  for(const id of ['hygiene-points','hygiene-clusters']){map.on('mouseenter',id,()=>{map.getCanvas().style.cursor='pointer';});map.on('mouseleave',id,()=>{map.getCanvas().style.cursor='';});}
   describe();
  }
  // Counts only customer-facing premises, so the numbers agree with what All food shows.
@@ -57,7 +65,7 @@ export function connectPlaces(map:Map){
   const lead=kind==='all'&&min==='all'?`${food.length.toLocaleString()} food premises · ${food.filter(p=>ratingGroup(p[7])==='poor').length} rated 0 to 2`:`${shown().length.toLocaleString()} of ${food.length.toLocaleString()} food premises match`;
   summary.textContent=`${lead} · council data from ${date(extract)} · zoom in to see them`;
  }
- const show=()=>{const on=toggle.checked;for(const f of filters)f.hidden=!on||!bundle;find.hidden=!on||!bundle;for(const id of ['hygiene-points','hygiene-labels'])if(map.getLayer(id))map.setLayoutProperty(id,'visibility',on?'visible':'none');};
+ const show=()=>{const on=toggle.checked;for(const f of filters)f.hidden=!on||!bundle;find.hidden=!on||!bundle;for(const id of ['hygiene-clusters','hygiene-cluster-count','hygiene-points','hygiene-labels'])if(map.getLayer(id))map.setLayoutProperty(id,'visibility',on?'visible':'none');};
  toggle.addEventListener('change',()=>{if(toggle.checked&&!loading){loading??=load().catch(e=>{loading=undefined;summary.textContent=e instanceof Error?e.message:'Ratings unavailable';toggle.checked=false;});void loading.then(show);}else show();});// In Food mode the filters and search are the point: the other groups fold away so they are in view, and come back on leaving.
  const group=layerGroup('places').closest('details')!,others=[...document.querySelectorAll<HTMLDetailsElement>('.layer-group')].filter(d=>d!==group);
  let remembered:boolean[]|undefined;

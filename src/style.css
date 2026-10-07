@@ -74,3 +74,4 @@ body:has(#details:not([hidden])) .traffic-legend{display:none}@media(max-width:1
 .direct-list,.direct-times{list-style:none;padding:0;margin:6px 0}.direct-option{border-top:1px solid var(--line,#d8d4c6);padding:8px 0;font-size:13px}.direct-option small{display:block;color:var(--muted);font-size:11px;line-height:1.4}
 .direct-times{display:flex;flex-wrap:wrap;gap:6px 14px}.direct-times li{font-size:13px}.direct-times time{font-weight:600;margin-right:4px}.direct-times small{display:inline}
 .history-headlines h3{font-size:13px;margin:10px 0 4px}.history-headlines ul{list-style:none;padding:0;margin:0}.history-headlines li{font-size:13px;line-height:1.45;padding:7px 0;border-top:1px solid var(--line,#d8d4c6)}.history-headlines li small{display:block;color:var(--muted);font-size:11px;margin-top:2px}
+.hygiene-cluster-note{display:block;margin:6px 0;line-height:1.4}

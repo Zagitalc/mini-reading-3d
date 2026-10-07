@@ -45,6 +45,11 @@ export function hygieneBundle(files:{authority:{code:string;name:string};json:un
 }
 /** Colour group for the map: good (4 to 5), fair (3), poor (0 to 2), or none for exempt and awaiting. */
 export const ratingGroup=(rating:string)=>/^[45]$/.test(rating)?'good':rating==='3'?'fair':/^[012]$/.test(rating)?'poor':'none';
+/** A cluster of food points on the map shows the share of its rated premises that scored 4 or 5, in these bands. Premises
+ * that are exempt or awaiting inspection carry no rating and are left out of the share, and a cluster with fewer than
+ * `minRated` rated premises stays grey, because one 3 among two places is not a pattern. */
+export const CLUSTER_SHARE={good:.85,fair:.7,minRated:5} as const;
+export const clusterGroup=(good:number,rated:number)=>rated<CLUSTER_SHARE.minRated?'none':good/rated>=CLUSTER_SHARE.good?'good':good/rated>=CLUSTER_SHARE.fair?'fair':'poor';
 /** Food mode groups. The bundle keeps the FSA's own BusinessType text, so these can be refined without rebuilding it. */
 export type FoodCategory='restaurant-cafe'|'takeaway'|'pub-bar'|'other-public-food'|'excluded-institutional';
 /** Every FSA business type in the area files, mapped by hand. Food mode is about places to eat and drink, so shops are
