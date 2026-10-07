@@ -48,6 +48,13 @@ try{
  await page.locator('[data-hygiene-filter="5"]').click();await expect(page.locator('#hygiene-summary')).toContainText('0 of 4 food premises match');
  await page.locator('[data-food-type=all]').click();await page.locator('[data-hygiene-filter=all]').click();await page.getByLabel('Find a food business').fill('kitchen');
  await expect(page.getByRole('button',{name:/New Kitchen/})).toBeVisible();await expect(page.getByRole('button',{name:/Hill School Kitchen/})).toHaveCount(0);await expect(page.getByRole('button',{name:/Corner Kitchen Supermarket/})).toHaveCount(0);await page.waitForTimeout(600);
+ // A grey pump says why: the station card for a 21-day-old price names the age, is not compared with the median, and stays separate from a current one.
+ await page.getByRole('searchbox',{name:'Search Mini Reading'}).fill('Old price');await page.getByRole('button',{name:/Old price garage/}).click();
+ await expect(page.locator('#details')).toContainText('21 days old: it was last reported more than seven days ago');await expect(page.locator('#details')).toContainText('left out of the Reading comparison and shows grey');
+ await expect(page.locator('#details')).not.toContainText('the Reading middle price');
+ await page.waitForTimeout(1800);await page.screenshot({path:'test-results/fuel-old-label.png'});
+ await page.getByRole('searchbox',{name:'Search Mini Reading'}).fill('Costco');await page.getByRole('button',{name:/Costco Reading/}).first().click();
+ await expect(page.locator('#details')).toContainText('the Reading middle price');await expect(page.locator('#details')).not.toContainText('left out of the Reading comparison');
  await page.screenshot({path:'test-results/hygiene-layer.png'});
  if(errors.length)throw Error(errors.join('\n'));
  console.log('Browser: fuel spread, Costco marked members only, old prices, detour, car against bus, grade switch, start picking and the hygiene layer passed.');

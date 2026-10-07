@@ -1,7 +1,7 @@
 import type {Map,GeoJSONSource,MapMouseEvent} from 'maplibre-gl';
 import type {FuelStation,LngLat} from '../../shared/types';
 import type {StationPriceDay} from '../../shared/history';
-import {GRADE_NAMES,band,detours,membersOnly,motorway,spread,tripCost,PRICE_MAX_AGE_MS,ROAD_FACTOR,type PriceRow} from '../../shared/fuel-compare';
+import {GRADE_NAMES,band,detours,membersOnly,motorway,spread,tripCost,PRICE_MAX_AGE_MS,ROAD_FACTOR,oldLong,oldShort,priceStatus,type PriceRow} from '../../shared/fuel-compare';
 import {BUS_FARES,busReturn} from '../../shared/fares';
 import {LANDMARKS} from '../../shared/config';
 import {distance} from '../../shared/geo';
@@ -62,8 +62,8 @@ export function connectFuel(map:Map,section:HTMLElement,enabled:boolean){
  map.on('mouseleave','fuel-points',()=>{map.getCanvas().style.cursor='';});
  const draw=()=>{
   const {median}=spread(stations,settings.grade,settings.tank);
-  (map.getSource('fuel-stations') as GeoJSONSource).setData({type:'FeatureCollection',features:stations.map(s=>{const p=s.prices[settings.grade],old=!p||s.quiet||Date.now()-Date.parse(p.submittedAt)>PRICE_MAX_AGE_MS;
-   return {type:'Feature',geometry:{type:'Point',coordinates:s.position},properties:{id:s.id,state:old?'old':band(p.pence,median),label:p?`${p.pence.toFixed(1)}${membersOnly(s)?' members':''}`:''}};})});
+  (map.getSource('fuel-stations') as GeoJSONSource).setData({type:'FeatureCollection',features:stations.map(s=>{const p=s.prices[settings.grade],status=priceStatus(s,settings.grade),old=status.state==='old';
+   return {type:'Feature',geometry:{type:'Point',coordinates:s.position},properties:{id:s.id,state:old?'old':band(p.pence,median),label:p?`${p.pence.toFixed(1)}${membersOnly(s)?' members':''}${status.state==='old'?` · ${oldShort(status)}`:''}`:''}};})});
   (map.getSource('fuel-start') as GeoJSONSource).setData({type:'FeatureCollection',features:start?[{type:'Feature',geometry:{type:'Point',coordinates:start},properties:{}}]:[]});
  };
  const grades=()=>Object.keys(GRADE_NAMES).filter(g=>stations.some(s=>s.prices[g]));
@@ -112,10 +112,10 @@ export function connectFuel(map:Map,section:HTMLElement,enabled:boolean){
  }
  compare.addEventListener('click',open);
  const openStation=(station:FuelStation)=>{
-  const {median}=spread(stations,settings.grade,settings.tank),p=station.prices[settings.grade];
-  detail(`<span class="pill">Fuel prices · as reported</span><h2>${escape(station.name)}</h2><p>${escape(station.brand)} · ${escape(station.postcode)}${motorway(station)?' · motorway services':''}</p>${membersOnly(station)?`<p class="schedule-notice">${MEMBERS_NOTE}</p>`:''}${station.quiet?'<p>No prices submitted at this site for at least 14 days.</p>':''}
+  const {median}=spread(stations,settings.grade,settings.tank),p=station.prices[settings.grade],status=priceStatus(station,settings.grade);
+  detail(`<span class="pill">Fuel prices · as reported</span><h2>${escape(station.name)}</h2><p>${escape(station.brand)} · ${escape(station.postcode)}${motorway(station)?' · motorway services':''}</p>${membersOnly(station)?`<p class="schedule-notice">${MEMBERS_NOTE}</p>`:''}${station.quiet?'<p>No prices submitted at this site for at least 14 days.</p>':''}${status.state==='old'&&p?`<p class="schedule-notice">The ${escape(gradeName(settings.grade))} price here is ${escape(oldLong(status,settings.grade))}. It is left out of the Reading comparison and shows grey on the map.</p>`:''}
    <dl>${Object.entries(station.prices).map(([grade,x])=>{const days=Math.round((Date.now()-Date.parse(x.submittedAt))/86_400_000);return `<dt>${escape(gradeName(grade))}</dt><dd>${pence(x.pence)} a litre<small>Reported ${escape(when(x.submittedAt))}${days>7?` · ${days} days old, so it may have changed`:''}</small></dd>`;}).join('')}</dl>
-   ${p&&median!==undefined?`<p>${escape(gradeName(settings.grade))} here is ${Math.abs(p.pence-median)<.05?'the same as':`${Math.abs(p.pence-median).toFixed(1)}p ${p.pence<median?'below':'above'}`} the Reading middle price of ${pence(median)}: ${money(Math.abs(p.pence-median)*settings.tank/100)} a ${settings.tank}-litre tank.</p>`:''}
+   ${p&&status.state==='current'&&median!==undefined?`<p>${escape(gradeName(settings.grade))} here is ${Math.abs(p.pence-median)<.05?'the same as':`${Math.abs(p.pence-median).toFixed(1)}p ${p.pence<median?'below':'above'}`} the Reading middle price of ${pence(median)}: ${money(Math.abs(p.pence-median)*settings.tank/100)} a ${settings.tank}-litre tank.</p>`:''}
    <div id="fuel-station-history"><p class="explorer-note">Loading recorded prices…</p></div>
    <button type="button" class="status-button" id="fuel-open-compare">Compare prices and trips ↗</button>
    <p class="explorer-note">Source snapshot: ${escape(when(station.observedAt))}. ${station.locationRepaired?'The source reports a corrected location. ':''}<a href="https://cheapfuelnearme.uk/api/" target="_blank" rel="noopener">Fuel Finder via Cheap Fuel Near Me</a>; contains public sector information licensed under OGL v3.0.</p>`);

@@ -6,6 +6,21 @@ import type {FuelStation,LngLat} from './types';
  * a flag, so every place that shows their price can say that a membership is needed. */
 export const GRADE_NAMES:Record<string,string>={E10:'Petrol E10',E5:'Super unleaded E5',B7S:'Diesel',B7P:'Premium diesel'};
 export const PRICE_MAX_AGE_MS=7*86_400_000;
+/** Whether a station's price for one grade counts in comparisons, and if not, why. The reason is per grade: a forecourt can
+ * report diesel today and an E10 price from last week, so one pump can be current for one grade and old for another. */
+export type PriceStatus={state:'current'}|{state:'old';reason:'none'|'quiet'|'age';days:number};
+export function priceStatus(s:Pick<FuelStation,'quiet'|'prices'>,grade:string,now=Date.now()):PriceStatus {
+ const p=s.prices[grade];if(!p)return {state:'old',reason:'none',days:0};
+ const age=now-Date.parse(p.submittedAt),days=Number.isFinite(age)?Math.floor(age/86_400_000):0;
+ if(!Number.isFinite(age))return {state:'old',reason:'none',days:0};
+ if(age>PRICE_MAX_AGE_MS)return {state:'old',reason:'age',days};
+ return s.quiet?{state:'old',reason:'quiet',days}:{state:'current'};
+}
+/** Short wording for a map label: "9 days old" or "quiet site". */
+export const oldShort=(status:Extract<PriceStatus,{state:'old'}>)=>status.reason==='age'?`${status.days} days old`:status.reason==='quiet'?'quiet site':'no price';
+/** Full wording for the station card, finishing "This price is …". */
+export const oldLong=(status:Extract<PriceStatus,{state:'old'}>,grade:string)=>
+ status.reason==='age'?`${status.days} days old: it was last reported more than seven days ago`:status.reason==='quiet'?'from a site that has stopped reporting (no prices for at least 14 days)':`missing: this site has no ${GRADE_NAMES[grade]??grade} price`;
 /** Costco sells fuel to its members only; you need a membership card at the pump. */
 export const membersOnly=(s:{brand:string;name:string})=>/costco/i.test(`${s.brand} ${s.name}`);
 /** Motorway service areas price well above town forecourts; they are labelled so they read as outliers. */

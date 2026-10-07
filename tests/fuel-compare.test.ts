@@ -1,6 +1,6 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {band,detours,litresPer100km,priceRows,spread,tripCost,PRICE_MAX_AGE_MS} from '../shared/fuel-compare';
+import {band,detours,litresPer100km,oldLong,oldShort,priceRows,priceStatus,spread,tripCost,PRICE_MAX_AGE_MS} from '../shared/fuel-compare';
 import type {FuelStation,LngLat} from '../shared/types';
 const now=Date.parse('2026-09-28T12:00:00Z');
 const station=(id:string,pence:number,position:LngLat=[-0.97,51.45],submittedAt='2026-09-28T08:00:00Z',quiet=false,brand='Test'):FuelStation=>({id,name:id,brand,postcode:'RG1',position,quiet,observedAt:'2026-09-28T09:00:00Z',source:'test',prices:{E10:{pence,submittedAt}}});
@@ -47,4 +47,20 @@ test('car against bus counts fuel both ways plus parking',()=>{
  assert.ok(t.km>7&&t.km<8,String(t.km));
  assert.ok(Math.abs(t.fuel-t.km*litresPer100km(45)/100*1.4)<.01);
  assert.equal(t.car,Math.round((t.fuel+5)*100)/100);assert.equal(t.bus,4.6);
+});
+
+test('price status is per grade and says why a price is left out',()=>{
+ const now=Date.parse('2026-10-07T12:00:00Z'),ago=(d:number)=>new Date(now-d*86_400_000).toISOString();
+ // Fresh diesel with an old E10 at the same site: the pump is current for one grade and old for the other.
+ const site={quiet:false,prices:{B7S:{pence:203.9,submittedAt:ago(4)},E10:{pence:178.9,submittedAt:ago(9)}}};
+ assert.deepEqual(priceStatus(site,'B7S',now),{state:'current'});
+ const e10=priceStatus(site,'E10',now);assert.deepEqual(e10,{state:'old',reason:'age',days:9});
+ assert.equal(oldShort(e10 as never),'9 days old');assert.match(oldLong(e10 as never,'E10'),/9 days old.*more than seven days/);
+ const quiet=priceStatus({quiet:true,prices:{E10:{pence:150,submittedAt:ago(1)}}},'E10',now);
+ assert.deepEqual(quiet,{state:'old',reason:'quiet',days:1});assert.equal(oldShort(quiet as never),'quiet site');assert.match(oldLong(quiet as never,'E10'),/stopped reporting/);
+ const none=priceStatus(site,'B7P',now);assert.equal(none.state==='old'&&none.reason,'none');assert.match(oldLong(none as never,'B7P'),/no Premium diesel price/);
+ assert.equal(priceStatus({quiet:false,prices:{E10:{pence:150,submittedAt:ago(7)}}},'E10',now).state,'current','exactly seven days is still current');
+ // It agrees with priceRows, which decides what the comparison uses.
+ const rows=priceRows([{...site,id:'a',name:'A',brand:'A',postcode:'RG1',position:[-.97,51.45],observedAt:'',source:'t'} as never],'E10',now);
+ assert.equal(rows.current.length,0);assert.equal(rows.old.length,1);
 });
