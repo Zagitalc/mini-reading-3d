@@ -20,7 +20,7 @@ export function shell(){
  if(phone()){const toggle=document.querySelector('#collapse-layers')!;toggle.textContent='+';toggle.setAttribute('aria-expanded','false');}
  document.querySelector('#close-details')!.addEventListener('click',()=>{document.querySelector<HTMLElement>('#details')!.hidden=true;});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&cancelPick){cancelPick();return;}if(e.key==='Escape'){document.querySelector<HTMLElement>('#details')!.hidden=true;document.querySelector<HTMLElement>('#search-results')!.hidden=true;}});
  document.querySelector('#collapse-layers')!.addEventListener('click',e=>{const el=document.querySelector<HTMLElement>('#layers')!,panel=document.querySelector('.explore-panel')!,b=e.currentTarget as HTMLElement;if(phone()){const open=panel.classList.toggle('mobile-open');el.hidden=false;if(open)document.querySelector<HTMLElement>('#details')!.hidden=true;b.textContent=open?'−':'+';b.setAttribute('aria-expanded',String(open));}else{el.hidden=!el.hidden;b.textContent=el.hidden?'+':'−';b.setAttribute('aria-expanded',String(!el.hidden));}});
- document.querySelector('#sheet-handle')!.addEventListener('click',e=>{const open=document.querySelector('#details')!.classList.toggle('expanded'),b=e.currentTarget as HTMLElement;b.setAttribute('aria-expanded',String(open));b.setAttribute('aria-label',open?'Show less of the panel':'Show more of the panel');});
+ connectSheetHandle();
  document.querySelector('#pick-cancel')!.addEventListener('click',()=>cancelPick?.());
  const tools=document.querySelector<HTMLElement>('#tools-list')!,toolsToggle=document.querySelector<HTMLElement>('#tools-toggle')!;
  const showTools=(open:boolean)=>{tools.hidden=!open;toolsToggle.setAttribute('aria-expanded',String(open));};
@@ -41,6 +41,26 @@ export const sourceFooter=(rows:[string,string][])=>`<dl class="card-source">${r
 export function escape(s:unknown){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));}
 /** Replaces the details panel. Whatever card was there leaves the shared link; a module that wants its card in the link
  * calls setSelection after this. */
+/** The phone bottom sheet's bar: tap to toggle, or drag it up to expand, down to shrink, and well down from the short sheet to close. */
+function connectSheetHandle(){
+ const panel=document.querySelector<HTMLElement>('#details')!,handle=document.querySelector<HTMLElement>('#sheet-handle')!;
+ const setExpanded=(open:boolean)=>{panel.classList.toggle('expanded',open);handle.setAttribute('aria-expanded',String(open));handle.setAttribute('aria-label',open?'Show less of the panel':'Show more of the panel');};
+ let drag:{id:number;y:number;height:number;moved:boolean}|undefined,dragged=false;
+ handle.addEventListener('click',()=>{if(dragged){dragged=false;return;}setExpanded(!panel.classList.contains('expanded'));});
+ handle.addEventListener('pointerdown',e=>{dragged=false;if(!phone())return;drag={id:e.pointerId,y:e.clientY,height:panel.getBoundingClientRect().height,moved:false};handle.setPointerCapture(e.pointerId);});
+ handle.addEventListener('pointermove',e=>{
+  if(!drag||e.pointerId!==drag.id)return;const dy=e.clientY-drag.y;if(!drag.moved&&Math.abs(dy)<8)return;
+  drag.moved=true;panel.style.transition='none';panel.style.maxHeight=`${Math.max(80,Math.min(innerHeight-86,drag.height-dy))}px`;
+ });
+ const end=(e:PointerEvent)=>{
+  if(!drag||e.pointerId!==drag.id)return;const {moved,height,y}=drag,dy=e.clientY-y;drag=undefined;
+  panel.style.transition='';panel.style.maxHeight='';if(!moved)return;dragged=true;
+  const wasExpanded=panel.classList.contains('expanded');
+  if(dy<-40)setExpanded(true);
+  else if(dy>40){if(wasExpanded)setExpanded(false);else if(height-dy<innerHeight*.25)panel.hidden=true;}
+ };
+ handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel',end);
+}
 export function detail(html:string){clearSelection();document.querySelector('#details-content')!.innerHTML=html;const el=document.querySelector<HTMLElement>('#details')!;if(phone())closeLayersSheet();el.hidden=false;el.focus({preventScroll:true});}
 export function toast(text:string){const el=document.querySelector<HTMLElement>('#toast')!;el.textContent=text;el.hidden=false;setTimeout(()=>el.hidden=true,4500);}
 let cancelPick:(()=>void)|null=null;

@@ -3,8 +3,9 @@
  * without a connection. Live data under /api/ is never touched: stale buses or prices must not look current. */
 const VERSION=1;
 const NAMES={static:`mr-static-v${VERSION}`,tiles:`mr-tiles-v${VERSION}`,chunks:`mr-chunks-v${VERSION}`,timetables:`mr-timetables-v${VERSION}`,data:`mr-data-v${VERSION}`};
-// Entry limits bound the storage used (the whole map has 551 tiles, about 67 MB; a normal visit saves a small part of that). The oldest entries go first.
-const LIMITS={static:200,tiles:600,chunks:500,timetables:600,data:40};
+// Entry limits bound the storage used (the whole map has 551 tiles, about 67 MB, and 1,259 building chunks, about 27 MB; a normal visit saves a small part of that,
+// "Save the whole map" saves all of it). The oldest entries go first.
+const LIMITS={static:200,tiles:600,chunks:1400,timetables:600,data:40};
 const NETWORK_WAIT_MS=6000;
 /** How a same-origin GET is handled. 'pass' means the page's own request goes through untouched. */
 function classify(pathname,mode='cors'){

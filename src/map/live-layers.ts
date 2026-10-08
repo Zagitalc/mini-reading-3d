@@ -1,5 +1,5 @@
 import {CADENCE} from '../../shared/feed-policy';
-import {fillOfflineCard} from '../ui/offline';
+import {fillOfflineCard,setFeedStatus} from '../ui/offline';
 import {publishVehicles,vehiclesNeeded} from './vehicle-feed';
 import {wantsVehicles,type ModeLayer} from '../../shared/modes';
 import {registerSwitch} from '../ui/modes';
@@ -60,8 +60,8 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
   if(disposed||document.hidden||refreshing)return;refreshing=true;clearTimeout(timer);
   const jobs:Promise<void>[]=[];
   // Vehicle state is what makes the Worker poll BODS, so it is only asked for while buses or trains are shown, or a stop board wants live estimates.
-  const vehicleRefresh=!wantsVehicles({buses:state.buses,trains:state.trains},vehiclesNeeded())?Promise.resolve():get('/api/v1/vehicle-state').then(v=>{if(disposed)return;routes=v.routes;tracker.ingest(v.data,Date.now(),routes);syncBuses();map.triggerRepaint();publishVehicles(v.data);}).catch(()=>{if(!disposed){publishVehicles(null);document.querySelector('#overall-status')!.textContent='Vehicle updates unavailable';}});jobs.push(vehicleRefresh);
-  jobs.push(vehicleRefresh.then(()=>get('/api/v1/health')).then(h=>{if(disposed)return;feeds=h.data;const live=feeds.filter(f=>f.state==='live').length;document.querySelector('#overall-status')!.textContent=live?`${live} connected feeds`:'Live feeds not connected';document.querySelector('.status-dot')!.classList.toggle('live',live>0);for(const f of feeds){const el=document.querySelector(`#count-${f.id}`);if(el)el.textContent=f.state==='unavailable'?'—':String(f.count);}const traffic=feeds.find(f=>f.id==='traffic');if(!traffic?.message.includes('Tiles load'))document.querySelector('#traffic-availability')!.textContent=traffic?.state??'unavailable';}).catch(()=>{}));
+  const vehicleRefresh=!wantsVehicles({buses:state.buses,trains:state.trains},vehiclesNeeded())?Promise.resolve():get('/api/v1/vehicle-state').then(v=>{if(disposed)return;routes=v.routes;tracker.ingest(v.data,Date.now(),routes);syncBuses();map.triggerRepaint();publishVehicles(v.data);}).catch(()=>{if(!disposed){publishVehicles(null);setFeedStatus('Vehicle updates unavailable',false);}});jobs.push(vehicleRefresh);
+  jobs.push(vehicleRefresh.then(()=>get('/api/v1/health')).then(h=>{if(disposed)return;feeds=h.data;const live=feeds.filter(f=>f.state==='live').length;setFeedStatus(live?`${live} connected feeds`:'Live feeds not connected',live>0);for(const f of feeds){const el=document.querySelector(`#count-${f.id}`);if(el)el.textContent=f.state==='unavailable'?'—':String(f.count);}const traffic=feeds.find(f=>f.id==='traffic');if(!traffic?.message.includes('Tiles load'))document.querySelector('#traffic-availability')!.textContent=traffic?.state??'unavailable';}).catch(()=>{}));
   if(Date.now()-slowUpdated>=CADENCE.roadworks){slowUpdated=Date.now();
    jobs.push(get('/api/v1/road-events').then(e=>{if(disposed)return;events=e.data;const active=events.filter(x=>x.status==='active');publishFact('roadworks',{active:active.length,closures:active.filter(x=>x.kind==='closure').length,at:Date.now()});furniture.setEvents(events);(map.getSource('road-events') as GeoJSONSource).setData({type:'FeatureCollection',features:events.map(e=>({type:'Feature',geometry:e.geometry,properties:{id:e.id,kind:e.kind}}))});syncMarkers();}).catch(()=>{}));
   }
@@ -70,12 +70,12 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
   }
   await Promise.allSettled(jobs);refreshing=false;if(again&&!disposed){again=false;void refresh();return;}if(!disposed&&!document.hidden)timer=setTimeout(refresh,CADENCE.buses);
  };
- const visibility=()=>{clearTimeout(timer);if(!document.hidden){void refresh();map.triggerRepaint();}};document.addEventListener('visibilitychange',visibility);
+ const visibility=()=>{clearTimeout(timer);if(!document.hidden){void refresh();map.triggerRepaint();}};document.addEventListener('visibilitychange',visibility);window.addEventListener('online',visibility);
  const routeSelection=(e:Event)=>{selectedBusRoute=(e as CustomEvent<string>).detail;syncBuses();map.triggerRepaint();};document.addEventListener('reading-bus-route',routeSelection);
  document.addEventListener('reading-vehicles-needed',kick);
  for(const id of LAYERS)setLayer(id,state[id]);
  for(const id of LAYERS)registerSwitch(id as ModeLayer,document.querySelector<HTMLInputElement>(`[data-layer=${id}]`)!);
  map.on('moveend',syncMarkers);syncMarkers();void refresh();vehicleTimer=setInterval(()=>{tracker.prune();if(!document.hidden)syncBuses();if(tracker.tracks.size&&!document.hidden)map.triggerRepaint();},1000);
  const unregister=registerMapTools({places:features.places,setLayer,getState:()=>({layers:{...state},feeds,center:map.getCenter().toArray(),zoom:map.getZoom(),rendering:{fps:Math.round(scene.fps),chunks:scene.chunks.size,failedChunks:scene.failed.size,geometries:scene.renderer.info.memory.geometries,drawCalls:scene.renderer.info.render.calls,trackedVehicles:tracker.tracks.size,visibleVehicles:poses.length,busInstances:vehicles.parts.find(p=>p.kind==='bus')?.mesh.count??0}}),navigate:async p=>{map.flyTo({center:p,zoom:16.8,pitch:58});await new Promise<void>(r=>map.once('moveend',()=>r()));}});
- map.on('remove',()=>{disposed=true;document.removeEventListener('visibilitychange',visibility);document.removeEventListener('reading-bus-route',routeSelection);document.removeEventListener('reading-vehicles-needed',kick);clearTimeout(timer);clearInterval(vehicleTimer);markers.forEach(m=>m.remove());markers.clear();unregister();});
+ map.on('remove',()=>{disposed=true;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('online',visibility);document.removeEventListener('reading-bus-route',routeSelection);document.removeEventListener('reading-vehicles-needed',kick);clearTimeout(timer);clearInterval(vehicleTimer);markers.forEach(m=>m.remove());markers.clear();unregister();});
 }

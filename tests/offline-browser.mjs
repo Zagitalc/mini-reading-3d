@@ -20,7 +20,8 @@ await context.route('**/api/v1/**',route=>{
  if(offline)return route.abort('internetdisconnected');
  const key=new URL(route.request().url()).pathname.slice(8);
  if(key.startsWith('traffic-tiles'))return route.fulfill({status:204});
- return route.fulfill({json:key==='config'?{tomtom:false,weather:false,fuel:false,rivers:false}:{version:1,data:[],routes:{}}});
+ if(key==='weather')return route.fulfill({json:{data:[{id:'reading',temperature:15,cloudCover:70,rainMm:.3,snowCm:0,intervalSeconds:900,code:61,windKph:12,windDirection:200,isDay:true,observedAt:new Date().toISOString(),source:'Weather fixture'}]}});
+ return route.fulfill({json:key==='config'?{tomtom:false,weather:true,fuel:false,rivers:false}:{version:1,data:[],routes:{}}});
 });
 const page=await context.newPage(),errors=[];page.on('pageerror',e=>errors.push(e.message));
 const saved=()=>page.evaluate(async()=>{const out={};for(const k of await caches.keys())out[k]=(await (await caches.open(k)).keys()).length;return out;});
@@ -41,14 +42,32 @@ try{
  // Live data is never saved.
  expect(Object.keys(before).join(' ')).not.toMatch(/api/);
  await expect(page.locator('#offline-banner')).toBeHidden();
+ await expect(page.locator('#weather-summary')).toContainText('15°C');
+
+ // "Save the whole map": every tile and building chunk, including zoomed-out areas this visit never drew.
+ const whole=JSON.parse(await readFile('dist/offline-map.json','utf8'));expect(whole.files.length).toBeGreaterThan(1500);
+ await page.locator('#data-button').click();await page.locator('#save-whole-map').click();
+ await expect(page.locator('#whole-map')).toContainText('The whole map is saved',{timeout:120000});
+ const all=await saved();expect(all['mr-tiles-v1']).toBe(whole.files.filter(f=>f.startsWith('/data/tiles/')).length);expect(all['mr-chunks-v1']).toBe(whole.files.filter(f=>f.startsWith('/data/chunks/')).length);
+ console.log('saved whole map',JSON.stringify(all));await page.locator('#close-details').click();
+
+ // The connection drops while the map is open: the header, footer and weather say so straight away, and the banner shrinks out of the way.
+ offline=true;await context.setOffline(true);
+ await expect(page.locator('#overall-status')).toHaveText('Offline');await expect(page.locator('.status-dot')).not.toHaveClass(/live/);
+ await expect(page.locator('#geography-status')).toHaveText('Offline: only areas you have viewed are saved');
+ await expect(page.locator('#weather-summary')).toHaveText('Weather unavailable offline');
+ const banner=page.locator('#offline-banner');await expect(banner).toBeVisible();await expect(banner).not.toHaveClass(/collapsed/);
+ await expect(banner).toHaveClass(/collapsed/,{timeout:10000});await expect(banner.locator('.offline-long')).toBeHidden();await expect(banner.locator('.offline-short')).toBeVisible();
+ await banner.click();await expect(banner.locator('.offline-long')).toBeVisible();await banner.click();await expect(banner).toHaveClass(/collapsed/);
 
  // Offline: reload and the saved app opens.
- offline=true;await switchOff();await context.setOffline(true);
+ offline=true;await switchOff();
  await page.reload();await page.locator('#loading').waitFor({state:'hidden',timeout:60000});
  await expect(page.locator('#offline-banner')).toBeVisible();await expect(page.locator('#offline-banner')).toContainText('You are offline');
+ await expect(page.locator('#overall-status')).toHaveText('Offline');await expect(page.locator('#geography-status')).toHaveText('Offline: only areas you have viewed are saved');
  await expect(page.locator('.landmark-pin').first()).toBeVisible();
- const offlineFetch=await page.evaluate(async(url)=>{const out={};out.timetable=(await fetch(url)).ok;out.stops=(await fetch('/data/bus-stops.json')).ok;try{await fetch('/api/v1/fuel');out.api='answered';}catch{out.api='unavailable';}return out;},timetable.url);
- expect(offlineFetch).toEqual({timetable:true,stops:true,api:'unavailable'});
+ const offlineFetch=await page.evaluate(async(url)=>{const out={};out.timetable=(await fetch(url)).ok;out.stops=(await fetch('/data/bus-stops.json')).ok;out.overview=(await fetch('/data/tiles/11/1017/682.pbf')).ok;try{await fetch('/api/v1/fuel');out.api='answered';}catch{out.api='unavailable';}return out;},timetable.url);
+ expect(offlineFetch).toEqual({timetable:true,stops:true,overview:true,api:'unavailable'});
  await page.screenshot({path:`${shots}/offline-explore.png`});
  // The saved-data card.
  await page.locator('#data-button').click();
@@ -59,8 +78,9 @@ try{
  await expect(page.locator('#offline-card')).toContainText('Nothing saved yet');
  expect(Object.values(await saved()).reduce((a,b)=>a+b,0)).toBe(0);
 
- // Back online: the banner goes.
+ // Back online: the banner goes, and the header and footer recover.
  offline=false;await switchOn();await context.setOffline(false);
  await expect(page.locator('#offline-banner')).toBeHidden();
+ await expect(page.locator('#geography-status')).toContainText('real building footprints');await expect(page.locator('#overall-status')).not.toHaveText('Offline');
  expect(errors).toEqual([]);console.log('offline explore ok');
 }finally{await browser.close();server.closeAllConnections();server.close();}

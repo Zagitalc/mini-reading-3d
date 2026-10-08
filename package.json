@@ -45,6 +45,7 @@
     "test:offline-browser": "node tests/offline-browser.mjs",
     "test:landmark-pin-browser": "node tests/landmark-pin-browser.mjs",
     "test:graphics-browser": "node tests/graphics-test-browser.mjs",
+    "test:sheet-browser": "node tests/sheet-handle-browser.mjs",
     "test:summary-browser": "node tests/summary-browser.mjs",
     "test:live-browser": "node --import tsx tests/live-departures-browser.mjs",
     "test:next-stop-browser": "node --import tsx tests/next-stop-browser.mjs",

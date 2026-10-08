@@ -1,10 +1,17 @@
 import { defineConfig, type Plugin } from 'vite';
+import { readdirSync, statSync } from 'node:fs';
+import { join } from 'node:path';
 // Lists the built scripts and styles so the offline worker (public/sw.js) can save every part of the app, not only the parts a visit happened to load.
 const precacheList: Plugin = {
  name: 'precache-list',
  generateBundle(_options, bundle) {
   const files = Object.keys(bundle).filter(name => /\.(m?js|css)$/.test(name)).map(name => '/' + name);
   this.emitFile({ type: 'asset', fileName: 'precache.json', source: JSON.stringify({ files }) });
+  // Every map tile and building chunk, for "Save the whole map" in the Saved on this device card.
+  const walk = (dir: string): string[] => readdirSync(dir, { withFileTypes: true }).flatMap(e => e.isDirectory() ? walk(join(dir, e.name)) : [join(dir, e.name)]);
+  const data = ['public/data/tiles', 'public/data/chunks'].flatMap(walk).sort();
+  const bytes = data.reduce((total, file) => total + statSync(file).size, 0);
+  this.emitFile({ type: 'asset', fileName: 'offline-map.json', source: JSON.stringify({ bytes, files: data.map(file => '/' + file.replace(/^public\//, '').split('\\').join('/')) }) });
  }
 };
 export default defineConfig({

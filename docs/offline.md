@@ -7,8 +7,10 @@ The app saves what you have already looked at, so it still opens with no connect
 - **Map tiles, building chunks and timetable files** you view, as you view them. The whole map is 551 tiles (about 67 MB), so a returning visitor keeps every tile they have seen; the limits are 600 tiles, 500 building chunks and 600 timetable files, oldest removed first.
 - **Fonts, and the daily data files** (stop index, features, rail corridors and so on). These are fetched from the network first and the saved copy is used when the network does not answer within six seconds.
 
+- **The whole map, on request.** Source & freshness > "Saved on this device" > "Save the whole map" fetches every map tile and building chunk not yet saved (1,810 files, about 94 MB in all), six at a time, through the worker, and asks the browser to keep the storage. It shows progress, can be stopped, resumes where it left off, and disappears once everything is saved. The list is `dist/offline-map.json`, written at build time by `vite.config.ts`. It needs the worker to be in control, so on a first visit it asks for one reload.
+
 ## What is never saved
-Anything under `/api/`: buses, trains, traffic, weather, fuel, rivers, history. The worker does not touch those requests at all, so a stale price can never look current. Offline, the live layers show their usual "unavailable" state and a banner says so.
+Anything under `/api/`: buses, trains, traffic, weather, fuel, rivers, history. The worker does not touch those requests at all, so a stale price can never look current. Offline, the live layers show their usual "unavailable" state, the top bar says "Offline", weather effects are cleared rather than left raining, and the panel footer explains that only areas already viewed are saved. A banner explains it in full, then shrinks after eight seconds to an "Offline" chip that can be tapped to read it again. Back online, every feed is asked again at once.
 
 ## Timetables
 Timetable files live in a folder named for their snapshot, so a saved file never changes under the same address. Each stop already states the dates its timetable covers ("Timetable through 25 Oct", "expired ...") using the device clock, offline or not. Saved timetables that have expired say so in the same way.

@@ -19,4 +19,5 @@ test('buildings refresh in the background, and the daily data files prefer the n
 test('every cache has a name and a limit, and names carry the version',()=>{
  for(const k of Object.keys(NAMES)){assert.match(NAMES[k],/^mr-.*-v\d+$/);assert.ok(LIMITS[k]>0,k);}
  assert.ok(LIMITS.tiles>=551,'the whole tile set (551 tiles) fits, so a returning visitor never loses a viewed tile to the limit');
+ assert.ok(LIMITS.chunks>=1259,'every building chunk (1,259) fits, so "Save the whole map" keeps all of them');
 });
