@@ -9,6 +9,7 @@
   "scripts": {
     "dev": "concurrently -k -n api,map \"tsx watch --env-file-if-exists=.env server/index.ts\" \"vite --host 127.0.0.1\"",
     "build": "tsc --noEmit && tsc -p tsconfig.worker.json && vite build",
+    "serve:test": "npm run build && vite preview --host 127.0.0.1 --port 8790 --strictPort",
     "cf:dev": "wrangler dev --test-scheduled",
     "test:cloudflare": "node tests/cloudflare.runtime.mjs && node tests/cloudflare-feeds.runtime.mjs && node tests/cloudflare-rail.runtime.mjs",
     "cf:check": "npm run build && wrangler deploy --dry-run --outdir dist-worker",
@@ -41,6 +42,7 @@
     "test:share-browser": "node tests/share-view-browser.mjs",
     "test:search-browser": "node tests/search-browser.mjs",
     "test:direct-browser": "node tests/direct-finder-browser.mjs",
+    "test:offline-browser": "node tests/offline-browser.mjs",
     "test:landmark-pin-browser": "node tests/landmark-pin-browser.mjs",
     "test:graphics-browser": "node tests/graphics-test-browser.mjs",
     "test:summary-browser": "node tests/summary-browser.mjs",

@@ -61,6 +61,8 @@ npm run build
 
 Tests cover invalid coordinates, out-of-order observations, stale expiry, cancellation, bounds, station holds, route discontinuities, roadworks geometry/status/dates, persistence, SNS trust boundaries, API no-data behaviour and map-style validation. See [architecture](docs/architecture.md) and [verification notes](docs/verification.md).
 
+The browser tests (`npm run test:*-browser`, `test:performance`) fake the live APIs and expect the built app on port 8790. Start it with `npm run serve:test`, leave it running, and run the tests from another terminal; rerun it after code changes, as it serves the last build. `APP_URL` points a test elsewhere, such as the dev server.
+
 ## Rebuilding geography
 
 The source snapshot comes from Geofabrik's Berkshire OSM extract, clipped to `[-1.08, 51.39, -0.84, 51.50]`. Install Python's `osmium` in an isolated environment:

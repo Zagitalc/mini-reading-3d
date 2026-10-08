@@ -77,3 +77,6 @@ body:has(#details:not([hidden])) .traffic-legend{display:none}@media(max-width:1
 .hygiene-cluster-note{display:block;margin:6px 0;line-height:1.4}
 .details-panel .graphics-device{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;align-items:start;margin:10px 0;font-size:13px;line-height:1.4}.details-panel .graphics-device dt{margin:0;color:var(--muted)}.details-panel .graphics-device dd{margin:0;overflow-wrap:anywhere}
 .graphics-verdict{margin:12px 0 6px}.graphics-verdict[data-verdict=struggling] strong{color:#a23b2a}.graphics-report{width:100%;box-sizing:border-box;margin:8px 0;font:12px/1.4 ui-monospace,Menlo,monospace;color:var(--ink);background:var(--panel,transparent);border:1px solid var(--border);border-radius:8px;padding:8px;resize:none}
+.offline-banner,#offline-banner{position:fixed;left:50%;top:84px;transform:translateX(-50%);z-index:30;max-width:min(560px,calc(100vw - 32px));padding:10px 14px;border-radius:10px;background:#3a3326;color:#fbf6e8;font-size:13px;line-height:1.4;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+#offline-banner[hidden]{display:none}
+@media(max-width:680px){#offline-banner{top:auto;bottom:calc(env(safe-area-inset-bottom) + 12px);font-size:12px}}
