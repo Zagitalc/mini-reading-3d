@@ -101,7 +101,7 @@ export async function connectStopLayers(map:Map){
     const url=stop.timetableUrl;
     if(!cache.has(url)){const promise=fetch(url,{signal:AbortSignal.timeout(10000)}).then(async r=>{if(!r.ok)throw Error('Missing timetable');const data:StopTimetable=await r.json();if(data.stopId!==stop.id||data.schema!==1)throw Error('Invalid timetable');return data;}).catch(error=>{cache.delete(url);throw error;});cache.set(url,promise);if(cache.size>32)cache.delete(cache.keys().next().value!);}
     const data=await cache.get(url)!;if(disposed||active?.element!==element||!element.isConnected)return;active.data=data;render();
-   }catch{if(element.isConnected)element.textContent='This stop’s timetable could not load. Select the stop again to retry.';}
+   }catch{if(element.isConnected)element.textContent=navigator.onLine?'This stop’s timetable could not load. Select the stop again to retry.':'This stop’s timetable is not saved on this device. Select the stop again once you are back online.';}
   };
   map.addSource('bus-stops',{type:'geojson',data:{type:'FeatureCollection',features:index.stops.map(s=>({type:'Feature',geometry:{type:'Point',coordinates:s.position},properties:{id:s.id,name:s.name}}))}});
   map.addLayer({id:'bus-stop-dots',source:'bus-stops',type:'circle',minzoom:15,paint:{'circle-radius':['interpolate',['linear'],['zoom'],15,3,18,6],'circle-color':'#fffdf5','circle-stroke-color':'#416f85','circle-stroke-width':2}});

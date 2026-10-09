@@ -43,6 +43,7 @@
     "test:search-browser": "node tests/search-browser.mjs",
     "test:direct-browser": "node tests/direct-finder-browser.mjs",
     "test:offline-browser": "node tests/offline-browser.mjs",
+    "test:offline-polish-browser": "node tests/offline-polish-browser.mjs",
     "test:landmark-pin-browser": "node tests/landmark-pin-browser.mjs",
     "test:graphics-browser": "node tests/graphics-test-browser.mjs",
     "test:sheet-browser": "node tests/sheet-handle-browser.mjs",

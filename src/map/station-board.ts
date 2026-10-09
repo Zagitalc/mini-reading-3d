@@ -32,7 +32,7 @@ export function openStationBoard(onFocus:()=>void){
   if(!element.isConnected||panel.hidden){clearInterval(timer);return;}
   if(document.hidden)return;
   try{const r=await fetch('/api/v1/rail-board',{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('Board unavailable');const data:RailBoardResponse=await r.json();if(element.isConnected)render(element,data);}
-  catch{if(element.isConnected&&!element.querySelector('.departures'))element.innerHTML='<p>The departure board could not load. Select the station again to retry.</p>';}
+  catch{if(element.isConnected&&!element.querySelector('.departures'))element.innerHTML=navigator.onLine?'<p>The departure board could not load. Select the station again to retry.</p>':'<p>The live departure board needs a connection. Select the station again once you are back online.</p>';}
  };
  reload=()=>void load();void load();timer=setInterval(load,60_000);
 }
