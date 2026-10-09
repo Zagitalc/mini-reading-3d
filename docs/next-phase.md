@@ -28,7 +28,74 @@ Bus routes and Train routes are independent static layers, initially off. Search
 
 The Oracle follows its irregular mall footprint and separately identified riverside, cinema and parking components, including curved polygon ends. Geometry anchors are source coordinates, independent of label positions. No rectangle spans the Kennet. Roof patterns follow source footprint axes, not a guessed model rotation. Heights, facade glazing, roof profiles and skylight spacing remain approximate miniature details informed by the supplied screenshots; this is not a surveyed architectural model. Source building parts and platforms are retained by extraction for future refinement.
 
+## Roadmap after the live-traffic map review (9 October 2026)
+
+Source: a look at uklivetraffic.duckdns.org, a UK live-traffic map built with Next.js, MapLibre and OpenFreeMap. Two things are worth taking from it. The first is a warning: it puts a DfT yearly-average "busiest road" under a "Very busy now" headline and mentions that it is "not a live count" only in small print. The second is its local summary, which is a good idea even though its layout is not.
+
+What stays the same: the stack (Vite, MapLibre, Three.js, the Cloudflare Worker and D1). Next.js is not adopted; nothing here needs server rendering. The miniature-world look stays too, so there are no two side panels, toolbar or ticker. New information goes into the panel, cards and bottom sheet that already exist.
+
+### Order
+
+1. Fix the two failing browser tests (history-browser and direct-finder-browser). Already queued; unchanged.
+2. **Evidence labels** (small to medium). New, and placed first because items 3 and 4 below rely on it.
+3. **Layer zoom thresholds and a render budget** (small to medium). Placed before landmark models, which add draw calls.
+4. **Local summary for the area in view** (medium).
+5. Detailed landmark models (large). Already queued; moves down behind items 2 to 4.
+6. Multi-car trains (small). Unchanged; still waits for "build trains".
+7. **Replay the last hour** (medium, low priority).
+
+### Evidence labels
+
+Every figure on the map, cards and summary says which kind of evidence it is:
+
+| Label | Meaning | Examples in Mini Reading |
+|---|---|---|
+| Observed | Reported by a source for a specific recent moment | BODS bus GPS fixes, EA gauge readings and flood warnings, forecourt price submissions (with their age), active roadworks |
+| Estimated | Worked out by us or a provider from other evidence | Train positions, live bus departure estimates, the animated bus position between fixes, Open-Meteo weather (modelled), TomTom flow speeds, Darwin expected times |
+| Scheduled | Planned in advance | GTFS timetable departures, planned roadworks, Darwin booked times |
+| Historical | A record or average of the past | Reading over time, history headlines, 30-day fuel range |
+
+**What exists.** The distinction is already made in many places, but each one in its own words: `VehicleObservation.status` is `observed` or `estimated` (`shared/types.ts`), stop cards separate "Live estimates" from "Scheduled timetable" (`src/map/stop-layers.ts`), the summary card says trains are "positions estimated" and weather is "modelled, not measured here" (`shared/summary.ts`), and every feed has a `Provenance` with `observedAt`. Nothing yet makes the kind of evidence visible at a glance.
+
+**The change.** One small badge (a letter or glyph plus text, never colour alone) used by summary lines, departure rows, vehicle and gauge cards and history headlines. `SummaryLine` gains an `evidence` field so a line cannot be added without one. Headlines must match their label: "now" only for observed figures, and a historical figure is never written in the present tense.
+
+**Edge cases to settle while building it.** A bus card shows the observed GPS fix, but the bus on the map is drawn at an interpolated position, so the card and the drawing carry different labels. Fuel prices are observed but can be weeks old; the label stays "observed" and the age does the rest. TomTom flow is a provider's model of probe data, so it is labelled estimated rather than presented as a count.
+
+**Depends on:** nothing new. It touches the summary card, stop and station cards, vehicle cards, river cards and the history panel.
+
+### Layer zoom thresholds and a render budget
+
+**What exists.** The layer groups are already done: modes (`shared/modes.ts`), five collapsible groups in the Explore panel (`src/ui/shell.ts`) and the Tools menu. Many layers already have a minimum zoom: route and bus labels from 13, river gauge labels from 13.5, stops from 15 with labels at 17, food from 12 with clusters and ratings at 16, road labels at 15, and Three.js buildings from 14 with at most 80 chunks. So this is mostly the zoom half of the item.
+
+**The gaps.** Bus dots, river gauge points, fuel pumps, flood areas, roadwork lines and traffic lines draw at every zoom. The DOM markers for roadworks, speed signs and cameras are capped at 160 in view but have no zoom rule, and DOM markers are the most expensive thing on the map per item. The 3D vehicles have no zoom rule either.
+
+**The change.** Put every layer's minimum zoom (and label zoom) in one table rather than scattered `minzoom` values, so the rules can be read and tested in one place. Add thresholds to the layers above, cluster or hide markers at town scale, and keep a per-mode budget for how many markers and 3D vehicles may be drawn. Measure with the Graphics test tool before and after; both test phones already hold 60 fps, so this is mainly about clutter, with render cost as the second reason.
+
+**Depends on:** the Graphics test tool (done). Should land before landmark models so their extra draw calls have a budget to fit in.
+
+### Local summary for the area in view
+
+**What exists.** The mode summary card (`shared/summary.ts`, `src/ui/summary.ts`) gives town-wide counts from figures the layers already hold, published through `publishFact`. It does not follow the map and its lines cannot be clicked.
+
+**The change.** The same card gains a "Here" view for the area in view: by default a circle around the map centre whose radius follows the zoom, plus a "pin this spot" option so it stops moving. It lists what is nearby and current: roadworks and closures, flood warnings and the nearest gauges against their typical range, the next departures from the two or three nearest stops (and the station board when Reading station is in range). Each item carries its evidence label. Tapping an item flies the map to it and opens the card that already exists for it (stop, gauge, roadwork, warning). On phones it lives in the existing bottom sheet; no second panel.
+
+**Rule to keep.** The town-wide card shows only what its mode already loads. The local view is allowed one exception: it may fetch the timetable files for the few nearest stops, and only while the view is open. It must not switch on vehicle polling or any feed the mode does not already use.
+
+**Depends on:** evidence labels (item 2); positions in the published facts rather than only counts, which means `publishFact` carrying the items themselves for roadworks, warnings and gauges; the existing stop timetable files and live-estimate code; and the zoom table (item 3), so that "nearby" agrees with what is drawn.
+
+### Replay the last hour (low priority)
+
+This reverses the 3 October review's "no vehicle playback", so it needs a narrow version to be worth doing.
+
+**What exists.** History (`shared/history.ts`, D1 tables `history_hours` and `history_fuel`) stores hourly summaries only, no positions. Buses are sampled only while someone has the map open, so a server-side record would have gaps whenever nobody was looking.
+
+**The change.** Start in the browser: keep a rolling buffer of the vehicle snapshots this browser has already received (about one a minute) and let a slider replay them over the miniature. It costs no storage and no new requests, but it covers only the time since the page was opened, and the control has to say so ("replaying 23 minutes seen on this device"). A server-side hour of positions in D1 would come later, if at all, and only after checking write volume and stating its coverage.
+
+**Depends on:** evidence labels (everything in a replay is labelled historical); the vehicle feed and movement tracker (`src/map/vehicle-feed.ts`, `src/movement`). Nothing else on this list depends on it.
+
 ## Following phase — suggestions only
+
+The list below dates from the routes and landmark release. Items 1 and 3 have largely shipped and item 2 in part (Reading over time, without headways or bunching); the current order is in the section above.
 
 Validation before promotion: 34 regression tests passed with staged assets; desktop/mobile Chrome checked both selectors, overlap picking, route/vehicle independence and landmark views. A four-second station orbit at 1440×1000 measured a 16.7 ms median and p95 frame interval for both the deployed baseline and this phase (241 frames each). Draw calls increased from 57 to 97 for the added component meshes; this is a desktop sample, not a guarantee for every mobile GPU.
 
