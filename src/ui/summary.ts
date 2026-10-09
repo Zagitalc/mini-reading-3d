@@ -1,4 +1,5 @@
 import {summarise,type Facts} from '../../shared/summary';
+import {evidenceBadge} from '../../shared/evidence';
 import {freshObservation} from '../../shared/feed-policy';
 import {currentMode} from './modes';
 import {escape} from './shell';
@@ -20,7 +21,7 @@ export function connectSummary(){
  let last='';
  draw=()=>{
   const s=summarise(currentMode(),facts);
-  const html=`<dl>${s.lines.map(l=>`<div class="mode-card-line${l.stale?' stale':''}"><dt>${escape(l.label)}</dt><dd>${escape(l.text)}${l.note?`<small>${l.stale?'May be out of date: ':''}${escape(l.note)}</small>`:''}</dd></div>`).join('')}</dl>${s.action?`<button type="button" class="mode-card-action" data-card-search>${escape(s.action.label)} →</button>`:''}`;
+  const html=`<dl>${s.lines.map(l=>`<div class="mode-card-line${l.stale?' stale':''}"><dt>${escape(l.label)}</dt><dd>${escape(l.text)}<small>${evidenceBadge(l.evidence)}${l.note?`${l.stale?'May be out of date: ':''}${escape(l.note)}`:''}</small></dd></div>`).join('')}</dl>${s.action?`<button type="button" class="mode-card-action" data-card-search>${escape(s.action.label)} →</button>`:''}`;
   title.textContent=s.title;if(html!==last){last=html;body.innerHTML=html;}
  };
  body.addEventListener('click',e=>{if((e.target as Element).closest('[data-card-search]')){const box=document.querySelector<HTMLInputElement>('#search');box?.focus();box?.select();}});

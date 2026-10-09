@@ -1,6 +1,7 @@
 import type {Map,GeoJSONSource,MapMouseEvent} from 'maplibre-gl';
 import {detail,escape,startPick,toolSlot} from '../ui/shell';
 import {DEPARTURES_SHOWN,findDirect,nearbyStops,sharedRoutes,type DirectOption,type Nearby} from '../../shared/direct-finder';
+import {evidenceBadge} from '../../shared/evidence';
 import type {RouteJourneys} from '../../shared/live-departures';
 import {compareRouteLabels,timetableStatus,type StopIndex,type StopTimetable} from '../../shared/timetable';
 import type {LngLat} from '../../shared/types';
@@ -60,6 +61,6 @@ export async function connectDirectFinder(map:Map){
    out.innerHTML=`${stale}<p>${plural(options.length,'direct option')}, next ${DEPARTURES_SHOWN} scheduled departures each. Scheduled times, not live: delays and cancellations are not included.</p><ul class="direct-list">${options.slice(0,12).map(o=>row(o,now)).join('')}</ul>${options.length>12?`<p class="explorer-note">${options.length-12} more not shown.</p>`:''}`;
   }catch{if(id===run&&out.isConnected)out.innerHTML='<p class="schedule-notice">Timetable files could not load. Try again in a moment.</p>';}
  }
- function open(){detail('<span class="pill">Bus · scheduled</span><h2>Direct bus finder</h2><div id="direct-view"></div>');render();}
+ function open(){detail(`<span class="pill">Bus · scheduled</span>${evidenceBadge('scheduled')}<h2>Direct bus finder</h2><div id="direct-view"></div>`);render();}
  button.addEventListener('click',open);
 }

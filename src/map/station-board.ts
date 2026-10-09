@@ -1,6 +1,7 @@
 import {detail,escape,sourceFooter} from '../ui/shell';
 import {storyHtml} from '../ui/landmark-story';
 import {BOARD_STALE_MS,type RailBoardResponse,type RailDeparture,type StationBoard} from '../../shared/rail-board';
+import {evidenceBadge} from '../../shared/evidence';
 const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
 let timer:ReturnType<typeof setInterval>|undefined,reload:(()=>void)|undefined;
 // A hidden tab skips its refreshes, so coming back re-reads the board at once instead of showing the old one for up to a minute.
@@ -19,7 +20,7 @@ function render(element:HTMLElement,response:RailBoardResponse){
  if(!response.configured){element.innerHTML='<p class="schedule-notice">Live departures are not configured on this server. An RDM API key is required.</p>';return;}
  if(!board){element.innerHTML='<p>Waiting for the first scheduled rail refresh. Try again in a minute.</p>';return;}
  const age=Date.now()-Date.parse(board.generatedAt),stale=!(age<BOARD_STALE_MS);
- element.innerHTML=`${stale?`<p class="schedule-notice">This board has not refreshed since ${clock.format(Date.parse(board.generatedAt))}. Times may be out of date.</p>`:''}<p class="departure-window">Next ${board.services.length} departures within two hours; trains that have just left may still be listed.</p>${rows(board)}${board.messages.length?`<div class="rail-messages"><h3>Station messages</h3>${board.messages.map(m=>`<p>${escape(m)}</p>`).join('')}</div>`:''}<p class="explorer-note">Platforms can change at short notice. Trains on the map are estimated from this data, not GPS positions.</p>${sourceFooter([['Source',`<a href="${escape(board.sourceUrl)}" target="_blank" rel="noopener">${escape(board.source)}</a>`],['Board generated',`${clock.format(Date.parse(board.generatedAt))} London time · refreshed once a minute for all viewers`]])}`;
+ element.innerHTML=`${stale?`<p class="schedule-notice">This board has not refreshed since ${clock.format(Date.parse(board.generatedAt))}. Times may be out of date.</p>`:''}<p class="departure-window">Next ${board.services.length} departures within two hours; trains that have just left may still be listed.</p><p class="evidence-line">${evidenceBadge('scheduled')} booked times ${evidenceBadge('estimated')} expected times and train positions</p>${rows(board)}${board.messages.length?`<div class="rail-messages"><h3>Station messages</h3>${board.messages.map(m=>`<p>${escape(m)}</p>`).join('')}</div>`:''}<p class="explorer-note">Platforms can change at short notice. Trains on the map are estimated from this data, not GPS positions.</p>${sourceFooter([['Source',`<a href="${escape(board.sourceUrl)}" target="_blank" rel="noopener">${escape(board.source)}</a>`],['Board generated',`${clock.format(Date.parse(board.generatedAt))} London time · refreshed once a minute for all viewers`]])}`;
 }
 /** Reading station's departure board from the shared rail refresh. Re-reads the server copy while open. */
 export function openStationBoard(onFocus:()=>void){

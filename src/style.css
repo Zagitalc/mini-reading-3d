@@ -85,3 +85,8 @@ body:has(#details:not([hidden])) .traffic-legend{display:none}@media(max-width:1
 #offline-banner.collapsed{padding:6px 12px;border-radius:999px;font-weight:600}
 #offline-banner.collapsed .offline-short:before{content:"";display:inline-block;width:8px;height:8px;margin-right:7px;border-radius:50%;background:#c9a24a;vertical-align:1px}
 @media(max-width:680px){#offline-banner{top:auto;bottom:calc(env(safe-area-inset-bottom) + 112px);font-size:12px}}
+.evidence{display:inline-flex;align-items:center;gap:3px;margin:0 6px 0 0;padding:0 5px;border:1px solid var(--muted);border-radius:4px;font-size:10px;line-height:15px;font-weight:650;letter-spacing:.3px;text-transform:uppercase;color:var(--muted);white-space:nowrap;vertical-align:middle}
+.evidence i{font-style:normal;font-size:9px}
+.evidence.estimated{border-style:dashed}.evidence.scheduled{border-style:dotted}.evidence.historical{border-color:transparent;background:var(--fill)}
+.details-panel .pill+.evidence{margin-left:6px}.evidence-line{font-size:12px;color:var(--muted);line-height:1.8}
+h3 .evidence{margin-left:4px;text-transform:uppercase}

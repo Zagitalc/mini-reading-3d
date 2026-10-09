@@ -1,5 +1,6 @@
 import type {Map,GeoJSONSource,MapMouseEvent} from 'maplibre-gl';
 import type {FuelStation,LngLat} from '../../shared/types';
+import {evidenceBadge} from '../../shared/evidence';
 import type {StationPriceDay} from '../../shared/history';
 import {GRADE_NAMES,band,detours,membersOnly,motorway,spread,tripCost,PRICE_MAX_AGE_MS,ROAD_FACTOR,oldLong,oldShort,priceStatus,type PriceRow} from '../../shared/fuel-compare';
 import {BUS_FARES,busReturn} from '../../shared/fares';
@@ -113,7 +114,7 @@ export function connectFuel(map:Map,section:HTMLElement,enabled:boolean){
  compare.addEventListener('click',open);
  const openStation=(station:FuelStation)=>{
   const {median}=spread(stations,settings.grade,settings.tank),p=station.prices[settings.grade],status=priceStatus(station,settings.grade);
-  detail(`<span class="pill">Fuel prices · as reported</span><h2>${escape(station.name)}</h2><p>${escape(station.brand)} · ${escape(station.postcode)}${motorway(station)?' · motorway services':''}</p>${membersOnly(station)?`<p class="schedule-notice">${MEMBERS_NOTE}</p>`:''}${station.quiet?'<p>No prices submitted at this site for at least 14 days.</p>':''}${status.state==='old'&&p?`<p class="schedule-notice">The ${escape(gradeName(settings.grade))} price here is ${escape(oldLong(status,settings.grade))}. It is left out of the Reading comparison and shows grey on the map.</p>`:''}
+  detail(`<span class="pill">Fuel prices · as reported</span>${evidenceBadge('observed')}<h2>${escape(station.name)}</h2><p>${escape(station.brand)} · ${escape(station.postcode)}${motorway(station)?' · motorway services':''}</p>${membersOnly(station)?`<p class="schedule-notice">${MEMBERS_NOTE}</p>`:''}${station.quiet?'<p>No prices submitted at this site for at least 14 days.</p>':''}${status.state==='old'&&p?`<p class="schedule-notice">The ${escape(gradeName(settings.grade))} price here is ${escape(oldLong(status,settings.grade))}. It is left out of the Reading comparison and shows grey on the map.</p>`:''}
    <dl>${Object.entries(station.prices).map(([grade,x])=>{const days=Math.round((Date.now()-Date.parse(x.submittedAt))/86_400_000);return `<dt>${escape(gradeName(grade))}</dt><dd>${pence(x.pence)} a litre<small>Reported ${escape(when(x.submittedAt))}${days>7?` · ${days} days old, so it may have changed`:''}</small></dd>`;}).join('')}</dl>
    ${p&&status.state==='current'&&median!==undefined?`<p>${escape(gradeName(settings.grade))} here is ${Math.abs(p.pence-median)<.05?'the same as':`${Math.abs(p.pence-median).toFixed(1)}p ${p.pence<median?'below':'above'}`} the Reading middle price of ${pence(median)}: ${money(Math.abs(p.pence-median)*settings.tank/100)} a ${settings.tank}-litre tank.</p>`:''}
    <div id="fuel-station-history"><p class="explorer-note">Loading recorded prices…</p></div>

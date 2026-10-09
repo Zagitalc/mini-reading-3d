@@ -70,3 +70,12 @@ test('Everything shows one or two lines from each part, and a search button only
  assert.ok(labels.includes('Buses')&&labels.includes('Roadworks')&&labels.includes('Premises'));assert.ok(!labels.includes('Trains'));
  assert.equal(summarise('lab',facts,now).action,undefined);assert.ok(summarise('transport',facts,now).action);
 });
+
+test('every line on every card says what kind of evidence it is, and the kinds match the source',()=>{
+ const facts:Facts={vehicles:{buses:5,busRoutes:2,trains:1,at:now},roadworks:{active:1,closures:0,at:now},weather:{temperature:12,cloudCover:40,precipitation:'none',at:now},
+  rivers:{gauges:3,high:[],low:[],normal:3,unknown:0,warnings:{severe:0,warning:0,alert:0},warningsKnown:true,at:now},food:{total:10,restaurant:4,takeaway:3,pub:3,rated5:8,authorityDate:'1 Oct'},explore:{buildings:1000,landmarks:21}};
+ for(const id of MODE_IDS)for(const l of [...summarise(id,{},now).lines,...summarise(id,facts,now).lines])assert.ok(['observed','estimated','scheduled','historical'].includes(l.evidence),`${id}: ${l.label}`);
+ const kind=(mode:Parameters<typeof summarise>[0],label:string)=>summarise(mode,facts,now).lines.find(l=>l.label===label)?.evidence;
+ assert.equal(kind('transport','Buses'),'observed');assert.equal(kind('transport','Trains'),'estimated');
+ assert.equal(kind('environment','Weather'),'estimated');assert.equal(kind('eat','Hygiene rating 5'),'historical');
+});

@@ -1,5 +1,6 @@
 import type {Map,GeoJSONSource} from 'maplibre-gl';
 import {CLUSTER_SHARE,FOOD_TYPES,RATING_FILTERS,RATING_TEXT,foodCategory,foodMatches,ratingGroup,type FoodTypeFilter,type HygieneBundle,type HygienePlace,type RatingFilter} from '../../shared/hygiene';
+import {evidenceBadge} from '../../shared/evidence';
 import {detail,escape,layerGroup} from '../ui/shell';
 import {currentMode,registerSwitch} from '../ui/modes';
 import {onLinked,setSelection} from '../ui/share';
@@ -23,7 +24,7 @@ export function connectPlaces(map:Map){
  let bundle:HygieneBundle|undefined,loading:Promise<void>|undefined,kind:FoodTypeFilter='all',min:RatingFilter='all';
  const byId=new globalThis.Map<number,HygienePlace>();
  const open=(p:HygienePlace)=>{const rating=p[7],group=ratingGroup(rating),extract=bundle!.authorities.map(x=>x.extractDate).sort()[0]??'';
-  detail(`<span class="pill">Food hygiene rating</span><h2>${escape(p[1])}</h2><p>${escape(bundle!.types[p[2]]??'')}<br>${escape(p[3])}${p[4]?`, ${escape(p[4])}`:''}</p>
+  detail(`<span class="pill">Food hygiene rating</span>${evidenceBadge('historical')}<h2>${escape(p[1])}</h2><p>${escape(bundle!.types[p[2]]??'')}<br>${escape(p[3])}${p[4]?`, ${escape(p[4])}`:''}</p>
    <p class="hygiene-rating ${group}"><strong>${/^[0-5]$/.test(rating)?`${rating} out of 5`:escape(RATING_TEXT[rating]??rating)}</strong>${/^[0-5]$/.test(rating)?` · ${escape(RATING_TEXT[rating])}`:''}</p>
    <dl><dt>Inspected</dt><dd>${escape(date(p[8]))}</dd></dl>${p[9]?'<p>A new rating is pending: the business has been inspected again, and the rating may change once it is published.</p>':''}
    <p class="explorer-note">The rating covers hygiene, the state of the premises and how food safety is managed on the day of inspection. It says nothing about the quality of the food. Council data as of ${escape(date(extract))}.</p>

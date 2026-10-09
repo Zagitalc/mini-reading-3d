@@ -1,5 +1,6 @@
 import {detail,escape,toolSlot} from '../ui/shell';
 import {addDays,compareRouteLabels,currentServiceDate,type StopIndex} from '../../shared/timetable';
+import {evidenceBadge} from '../../shared/evidence';
 import {networkAt,nightProfile,type NetworkAtTime,type RouteAtTime,type ServiceSummary} from '../../shared/scheduled-services';
 const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit'});
 const day=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',weekday:'short',day:'numeric',month:'short'});
@@ -68,7 +69,7 @@ export async function connectServiceExplorer(){
   element.querySelector('#explorer-highlight')?.addEventListener('click',()=>{highlight(highlighted?null:active);void render(element);});
  };
  const open=()=>{
-  detail(`<span class="pill">Scheduled view · not live</span><h2>Evening timetable</h2><p>Which bus routes the timetable has running at a chosen time of night, and what is left before 04:00. Live buses, delays and cancellations are not part of this view, so the buses on the map can differ.</p><div id="service-explorer" aria-live="polite"><p>Loading the timetable summary…</p></div><small>Counts are timetabled journeys between their first and last stop inside the map. Source: ${escape(index.source)} GTFS${index.version?`, dataset ${escape(index.version)}`:''}. The summary is part of the bundled timetable; opening this view makes no provider calls.</small>`);
+  detail(`<span class="pill">Scheduled view · not live</span>${evidenceBadge('scheduled')}<h2>Evening timetable</h2><p>Which bus routes the timetable has running at a chosen time of night, and what is left before 04:00. Live buses, delays and cancellations are not part of this view, so the buses on the map can differ.</p><div id="service-explorer" aria-live="polite"><p>Loading the timetable summary…</p></div><small>Counts are timetabled journeys between their first and last stop inside the map. Source: ${escape(index.source)} GTFS${index.version?`, dataset ${escape(index.version)}`:''}. The summary is part of the bundled timetable; opening this view makes no provider calls.</small>`);
   const element=document.querySelector<HTMLElement>('#service-explorer')!;
   if(!index.servicesUrl){element.innerHTML='<p class="schedule-notice">This timetable snapshot was built before the explorer existed. It becomes available after the next timetable refresh.</p>';return;}
   void render(element);
