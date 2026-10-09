@@ -8,11 +8,13 @@ const index=JSON.parse(await readFile('public/data/bus-stops.json','utf8'));
 const route=Object.entries(index.routes).find(([,r])=>r.label==='17'),journeys=JSON.parse(await readFile('public'+route[1].journeysUrl,'utf8'));
 const pattern=journeys.patterns.reduce((a,b)=>b.stops.length>a.stops.length?b:a),byId=new Map(index.stops.map(s=>[s.id,s]));
 const onRoute=pattern.stops.map(id=>byId.get(id).position);
+// A weekday morning inside the bundled timetable, so the test does not depend on the day or hour it runs. The
+// timetable is rebuilt nightly and its first service date moves with it, so the date comes from the snapshot itself.
+const weekdayMorning=(()=>{const d=new Date(index.validFrom.replace(/(\d{4})(\d\d)(\d\d)/,'$1-$2-$3T10:00:00Z'));while([0,6].includes(d.getUTCDay()))d.setUTCDate(d.getUTCDate()+1);return d;})();
 const metres=(a,b)=>Math.hypot((a[0]-b[0])*111320*Math.cos(a[1]*Math.PI/180),(a[1]-b[1])*111200);
 async function open(viewport={width:1440,height:1000}){
  const page=await browser.newPage({viewport}),errors=[];page.on('pageerror',e=>errors.push(e.message));
- // A weekday morning inside the timetable, so the test does not depend on the hour it runs.
- await page.clock.setFixedTime(new Date('2026-10-07T10:00:00Z'));
+ await page.clock.setFixedTime(weekdayMorning);
  await page.route('**/api/v1/**',route=>{const key=new URL(route.request().url()).pathname.slice(8);
   if(key.startsWith('traffic-tiles'))return route.fulfill({status:204});
   return route.fulfill({json:key==='config'?{tomtom:false,weather:false,fuel:false,rivers:false}:{version:1,data:[],routes:{}}});});
