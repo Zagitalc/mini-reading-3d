@@ -1,9 +1,9 @@
-import type {VehicleObservation} from '../../shared/types';
+import type {LngLat,VehicleObservation} from '../../shared/types';
 /** The latest vehicle refresh, shared between map layers. `vehicles` is null when the last refresh failed; `at` is the last success. */
-export type VehicleUpdate={vehicles:VehicleObservation[]|null;at:number};
+export type VehicleUpdate={vehicles:VehicleObservation[]|null;at:number;routes?:Record<string,LngLat[]>};
 let latest:VehicleUpdate|undefined;
-export function publishVehicles(vehicles:VehicleObservation[]|null,now=Date.now()){
- latest={vehicles,at:vehicles?now:latest?.at??0};
+export function publishVehicles(vehicles:VehicleObservation[]|null,now=Date.now(),routes?:Record<string,LngLat[]>){
+ latest={vehicles,at:vehicles?now:latest?.at??0,routes};
  document.dispatchEvent(new CustomEvent('reading-vehicles',{detail:latest}));
 }
 /** Calls back with the latest refresh straight away, if there has been one, and then with each new one. */

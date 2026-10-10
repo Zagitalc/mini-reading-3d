@@ -44,7 +44,7 @@ What stays the same: the stack (Vite, MapLibre, Three.js, the Cloudflare Worker 
 4. **Local summary for the area in view** (medium; done 10 October, see below).
 5. Detailed landmark models (large; first stage done 10 October: the "Skyline" set, see Landmark modelling limits). Already queued; moves down behind items 2 to 4.
 6. Multi-car trains (small). Unchanged; still waits for "build trains".
-7. **Replay the last hour** (medium, low priority).
+7. **Replay the last hour** (medium, low priority; browser-only stage done 10 October, see below).
 
 ### Evidence labels
 
@@ -96,6 +96,8 @@ This reverses the 3 October review's "no vehicle playback", so it needs a narrow
 **The change.** Start in the browser: keep a rolling buffer of the vehicle snapshots this browser has already received (about one a minute) and let a slider replay them over the miniature. It costs no storage and no new requests, but it covers only the time since the page was opened, and the control has to say so ("replaying 23 minutes seen on this device"). A server-side hour of positions in D1 would come later, if at all, and only after checking write volume and stating its coverage.
 
 **Depends on:** evidence labels (everything in a replay is labelled historical); the vehicle feed and movement tracker (`src/map/vehicle-feed.ts`, `src/movement`). Nothing else on this list depends on it.
+
+**Built (10 October, browser-only).** Tools > Replay plays back the bus and train snapshots this browser has already received, up to the last hour, through the same tracker as the live map (`shared/replay.ts`, `src/movement/replay-player.ts`, `src/map/replay.ts`). It needs at least two snapshots, which arrive about once a minute while Buses or Trains is on, and it is empty after a reload. A bar under the header carries play and pause, a time slider, 10×, 30× and 60× speed, a Historical badge, the length replayed ("Replaying 23 minutes of positions seen on this device. Not live.") and Back to live. Replayed vehicle cards say replay and Historical and hide the next-stop line, which is a live estimate. Not built: positions kept on the server, and a replay that survives a reload.
 
 ## Following phase — suggestions only
 

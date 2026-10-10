@@ -53,6 +53,7 @@
     "test:places-browser": "node tests/places-fuel-browser.mjs",
     "test:roadworks-zoom-browser": "node --import tsx tests/roadworks-zoom-browser.mjs",
     "test:here-browser": "node tests/here-browser.mjs",
+    "test:replay-browser": "node tests/replay-browser.mjs",
     "test:history-browser": "node --import tsx tests/history-browser.mjs",
     "test:scenario-browser": "node tests/scenario-browser.mjs",
     "data:gtfs:fetch": "node scripts/download-data.mjs --gtfs-only",
