@@ -1,4 +1,5 @@
 import type{Map,StyleSpecification,LayerSpecification}from'maplibre-gl';import{BOUNDS}from'../../shared/config';import{isDark,onThemeChange}from'../ui/theme';import{currentMode}from'../ui/modes';import{EMPHASIS,mixHex,resolveTarget}from'../../shared/basemap-emphasis';import type{ModeId}from'../../shared/modes';
+import {SKYLINE_TILE_IDS} from '../../shared/skyline';
 import {LAYER_ZOOM} from '../../shared/layer-zoom';
 /** Base map colours for light and dark mode; overlays keep their own colours. */
 const PALETTE={
@@ -47,7 +48,7 @@ export function mapStyle(dark=isDark(),mode:ModeId='explore'):StyleSpecification
  {id:'rail-bed',type:'line',...source,filter:filter('rail'),paint:{'line-width':['interpolate',['linear'],['zoom'],11,1,16,5]}},
  {id:'rail-lines',type:'line',...source,filter:filter('rail'),paint:{'line-width':1,'line-dasharray':[3,2]}},
  {id:'building-footprints',type:'fill',...source,filter:filter('building'),paint:{'fill-opacity':.65}},
- {id:'building-overview',type:'fill-extrusion',...source,maxzoom:LAYER_ZOOM.buildings3d,filter:['all',filter('building'),['==',['get','landmark'],'']],paint:{'fill-extrusion-height':['get','height'],'fill-extrusion-base':['coalesce',['get','minHeight'],0],'fill-extrusion-opacity':1}},
+ {id:'building-overview',type:'fill-extrusion',...source,maxzoom:LAYER_ZOOM.buildings3d,filter:['all',filter('building'),['==',['get','landmark'],''],['!',['in',['get','id'],['literal',SKYLINE_TILE_IDS]]]],paint:{'fill-extrusion-height':['get','height'],'fill-extrusion-base':['coalesce',['get','minHeight'],0],'fill-extrusion-opacity':1}},
  {id:'road-labels',type:'symbol',...source,minzoom:LAYER_ZOOM.roadLabels,filter:['all',filter('road'),['has','name']],layout:{'symbol-placement':'line','text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':12,'text-max-angle':30,'symbol-spacing':350},paint:{'text-halo-width':1.5}}
  ];
  for(const [id,property,value] of paints(tuned(dark,mode)))(layers.find(l=>l.id===id)!.paint as Record<string,unknown>)[property]=value;

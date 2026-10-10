@@ -28,6 +28,8 @@ Bus routes and Train routes are independent static layers, initially off. Search
 
 The Oracle follows its irregular mall footprint and separately identified riverside, cinema and parking components, including curved polygon ends. Geometry anchors are source coordinates, independent of label positions. No rectangle spans the Kennet. Roof patterns follow source footprint axes, not a guessed model rotation. Heights, facade glazing, roof profiles and skylight spacing remain approximate miniature details informed by the supplied screenshots; this is not a surveyed architectural model. Source building parts and platforms are retained by extraction for future refinement.
 
+Skyline set (10 October): The Blade, Thames Tower, Reading Minster and St Laurence's Church are modelled on their mapped footprints in `shared/skyline.ts` (drawn by `src/scene/skyline.ts`, about 12 extra meshes). They have no map pins or cards. The generic buildings they replace are skipped by id in the building worker and in the low-zoom overview layer, so regenerating the geography keeps them. Heights for The Blade (roof 59 m, mast 86 m) and Thames Tower (55 m) come from Wikipedia; Minster and St Laurence's heights are estimates, and the west-end tower position is assumed. Thames Tower's footprint is the nearest candidate to the article's coordinates (17 m; the next is 40 m), so it is the least certain match. Not yet modelled: Reading Gaol, Abbey Gateway, Forbury Hill.
+
 ## Roadmap after the live-traffic map review (9 October 2026)
 
 Source: a look at uklivetraffic.duckdns.org, a UK live-traffic map built with Next.js, MapLibre and OpenFreeMap. Two things are worth taking from it. The first is a warning: it puts a DfT yearly-average "busiest road" under a "Very busy now" headline and mentions that it is "not a live count" only in small print. The second is its local summary, which is a good idea even though its layout is not.
@@ -40,7 +42,7 @@ What stays the same: the stack (Vite, MapLibre, Three.js, the Cloudflare Worker 
 2. **Evidence labels** (small to medium; done 9 October). New, and placed first because items 3 and 4 below rely on it.
 3. **Layer zoom thresholds and a render budget** (small; done 9 October, see below). Placed before landmark models, which add draw calls.
 4. **Local summary for the area in view** (medium; done 10 October, see below).
-5. Detailed landmark models (large). Already queued; moves down behind items 2 to 4.
+5. Detailed landmark models (large; first stage done 10 October: the "Skyline" set, see Landmark modelling limits). Already queued; moves down behind items 2 to 4.
 6. Multi-car trains (small). Unchanged; still waits for "build trains".
 7. **Replay the last hour** (medium, low priority).
 
