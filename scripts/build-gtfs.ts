@@ -1,6 +1,7 @@
 import {gtfsContentHash,validateGtfs} from './gtfs-validation';
 import {compileTimetable,timetableVersion,TIMETABLE_COMPILER} from './compile-timetable';
 import {deriveShapes} from './derive-shapes';
+import {RoadNetwork,snapLine} from './road-snap';
 import {readFile,writeFile,mkdir,rm,stat}from'node:fs/promises';import{unzipSync,strFromU8}from'fflate';import{parse}from'csv-parse/sync';import{geometryIntersects,inBounds}from'../shared/geo';import type{LngLat}from'../shared/types';
 const bytes=await readFile('raw/reading-gtfs.zip'),archive=unzipSync(new Uint8Array(bytes));
 const contentHash=gtfsContentHash(archive),version=timetableVersion(contentHash);
@@ -23,6 +24,10 @@ if(unshaped.length){
  shapeSource={reused:derived.reused,straight:derived.straight};
  console.log(`Derived shapes for ${unshaped.length} trips: ${derived.reused} patterns reuse earlier road geometry, ${derived.straight} use straight lines between stops`);
 }
+// Straight stop-to-stop gaps (and gaps inherited from earlier straight shapes) follow the bundled OSM roads instead.
+const roads=RoadNetwork.fromTiles();
+if(roads){let snapped=0,left=0;for(const id of Object.keys(shapes)){const r=snapLine(roads,shapes[id]);shapes[id]=r.line;snapped+=r.snapped;left+=r.left;}console.log(`Routed ${snapped} long gaps along roads; ${left} left straight (no road path)`);}
+else console.warn('No map tiles in public/data/tiles/15; bus shapes keep any straight stop-to-stop gaps.');
 const trips=rows('trips.txt').filter(t=>shapes[t.shape_id]);const routeIds=new Set(trips.map(t=>t.route_id));const routes=rows('routes.txt').filter(r=>routeIds.has(r.route_id));const stops=rows('stops.txt').filter(s=>inBounds([+s.stop_lon,+s.stop_lat]));
 for(const required of ['agency.txt','routes.txt','trips.txt','stops.txt','stop_times.txt'])if(!rows(required).length)throw Error(`Missing or empty GTFS ${required}`);
 // Place names label the far side of loop routes; features.json comes from the geography build.
