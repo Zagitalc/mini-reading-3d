@@ -30,6 +30,8 @@ export const RENDER_BUDGET={
  buildingChunks:80,
  /** Instanced buses, and separately trains, drawn at once. */
  vehiclesPerKind:512,
+ /** Instanced train cars drawn at once (a train is several cars). */
+ trainCars:1024,
 } as const;
 /** Pairs where the first (a label) must not appear before the second (the point it labels). */
 export const LABEL_AFTER_POINT:[keyof typeof LAYER_ZOOM,keyof typeof LAYER_ZOOM][]=[['busStopLabels','busStops'],['foodLabels','foodPoints'],['signs3d','signBadges']];

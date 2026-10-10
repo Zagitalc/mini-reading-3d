@@ -43,7 +43,7 @@ What stays the same: the stack (Vite, MapLibre, Three.js, the Cloudflare Worker 
 3. **Layer zoom thresholds and a render budget** (small; done 9 October, see below). Placed before landmark models, which add draw calls.
 4. **Local summary for the area in view** (medium; done 10 October, see below).
 5. Detailed landmark models (large; first stage done 10 October: the "Skyline" set, see Landmark modelling limits). Already queued; moves down behind items 2 to 4.
-6. Multi-car trains (small). Unchanged; still waits for "build trains".
+6. **Multi-car trains** (small; done 10 October, see below).
 7. **Replay the last hour** (medium, low priority; browser-only stage done 10 October, see below).
 
 ### Evidence labels
@@ -98,6 +98,12 @@ This reverses the 3 October review's "no vehicle playback", so it needs a narrow
 **Depends on:** evidence labels (everything in a replay is labelled historical); the vehicle feed and movement tracker (`src/map/vehicle-feed.ts`, `src/movement`). Nothing else on this list depends on it.
 
 **Built (10 October, browser-only).** Tools > Replay plays back the bus and train snapshots this browser has already received, up to the last hour, through the same tracker as the live map (`shared/replay.ts`, `src/movement/replay-player.ts`, `src/map/replay.ts`). It needs at least two snapshots, which arrive about once a minute while Buses or Trains is on, and it is empty after a reload. A bar under the header carries play and pause, a time slider, 10×, 30× and 60× speed, a Historical badge, the length replayed ("Replaying 23 minutes of positions seen on this device. Not live.") and Back to live. Replayed vehicle cards say replay and Historical and hide the next-stop line, which is a live estimate. Not built: positions kept on the server, and a replay that survives a reload.
+
+### Multi-car trains
+
+Done 10 October. A train is drawn as linked cars (20 m bodies, 21 m apart) behind its estimated position, each car on the railway section the position was worked out from and pointing along the chord between its own two ends, so a long train bends round a curve. The count is Darwin's `length` for the service (`cars` on the observation); 0, missing or implausible (over 12) leaves it unset and three cars are drawn, which is what the Elizabeth line gets today. Cars are placed in `shared/train-cars.ts`, in the tracker, and drawn as instanced bodies (`RENDER_BUDGET.trainCars`).
+
+Limits: a train with no known railway section (one standing at a station, or one whose route could not be matched) is still a single body at its reported position, so a train changes shape as it arrives and leaves. Cars behind the start of a section run straight back along its first segment rather than along the previous section. At low zoom the spacing grows with the vehicle scale, like the rest of the vehicle. Tapping any car opens the train card; no formation is shown on the card.
 
 ## Following phase — suggestions only
 

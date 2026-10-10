@@ -1,7 +1,9 @@
 import {CADENCE} from '../../shared/feed-policy';
 import type {LngLat,VehicleObservation,VehicleTrack} from '../../shared/types';
 import {alongLine,bearing,distance,inBounds,nearestOnLine,validPosition,lineLength} from '../../shared/geo';
-export type VehiclePose={observation:VehicleObservation;position:LngLat;bearing:number;stale:boolean};
+import {carPoses,carsShown,type CarPose} from '../../shared/train-cars';
+/** `cars` holds one pose per car, lead car first, for trains on a known railway section; otherwise the train is a single body at `position`. */
+export type VehiclePose={observation:VehicleObservation;position:LngLat;bearing:number;stale:boolean;cars?:CarPose[]};
 type Track=VehicleTrack&{motion?:{from:number;to:number;duration:number};anchor?:number};
 const pathHeading=(route:LngLat[],at:number)=>bearing(alongLine(route,Math.max(0,at-3)),alongLine(route,Math.min(lineLength(route),at+3)));
 export class VehicleTracker {
@@ -37,14 +39,17 @@ export class VehicleTracker {
   const o=t.current,interval=o.kind==='bus'?CADENCE.buses:CADENCE.trains,age=now-Date.parse(o.observedAt),stale=age>interval*2;
   let position=o.position,heading=Number.isFinite(o.bearing)?o.bearing!:0;
   const holding=o.stopUntil&&Date.parse(o.stopUntil)>now;
+  let lead:number|undefined;
   if(t.route&&t.anchor!==undefined&&!holding){
    let at=t.anchor;
    if(t.motion){const blend=Math.min(1,Math.max(0,(now-t.receivedAt)/t.motion.duration));at=t.motion.from+(t.motion.to-t.motion.from)*blend;}
    if(o.kind==='train'&&!stale&&o.speed&&now-t.receivedAt>interval)at=t.anchor+Math.min(interval,Math.max(0,age))*Math.min(o.speed,90)/1000;
-   position=alongLine(t.route,at);heading=pathHeading(t.route,at);
+   position=alongLine(t.route,at);heading=pathHeading(t.route,at);lead=at;
   }
+  if(o.kind==='train'&&t.route&&t.anchor!==undefined)lead??=t.anchor;
   // Without a trusted path, retain the reported position. Straight-line tweening cuts through buildings.
-  return{observation:o,position,bearing:heading,stale};
+  const cars=lead!==undefined&&t.route?carPoses(t.route,lead,carsShown(o.cars),heading):undefined;
+  return{observation:o,position,bearing:heading,stale,...(cars?.length?{cars}:{})};
  }
  poses(now=Date.now()):VehiclePose[]{this.prune(now);return[...this.tracks.values()].map(t=>this.pose(t,now)).filter(p=>inBounds(p.position));}
 }

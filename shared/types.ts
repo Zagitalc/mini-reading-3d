@@ -1,7 +1,7 @@
 export type LngLat = [number, number];
 export type Bounds = [number, number, number, number];
 export type Provenance = { source: string; sourceUrl?: string; observedAt: string };
-export type VehicleObservation = Provenance & { id: string; kind: 'bus'|'train'; position: LngLat; bearing?: number; speed?: number; routeId?: string; routeGroupId?:string; routeColour?:string; operatorId?:string; tripId?: string; journeyRef?:string; routeMatch?:'trip'|'direction'|'shared'; label: string; destination?: string; timetableTripId?: string; nextStop?: NextCall; cancelled?: boolean; status: 'observed'|'estimated'; elevation?: number; stopUntil?: string };
+export type VehicleObservation = Provenance & { id: string; kind: 'bus'|'train'; position: LngLat; bearing?: number; speed?: number; routeId?: string; routeGroupId?:string; routeColour?:string; operatorId?:string; tripId?: string; journeyRef?:string; routeMatch?:'trip'|'direction'|'shared'; label: string; destination?: string; timetableTripId?: string; nextStop?: NextCall; cancelled?: boolean; status: 'observed'|'estimated'; elevation?: number; stopUntil?: string; cars?: number };
 /** The next timed call of a train, from its Darwin calling points: `at` is the actual, expected or scheduled time
  * used to place it. `dwell` means the train is standing at this station now and `at` is its departure. */
 export type NextCall = { name: string; at: string; scheduled?: string; platform?: string; dwell?: boolean };
