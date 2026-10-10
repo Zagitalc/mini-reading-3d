@@ -1,4 +1,6 @@
 import type {Map} from 'maplibre-gl';
+import {registerHere,refreshHere} from '../ui/here';
+import {nearest} from '../../shared/here';
 import {LAYER_ZOOM} from '../../shared/layer-zoom';
 import {detail,escape,layerGroup,sourceFooter} from '../ui/shell';
 import {countdown,delayLabel,liveDepartures,liveKey,LIVE_MAX_AGE_MS,type LiveStatus,type RouteJourneys} from '../../shared/live-departures';
@@ -118,6 +120,13 @@ export async function connectStopLayers(map:Map){
   // Search: stops by name or code, from two characters, since short queries match hundreds of names.
   registerSearch('stop',q=>q.length<2?[]:rank(index.stops,q,s=>[s.name,s.code],s=>s.name,MAX_HITS).map(({item:stop})=>{const routes=routeList(stop);
    return {title:stop.name,detail:`Stop ${stop.code}${routes.length?` · ${routes.slice(0,6).join(', ')}${routes.length>6?'…':''}`:''}`,open:()=>{if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}map.flyTo({center:stop.position,zoom:17,pitch:45});void open(stop);}};}));
+  // "Around here": the nearest stops, only where they are drawn. Their departures load when one is opened, as usual.
+  registerHere('stops',({centre,radius,zoom})=>{
+   if(!toggle.checked||zoom<LAYER_ZOOM.busStops)return [];
+   return nearest(index.stops,s=>s.position,centre,radius,10).map(({item:stop,metres})=>{const routes=routeList(stop);
+    return {title:stop.name,detail:`Stop ${stop.code}${routes.length?` · ${routes.slice(0,5).join(', ')}${routes.length>5?'…':''}`:''}`,evidence:'scheduled' as const,metres,position:stop.position,open:()=>void open(stop)};});
+  });
+  toggle.addEventListener('change',refreshHere);
   onLinked('stop',(id,fly)=>{const stop=byId.get(id);if(!stop)return false;if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}if(fly)map.flyTo({center:stop.position,zoom:17,pitch:45});void open(stop);return true;});
   const unsubscribe=subscribeVehicles(update=>{vehicles=update.vehicles;vehiclesAt=update.at;if(view==='next')render();});map.on('remove',unsubscribe);
   freshness();timer=setInterval(render,60_000);document.addEventListener('visibilitychange',render);map.on('remove',()=>document.removeEventListener('visibilitychange',render));

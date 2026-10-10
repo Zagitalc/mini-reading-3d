@@ -1,4 +1,7 @@
 import {CADENCE} from '../../shared/feed-policy';
+import {registerHere,refreshHere} from '../ui/here';
+import {nearest} from '../../shared/here';
+import {nearestOnLine} from '../../shared/geo';
 import {LAYER_ZOOM,RENDER_BUDGET} from '../../shared/layer-zoom';
 import {evidenceBadge} from '../../shared/evidence';
 import {fillOfflineCard,setFeedStatus} from '../ui/offline';
@@ -30,7 +33,7 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
  map.addLayer({id:'bus-line-labels',type:'symbol',source:'bus-observations',minzoom:LAYER_ZOOM.busLabels,layout:{'text-field':['get','label'],'text-font':['Noto Sans Regular'],'text-size':11,'text-offset':[0,1.1]},paint:{'text-color':['get','colour'],'text-halo-color':'#fffdf5','text-halo-width':2}});
  let busSignature='';
  const syncBuses=()=>{if(disposed)return;const data:GeoJSON.FeatureCollection={type:'FeatureCollection',features:livePoses().filter(p=>state.buses&&p.observation.kind==='bus'&&(!selectedBusRoute||p.observation.routeGroupId===selectedBusRoute)).map(p=>({type:'Feature',geometry:{type:'Point',coordinates:p.position},properties:{id:p.observation.id,label:p.observation.label,colour:p.stale?'#87938b':p.observation.routeColour??'#527b70'}}))};const signature=JSON.stringify(data);if(signature!==busSignature){busSignature=signature;(map.getSource('bus-observations') as GeoJSONSource).setData(data);}};
- const setLayer=(id:string,value:boolean)=>{if(!(id in state))throw Error('Unknown layer');const was=state[id];state[id]=value;document.querySelector<HTMLElement>('#traffic-legend')!.hidden=!state.traffic;document.querySelector<HTMLInputElement>(`[data-layer=${id}]`)!.checked=value;scene.setEnabled(state.buildings);map.setLayoutProperty('building-overview','visibility',state.buildings?'visible':'none');vehicles.enabled.bus=state.buses;vehicles.enabled.train=state.trains;syncBuses();map.setLayoutProperty('road-event-lines','visibility',state.roadworks?'visible':'none');map.setLayoutProperty('traffic-lines','visibility',state.traffic?'visible':'none');syncMarkers();map.triggerRepaint();
+ const setLayer=(id:string,value:boolean)=>{if(!(id in state))throw Error('Unknown layer');const was=state[id];state[id]=value;document.querySelector<HTMLElement>('#traffic-legend')!.hidden=!state.traffic;document.querySelector<HTMLInputElement>(`[data-layer=${id}]`)!.checked=value;scene.setEnabled(state.buildings);map.setLayoutProperty('building-overview','visibility',state.buildings?'visible':'none');vehicles.enabled.bus=state.buses;vehicles.enabled.train=state.trains;syncBuses();map.setLayoutProperty('road-event-lines','visibility',state.roadworks?'visible':'none');map.setLayoutProperty('traffic-lines','visibility',state.traffic?'visible':'none');syncMarkers();refreshHere();map.triggerRepaint();
   // Vehicles and traffic are fetched only while shown, so switching one on asks for it straight away.
   if(value&&!was&&(id==='buses'||id==='trains'||id==='traffic'))kick();
  };
@@ -65,7 +68,7 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
   const vehicleRefresh=!wantsVehicles({buses:state.buses,trains:state.trains},vehiclesNeeded())?Promise.resolve():get('/api/v1/vehicle-state').then(v=>{if(disposed)return;routes=v.routes;tracker.ingest(v.data,Date.now(),routes);syncBuses();map.triggerRepaint();publishVehicles(v.data);}).catch(()=>{if(!disposed){publishVehicles(null);setFeedStatus('Vehicle updates unavailable',false);}});jobs.push(vehicleRefresh);
   jobs.push(vehicleRefresh.then(()=>get('/api/v1/health')).then(h=>{if(disposed)return;feeds=h.data;const live=feeds.filter(f=>f.state==='live').length;setFeedStatus(live?`${live} connected feeds`:'Live feeds not connected',live>0);for(const f of feeds){const el=document.querySelector(`#count-${f.id}`);if(el)el.textContent=f.state==='unavailable'?'—':String(f.count);}const traffic=feeds.find(f=>f.id==='traffic');if(!traffic?.message.includes('Tiles load'))document.querySelector('#traffic-availability')!.textContent=traffic?.state??'unavailable';}).catch(()=>{}));
   if(Date.now()-slowUpdated>=CADENCE.roadworks){slowUpdated=Date.now();
-   jobs.push(get('/api/v1/road-events').then(e=>{if(disposed)return;events=e.data;const active=events.filter(x=>x.status==='active');publishFact('roadworks',{active:active.length,closures:active.filter(x=>x.kind==='closure').length,at:Date.now()});furniture.setEvents(events);(map.getSource('road-events') as GeoJSONSource).setData({type:'FeatureCollection',features:events.map(e=>({type:'Feature',geometry:e.geometry,properties:{id:e.id,kind:e.kind}}))});syncMarkers();}).catch(()=>{}));
+   jobs.push(get('/api/v1/road-events').then(e=>{if(disposed)return;events=e.data;const active=events.filter(x=>x.status==='active');publishFact('roadworks',{active:active.length,closures:active.filter(x=>x.kind==='closure').length,at:Date.now()});furniture.setEvents(events);refreshHere();(map.getSource('road-events') as GeoJSONSource).setData({type:'FeatureCollection',features:events.map(e=>({type:'Feature',geometry:e.geometry,properties:{id:e.id,kind:e.kind}}))});syncMarkers();}).catch(()=>{}));
   }
   if(state.traffic&&Date.now()-trafficUpdated>=CADENCE.traffic&&feeds.some(f=>f.id==='traffic'&&f.state==='live')){trafficUpdated=Date.now();
    jobs.push(get('/api/v1/traffic').then(t=>{if(disposed)return;roadTraffic=t.data;(map.getSource('traffic') as GeoJSONSource).setData({type:'FeatureCollection',features:roadTraffic.map(t=>({type:'Feature',geometry:{type:'LineString',coordinates:t.coordinates},properties:{id:t.id,ratio:t.currentSpeed/t.freeFlowSpeed}}))});}).catch(()=>{}));
@@ -77,6 +80,14 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
  document.addEventListener('reading-vehicles-needed',kick);
  for(const id of LAYERS)setLayer(id,state[id]);
  for(const id of LAYERS)registerSwitch(id as ModeLayer,document.querySelector<HTMLInputElement>(`[data-layer=${id}]`)!);
+ // "Around here": roadworks and closures near the middle of the map, closures first. Ordinary works are left out where the pins are.
+ registerHere('roadworks',({centre,radius,zoom})=>{
+  if(!state.roadworks)return [];
+  const at=(e:RoadEvent)=>e.geometry.type==='Point'?e.geometry.coordinates:nearestOnLine(centre,e.geometry.coordinates).position;
+  return nearest(events.filter(e=>zoom>=LAYER_ZOOM.roadworksAllKinds||e.kind==='closure'),at,centre,radius,50)
+   .sort((a,b)=>Number(b.item.kind==='closure')-Number(a.item.kind==='closure')||a.metres-b.metres)
+   .map(({item:e,metres})=>({title:e.title,detail:`${e.kind==='closure'?'Road closure':'Roadworks'} · ${e.status}`,evidence:e.status==='planned'?'scheduled' as const:'observed' as const,metres,position:at(e),open:()=>roadDetail(e)}));
+ });
  map.on('moveend',syncMarkers);syncMarkers();void refresh();vehicleTimer=setInterval(()=>{tracker.prune();if(!document.hidden)syncBuses();if(tracker.tracks.size&&!document.hidden)map.triggerRepaint();},1000);
  const unregister=registerMapTools({places:features.places,setLayer,getState:()=>({layers:{...state},feeds,center:map.getCenter().toArray(),zoom:map.getZoom(),rendering:{fps:Math.round(scene.fps),chunks:scene.chunks.size,failedChunks:scene.failed.size,geometries:scene.renderer.info.memory.geometries,drawCalls:scene.renderer.info.render.calls,trackedVehicles:tracker.tracks.size,visibleVehicles:poses.length,busInstances:vehicles.parts.find(p=>p.kind==='bus')?.mesh.count??0}}),navigate:async p=>{map.flyTo({center:p,zoom:16.8,pitch:58});await new Promise<void>(r=>map.once('moveend',()=>r()));}});
  map.on('remove',()=>{disposed=true;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('online',visibility);window.removeEventListener('offline',connection);window.removeEventListener('online',connection);document.removeEventListener('reading-bus-route',routeSelection);document.removeEventListener('reading-vehicles-needed',kick);clearTimeout(timer);clearInterval(vehicleTimer);markers.forEach(m=>m.remove());markers.clear();unregister();});

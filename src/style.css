@@ -90,3 +90,15 @@ body:has(#details:not([hidden])) .traffic-legend{display:none}@media(max-width:1
 .evidence.estimated{border-style:dashed}.evidence.scheduled{border-style:dotted}.evidence.historical{border-color:transparent;background:var(--fill)}
 .details-panel .pill+.evidence{margin-left:6px}.evidence-line{font-size:12px;color:var(--muted);line-height:1.8}
 h3 .evidence{margin-left:4px;text-transform:uppercase}
+.here-card>summary{font-size:11px}.here-card #here-body{padding:0 11px 6px}
+.here-where{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:0;padding:5px 0;font-size:12px;color:var(--muted)}
+.here-pin{padding:3px 8px;border:1px solid var(--border);border-radius:5px;font-size:11px;color:var(--accent);font-weight:650;white-space:nowrap}.here-pin[aria-pressed=true]{background:var(--fill);color:var(--ink)}
+.here-group h3{margin:6px 0 2px;font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--faint);text-transform:uppercase}
+.here-group ul{list-style:none;margin:0;padding:0}.here-group li+li{border-top:1px solid var(--border)}
+.here-group li button{display:block;width:100%;text-align:left;padding:6px 0;font-size:13px;line-height:1.35;color:var(--ink)}
+.here-group li button:hover .here-title,.here-group li button:focus-visible .here-title{text-decoration:underline}
+.here-title{font-weight:600}.here-group li small{display:block;font-size:11px;color:var(--faint);margin-top:2px}
+.here-empty,.here-note{margin:4px 0;font-size:12px;color:var(--muted);line-height:1.4}.here-note{font-size:11px;color:var(--faint)}
+/* The panel is now taller than a short window can show, so on desktop it scrolls as a whole and "Around here" scrolls within itself. */
+@media(min-width:681px){.explore-panel{max-height:calc(100dvh - 140px);overflow-x:hidden;overflow-y:auto}.explore-panel #layers{max-height:none;overflow:visible}}
+.here-card #here-body{max-height:min(320px,40dvh);overflow-y:auto}

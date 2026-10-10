@@ -1,4 +1,6 @@
 import type {Map,GeoJSONSource,MapLayerMouseEvent} from 'maplibre-gl';
+import {registerHere,refreshHere} from '../ui/here';
+import {formatMetres,nearest,nearestInArea,SPARSE_RADIUS} from '../../shared/here';
 import {LAYER_ZOOM} from '../../shared/layer-zoom';
 import type {FloodWarning,RiverFeedItem,RiverGauge,RiverLevel} from '../../shared/types';
 import {evidenceBadge} from '../../shared/evidence';
@@ -36,7 +38,7 @@ export function connectRivers(map:Map,section:HTMLElement,schedule:(run:()=>Prom
  map.addLayer({id:'river-gauge-labels',type:'symbol',source:'river-gauges',minzoom:LAYER_ZOOM.riverGaugeLabels,layout:{'text-field':['get','text'],'text-size':11,'text-offset':[0,1.25],'text-anchor':'top','text-font':['Noto Sans Regular']},paint:{'text-color':'#24506b','text-halo-color':'#ffffff','text-halo-width':1.4}});
  const layers=['flood-area-fill','flood-area-line','river-gauge-points','river-gauge-labels'];
  const show=()=>{for(const id of layers)map.setLayoutProperty(id,'visibility',toggle.checked?'visible':'none');};
- toggle.disabled=!enabled;toggle.addEventListener('change',show);registerSwitch('rivers',toggle);
+ toggle.disabled=!enabled;toggle.addEventListener('change',()=>{show();refreshHere();});registerSwitch('rivers',toggle);
  const gaugeDetail=(g:RiverGauge)=>{const state=rangeState(g),now=Date.now();
   detail(`<span class="pill">River gauge · measured</span>${evidenceBadge('observed')}<h2>${escape(g.label)}</h2><p>${escape(g.river)}${g.town&&g.town!==g.label?` · ${escape(g.town)}`:''}</p><dl>${g.levels.map(l=>`<dt>${escape(l.qualifier)}</dt><dd>${l.value.toFixed(2)} ${escape(l.unit)}<small>Read ${escape(time(l.readAt))}${now-Date.parse(l.readAt)>OLD_READING?' · older than usual; the gauge may not have reported since':''}</small><small>${escape(unitNote(l.unit))}</small></dd>`).join('')}${g.typicalLow!==undefined&&g.typicalHigh!==undefined?`<dt>Typical range</dt><dd>${g.typicalLow.toFixed(2)}–${g.typicalHigh.toFixed(2)} m<small>${escape(RANGE_TEXT[state])}</small></dd>`:''}${g.highestRecent?`<dt>Highest recent level</dt><dd>${g.highestRecent.value.toFixed(2)} m<small>${escape(new Date(g.highestRecent.at).toLocaleDateString('en-GB',{timeZone:'Europe/London',day:'numeric',month:'short',year:'numeric'}))}</small></dd>`:''}</dl><p>This is the level measured at the gauge. The map does not predict where water would go.</p><a href="${escape(g.sourceUrl)}" target="_blank" rel="noopener">This gauge on Check for flooding (GOV.UK)</a><p>Environment Agency real-time data · OGL v3.0. Readings may be delayed or unvalidated.</p>`);};
  // Search: gauges by name, river or town, so "Thames" lists every Thames gauge.
@@ -45,6 +47,19 @@ export function connectRivers(map:Map,section:HTMLElement,schedule:(run:()=>Prom
    open:()=>{if(!toggle.checked&&!toggle.disabled){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}map.flyTo({center:g.position,zoom:15,pitch:45});gaugeDetail(g);}};}));
  const warningHtml=(w:FloodWarning)=>`<section class="feed-card"><span class="pill" style="background:${SEVERITY_COLOUR[w.severityLevel]}33;color:var(--ink)">${escape(w.severity)}</span>${evidenceBadge('observed')}<h2>${escape(w.label)}</h2>${w.river?`<p>${escape(w.river)}</p>`:''}${w.message?`<p class="flood-message">${escape(w.message)}</p>`:''}<small>${w.raisedAt?`Raised ${escape(time(w.raisedAt))}`:''}${w.changedAt?` · message updated ${escape(time(w.changedAt))}`:''}</small>${w.area?'':`<p>${w.areaTooLarge?'The official outline is too large to store here, so this warning is listed but not drawn; the GOV.UK link shows it.':'The official outline could not be loaded, so this warning is listed but not drawn.'}</p>`}<p><a href="${escape(w.sourceUrl)}" target="_blank" rel="noopener">Official warning on GOV.UK</a></p></section>`;
  const warningDetail=(list:FloodWarning[])=>detail(`<span class="pill">Environment Agency</span>${list.map(warningHtml).join('')}<p>Shaded areas are the Environment Agency’s fixed warning areas, not a measured or modelled flood extent.</p><p>Contains Environment Agency data · OGL v3.0.</p>`);
+ // "Around here": gauges and warning areas are sparse, so they are looked for further out than most things.
+ registerHere('flood',({centre,radius})=>{
+  if(!toggle.checked)return [];
+  const reach=Math.max(radius,SPARSE_RADIUS);
+  return warnings.filter(w=>w.area).map(w=>({w,...nearestInArea(centre,w.area!)})).filter(x=>x.metres<=reach)
+   .sort((a,b)=>a.w.severityLevel-b.w.severityLevel||a.metres-b.metres)
+   .map(({w,metres,position})=>({title:w.label,detail:`${w.severity} · ${metres===0?'area covers this spot':`${formatMetres(metres)} from the warning area`}`,evidence:'observed' as const,metres,position,open:()=>warningDetail([w])}));
+ });
+ registerHere('river',({centre,radius})=>{
+  if(!toggle.checked)return [];
+  return nearest(gauges,g=>g.position,centre,Math.max(radius,SPARSE_RADIUS),10).map(({item:g,metres})=>{const l=mainLevel(g);
+   return {title:g.label,detail:`${g.river}${l?` · ${l.value.toFixed(2)} ${l.unit} · ${RANGE_TEXT[rangeState(g)].toLowerCase()}`:''}`,evidence:'observed' as const,metres,position:g.position,open:()=>gaugeDetail(g)};});
+ });
  summary.addEventListener('click',()=>{if(warnings.length){warningDetail(warnings);return;}
   if(!gauges.length)return;detail(`<span class="pill">Rivers around Reading</span>${evidenceBadge('observed')}<h2>${warningsKnown?'No flood alerts or warnings in force':'Flood warnings could not be checked'}</h2><p>${gauges.length} Environment Agency gauges on the Thames and Kennet. Select a gauge on the map for its latest reading.</p><dl>${gauges.map(g=>{const l=mainLevel(g);return `<dt>${escape(g.label)} · ${escape(g.river)}</dt><dd>${l?`${l.value.toFixed(2)} ${escape(l.unit)}<small>${escape(RANGE_TEXT[rangeState(g)])} · read ${escape(time(l.readAt))}</small>`:'No reading'}</dd>`;}).join('')}</dl><p>Contains Environment Agency data · OGL v3.0.</p>`);});
  map.on('click','river-gauge-points',(e:MapLayerMouseEvent)=>{const g=gauges.find(g=>g.id===e.features?.[0]?.properties.id);if(g)gaugeDetail(g);});
@@ -53,7 +68,7 @@ export function connectRivers(map:Map,section:HTMLElement,schedule:(run:()=>Prom
   if(map.queryRenderedFeatures(e.point,{layers:['river-gauge-points']}).length)return;
   const ids=new Set(e.features?.map(f=>f.properties.id));const hit=warnings.filter(w=>ids.has(w.id));if(hit.length)warningDetail(hit);});
  for(const id of ['river-gauge-points','flood-area-fill']){map.on('mouseenter',id,()=>{map.getCanvas().style.cursor='pointer';});map.on('mouseleave',id,()=>{map.getCanvas().style.cursor='';});}
- const render=()=>{const now=Date.now();
+ const render=()=>{const now=Date.now();refreshHere();
   (map.getSource('river-gauges') as GeoJSONSource).setData({type:'FeatureCollection',features:gauges.map(g=>{const l=mainLevel(g);return {type:'Feature',geometry:{type:'Point',coordinates:g.position},properties:{id:g.id,state:rangeState(g),old:!l||now-Date.parse(l.readAt)>OLD_READING,text:l?`${l.value.toFixed(2)} m`:''}};})});
   (map.getSource('flood-areas') as GeoJSONSource).setData({type:'FeatureCollection',features:warnings.filter(w=>w.area).sort((a,b)=>b.severityLevel-a.severityLevel).map(w=>({type:'Feature',geometry:w.area!,properties:{id:w.id,severity:w.severityLevel}}))});
   const counts=[1,2,3].map(s=>warnings.filter(w=>w.severityLevel===s).length);

@@ -39,7 +39,7 @@ What stays the same: the stack (Vite, MapLibre, Three.js, the Cloudflare Worker 
 1. Fix the two failing browser tests (history-browser and direct-finder-browser). Already queued; unchanged.
 2. **Evidence labels** (small to medium; done 9 October). New, and placed first because items 3 and 4 below rely on it.
 3. **Layer zoom thresholds and a render budget** (small; done 9 October, see below). Placed before landmark models, which add draw calls.
-4. **Local summary for the area in view** (medium).
+4. **Local summary for the area in view** (medium; done 10 October, see below).
 5. Detailed landmark models (large). Already queued; moves down behind items 2 to 4.
 6. Multi-car trains (small). Unchanged; still waits for "build trains".
 7. **Replay the last hour** (medium, low priority).
@@ -77,11 +77,13 @@ Every figure on the map, cards and summary says which kind of evidence it is:
 
 **What exists.** The mode summary card (`shared/summary.ts`, `src/ui/summary.ts`) gives town-wide counts from figures the layers already hold, published through `publishFact`. It does not follow the map and its lines cannot be clicked.
 
-**The change.** The same card gains a "Here" view for the area in view: by default a circle around the map centre whose radius follows the zoom, plus a "pin this spot" option so it stops moving. It lists what is nearby and current: roadworks and closures, flood warnings and the nearest gauges against their typical range, the next departures from the two or three nearest stops (and the station board when Reading station is in range). Each item carries its evidence label. Tapping an item flies the map to it and opens the card that already exists for it (stop, gauge, roadwork, warning). On phones it lives in the existing bottom sheet; no second panel.
+**What was built (10 October).** A second card under it, "Around here" (`src/ui/here.ts`, rules in `shared/here.ts`). It lists what the switched-on layers hold near the middle of the map: roadworks and closures (closures first), flood warnings whose area covers or lies near the spot, river gauges, bus stops, and Reading station. Each item carries its evidence label and a distance, and selecting it moves the map there and opens the card that already exists for it. "Pin this spot" stops the list following the map and draws a dashed ring around the pinned area. The radius follows the zoom (800 m at zoom 15, doubling per level out, 400 m to 3 km). On a phone it starts folded, like the mode card, and it lives in the same panel and bottom sheet, so there is no second panel.
 
-**Rule to keep.** The town-wide card shows only what its mode already loads. The local view is allowed one exception: it may fetch the timetable files for the few nearest stops, and only while the view is open. It must not switch on vehicle polling or any feed the mode does not already use.
+Layers register a provider for their own data, exactly as they do for search (`registerHere`), so the card never fetches anything and never switches a layer on. It follows the zoom table: stops are listed only from zoom 15, where they are drawn, and below zoom 13 only closures are listed, as for the pins. Gauges and warning areas are sparse, so they are looked for at least 3 km out.
 
-**Depends on:** evidence labels (item 2); positions in the published facts rather than only counts, which means `publishFact` carrying the items themselves for roadworks, warnings and gauges; the existing stop timetable files and live-estimate code; and the zoom table in `shared/layer-zoom.ts` (item 3, done), so that "nearby" agrees with what is drawn.
+**Differences from the first draft.** The draft allowed the card to fetch timetables for the nearest stops. It does not: stops are listed with their routes and open to the usual card, which loads departures and live estimates when selected. Pre-loading them as the map moves would add a request per pan for little gain, and the rule that a card shows only what its layers already hold is worth keeping. Warnings without a drawn outline are not listed locally (the town-wide card still counts them), because they have no position to jump to.
+
+**Depends on:** evidence labels (done), the zoom table (done), and the per-layer providers added to roadworks, rivers, stops and the station.
 
 ### Replay the last hour (low priority)
 
