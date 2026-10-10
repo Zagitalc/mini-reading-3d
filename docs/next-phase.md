@@ -37,8 +37,8 @@ What stays the same: the stack (Vite, MapLibre, Three.js, the Cloudflare Worker 
 ### Order
 
 1. Fix the two failing browser tests (history-browser and direct-finder-browser). Already queued; unchanged.
-2. **Evidence labels** (small to medium). New, and placed first because items 3 and 4 below rely on it.
-3. **Layer zoom thresholds and a render budget** (small to medium). Placed before landmark models, which add draw calls.
+2. **Evidence labels** (small to medium; done 9 October). New, and placed first because items 3 and 4 below rely on it.
+3. **Layer zoom thresholds and a render budget** (small; done 9 October, see below). Placed before landmark models, which add draw calls.
 4. **Local summary for the area in view** (medium).
 5. Detailed landmark models (large). Already queued; moves down behind items 2 to 4.
 6. Multi-car trains (small). Unchanged; still waits for "build trains".
@@ -67,11 +67,11 @@ Every figure on the map, cards and summary says which kind of evidence it is:
 
 **What exists.** The layer groups are already done: modes (`shared/modes.ts`), five collapsible groups in the Explore panel (`src/ui/shell.ts`) and the Tools menu. Many layers already have a minimum zoom: route and bus labels from 13, river gauge labels from 13.5, stops from 15 with labels at 17, food from 12 with clusters and ratings at 16, road labels at 15, and Three.js buildings from 14 with at most 80 chunks. So this is mostly the zoom half of the item.
 
-**The gaps.** Bus dots, river gauge points, fuel pumps, flood areas, roadwork lines and traffic lines draw at every zoom. The DOM markers for roadworks, speed signs and cameras are capped at 160 in view but have no zoom rule, and DOM markers are the most expensive thing on the map per item. The 3D vehicles have no zoom rule either.
+**What was done (9 October).** Checking the code showed the first draft of this item overstated the gaps. Speed-limit badges (from zoom 15.7), 3D signs (16) and cameras (15) already had zoom rules, and DOM markers, 3D vehicles and building chunks already had hard caps (160, 512 of each kind, 80). What was missing was a single place to read them. They now live in `shared/layer-zoom.ts` (`LAYER_ZOOM` and `RENDER_BUDGET`), every layer takes its zoom from that table, and `tests/layer-zoom.test.ts` fails if a new layer writes a zoom number beside itself or a label is set to appear before the thing it labels. The one new rule is for roadwork pins: below zoom 13 only road closures are pinned, because ordinary works are small and the town-wide view is crowded enough. `tests/roadworks-zoom-browser.mjs` covers it.
 
-**The change.** Put every layer's minimum zoom (and label zoom) in one table rather than scattered `minzoom` values, so the rules can be read and tested in one place. Add thresholds to the layers above, cluster or hide markers at town scale, and keep a per-mode budget for how many markers and 3D vehicles may be drawn. Measure with the Graphics test tool before and after; both test phones already hold 60 fps, so this is mainly about clutter, with render cost as the second reason.
+**Deliberately not done.** Bus dots, fuel pumps, river gauges, flood areas, event lines and traffic lines still draw at every zoom: there are on the order of a hundred buses, 37 forecourts and a handful of gauges, which is not crowded, and hiding them at town scale would hide the town-wide picture the modes exist to give. No per-mode budget was added either; there is no measurement showing a mode that needs one, and both test phones hold 60 fps. If a phone does struggle, the Graphics test tool is the way to find out which layer, and the table is where the fix goes.
 
-**Depends on:** the Graphics test tool (done). Should land before landmark models so their extra draw calls have a budget to fit in.
+**Depends on:** nothing. It should land before landmark models so their extra draw calls have a named budget to fit in.
 
 ### Local summary for the area in view
 
@@ -81,7 +81,7 @@ Every figure on the map, cards and summary says which kind of evidence it is:
 
 **Rule to keep.** The town-wide card shows only what its mode already loads. The local view is allowed one exception: it may fetch the timetable files for the few nearest stops, and only while the view is open. It must not switch on vehicle polling or any feed the mode does not already use.
 
-**Depends on:** evidence labels (item 2); positions in the published facts rather than only counts, which means `publishFact` carrying the items themselves for roadworks, warnings and gauges; the existing stop timetable files and live-estimate code; and the zoom table (item 3), so that "nearby" agrees with what is drawn.
+**Depends on:** evidence labels (item 2); positions in the published facts rather than only counts, which means `publishFact` carrying the items themselves for roadworks, warnings and gauges; the existing stop timetable files and live-estimate code; and the zoom table in `shared/layer-zoom.ts` (item 3, done), so that "nearby" agrees with what is drawn.
 
 ### Replay the last hour (low priority)
 

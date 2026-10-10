@@ -1,4 +1,5 @@
 import type {Map,GeoJSONSource} from 'maplibre-gl';
+import {LAYER_ZOOM} from '../../shared/layer-zoom';
 import {CLUSTER_SHARE,FOOD_TYPES,RATING_FILTERS,RATING_TEXT,foodCategory,foodMatches,ratingGroup,type FoodTypeFilter,type HygieneBundle,type HygienePlace,type RatingFilter} from '../../shared/hygiene';
 import {evidenceBadge} from '../../shared/evidence';
 import {detail,escape,layerGroup} from '../ui/shell';
@@ -50,11 +51,11 @@ export function connectPlaces(map:Map){
    clusterProperties:{good:['+',['case',['==',['get','group'],'good'],1,0]],rated:['+',['case',['==',['get','group'],'none'],0,1]]}});
   const colour=['match',['get','group'],'good',COLOURS.good,'fair',COLOURS.fair,'poor',COLOURS.poor,COLOURS.none] as never;
   const share:any=['/',['get','good'],['max',1,['get','rated']]];
-  map.addLayer({id:'hygiene-clusters',type:'circle',source:'hygiene',minzoom:12,filter:['has','point_count'],paint:{'circle-radius':['step',['get','point_count'],11,10,14,40,18,150,23],
+  map.addLayer({id:'hygiene-clusters',type:'circle',source:'hygiene',minzoom:LAYER_ZOOM.foodPoints,filter:['has','point_count'],paint:{'circle-radius':['step',['get','point_count'],11,10,14,40,18,150,23],
    'circle-color':['case',['<',['get','rated'],CLUSTER_SHARE.minRated],COLOURS.none,['>=',share,CLUSTER_SHARE.good],COLOURS.good,['>=',share,CLUSTER_SHARE.fair],COLOURS.fair,COLOURS.poor],'circle-stroke-color':'#fffdf5','circle-stroke-width':1.5,'circle-opacity':.92}});
-  map.addLayer({id:'hygiene-cluster-count',type:'symbol',source:'hygiene',minzoom:12,filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],'text-size':11,'text-font':['Noto Sans Regular'],'text-allow-overlap':true},paint:{'text-color':'#ffffff'}});
-  map.addLayer({id:'hygiene-points',type:'circle',source:'hygiene',minzoom:12,filter:['!',['has','point_count']],paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,2.5,16,5.5,18,8],'circle-color':colour,'circle-stroke-color':'#fffdf5','circle-stroke-width':1.2}});
-  map.addLayer({id:'hygiene-labels',type:'symbol',source:'hygiene',minzoom:16,filter:['!',['has','point_count']],layout:{'text-field':['get','label'],'text-size':9,'text-font':['Noto Sans Regular'],'text-allow-overlap':true},paint:{'text-color':'#ffffff'}});
+  map.addLayer({id:'hygiene-cluster-count',type:'symbol',source:'hygiene',minzoom:LAYER_ZOOM.foodPoints,filter:['has','point_count'],layout:{'text-field':['get','point_count_abbreviated'],'text-size':11,'text-font':['Noto Sans Regular'],'text-allow-overlap':true},paint:{'text-color':'#ffffff'}});
+  map.addLayer({id:'hygiene-points',type:'circle',source:'hygiene',minzoom:LAYER_ZOOM.foodPoints,filter:['!',['has','point_count']],paint:{'circle-radius':['interpolate',['linear'],['zoom'],12,2.5,16,5.5,18,8],'circle-color':colour,'circle-stroke-color':'#fffdf5','circle-stroke-width':1.2}});
+  map.addLayer({id:'hygiene-labels',type:'symbol',source:'hygiene',minzoom:LAYER_ZOOM.foodLabels,filter:['!',['has','point_count']],layout:{'text-field':['get','label'],'text-size':9,'text-font':['Noto Sans Regular'],'text-allow-overlap':true},paint:{'text-color':'#ffffff'}});
   map.on('click','hygiene-points',e=>{const p=byId.get(Number(e.features?.[0]?.properties.id));if(p)open(p);});
   map.on('click','hygiene-clusters',async e=>{const f=e.features?.[0];if(!f)return;const zoom=await (map.getSource('hygiene') as GeoJSONSource).getClusterExpansionZoom(Number(f.properties.cluster_id));map.easeTo({center:(f.geometry as GeoJSON.Point).coordinates as [number,number],zoom:Math.min(zoom+.5,18)});});
   for(const id of ['hygiene-points','hygiene-clusters']){map.on('mouseenter',id,()=>{map.getCanvas().style.cursor='pointer';});map.on('mouseleave',id,()=>{map.getCanvas().style.cursor='';});}

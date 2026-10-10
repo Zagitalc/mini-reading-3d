@@ -1,4 +1,5 @@
 import type {Map,ExpressionSpecification} from 'maplibre-gl';
+import {LAYER_ZOOM} from '../../shared/layer-zoom';
 import {detail,escape,layerGroup,sourceFooter} from '../ui/shell';
 import {routeMatches,uniqueRoutes,mapRouteLabel,type StaticRoute} from '../../shared/static-routes';
 import {sameLabel} from '../../shared/share-view';
@@ -21,7 +22,7 @@ export async function connectRouteLayers(map:Map){
    const before='traffic-lines';
    map.addLayer({id:`${mode}-route-outline`,type:'line',source:`${mode}-routes`,layout:{visibility:'none','line-cap':'round','line-join':'round'},paint:{'line-color':'#fbfaf4','line-width':7,'line-opacity':.9}},before);
    map.addLayer({id:`${mode}-route-lines`,type:'line',source:`${mode}-routes`,layout:{visibility:'none','line-cap':'round','line-join':'round'},paint:{'line-color':['get','colour'],'line-width':3.5,'line-opacity':.9}},before);
-   map.addLayer({id:`${mode}-route-labels`,type:'symbol',source:`${mode}-routes`,minzoom:13,layout:{visibility:'none','symbol-placement':'line','text-field':['get','label'],'text-font':['Noto Sans Regular'],'text-size':11,'symbol-spacing':280},paint:{'text-color':['get','colour'],'text-halo-color':'#fffdf7','text-halo-width':2}},before);
+   map.addLayer({id:`${mode}-route-labels`,type:'symbol',source:`${mode}-routes`,minzoom:LAYER_ZOOM.routeLabels,layout:{visibility:'none','symbol-placement':'line','text-field':['get','label'],'text-font':['Noto Sans Regular'],'text-size':11,'symbol-spacing':280},paint:{'text-color':['get','colour'],'text-halo-color':'#fffdf7','text-halo-width':2}},before);
    const select=section.querySelector('select')!,search=section.querySelector<HTMLInputElement>('input[type=search]')!,toggle=section.querySelector<HTMLInputElement>('input[type=checkbox]')!;
    const list=()=>{select.replaceChildren();const all=new Option('All routes','');select.append(all);for(const r of routes.filter(r=>routeMatches(r,search.value)))select.append(new Option(`${r.label}${r.operator?' · '+r.operator:''}`,r.id));select.value=group.selected;};
    const choose=(id:string)=>{

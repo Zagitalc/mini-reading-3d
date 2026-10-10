@@ -1,4 +1,5 @@
 import type {Map,GeoJSONSource,MapLayerMouseEvent} from 'maplibre-gl';
+import {LAYER_ZOOM} from '../../shared/layer-zoom';
 import type {FloodWarning,RiverFeedItem,RiverGauge,RiverLevel} from '../../shared/types';
 import {evidenceBadge} from '../../shared/evidence';
 import {detail,escape} from '../ui/shell';
@@ -32,7 +33,7 @@ export function connectRivers(map:Map,section:HTMLElement,schedule:(run:()=>Prom
  map.addLayer({id:'flood-area-line',type:'line',source:'flood-areas',paint:{'line-color':colour,'line-width':['interpolate',['linear'],['zoom'],11,1,16,2.5],'line-dasharray':[3,2]}},'reading-3d');
  for(const [state,fill] of Object.entries(GAUGE_COLOUR))map.addImage(`river-gauge-${state}`,gaugeIcon(fill),{pixelRatio:2});
  map.addLayer({id:'river-gauge-points',type:'symbol',source:'river-gauges',layout:{'icon-image':['concat','river-gauge-',['get','state']],'icon-size':['interpolate',['linear'],['zoom'],11,.75,16,1.05],'icon-allow-overlap':true,'icon-ignore-placement':true},paint:{'icon-opacity':['case',['get','old'],.55,1]}});
- map.addLayer({id:'river-gauge-labels',type:'symbol',source:'river-gauges',minzoom:13.5,layout:{'text-field':['get','text'],'text-size':11,'text-offset':[0,1.25],'text-anchor':'top','text-font':['Noto Sans Regular']},paint:{'text-color':'#24506b','text-halo-color':'#ffffff','text-halo-width':1.4}});
+ map.addLayer({id:'river-gauge-labels',type:'symbol',source:'river-gauges',minzoom:LAYER_ZOOM.riverGaugeLabels,layout:{'text-field':['get','text'],'text-size':11,'text-offset':[0,1.25],'text-anchor':'top','text-font':['Noto Sans Regular']},paint:{'text-color':'#24506b','text-halo-color':'#ffffff','text-halo-width':1.4}});
  const layers=['flood-area-fill','flood-area-line','river-gauge-points','river-gauge-labels'];
  const show=()=>{for(const id of layers)map.setLayoutProperty(id,'visibility',toggle.checked?'visible':'none');};
  toggle.disabled=!enabled;toggle.addEventListener('change',show);registerSwitch('rivers',toggle);
