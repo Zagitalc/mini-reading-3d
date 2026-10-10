@@ -89,7 +89,7 @@ export class RoadNetwork {
 
  /** Road geometry from a to b (excluding the endpoints), or undefined when no sensible road path exists. */
  route(from:LngLat,to:LngLat):LngLat[]|undefined{
-  const straight=distance(from,to),limit=straight*1.7+120;
+  const straight=distance(from,to),limit=straight*2.5+150;
   const start=this.nearEdges(from,ATTACH)[0],end=this.nearEdges(to,ATTACH)[0];
   if(!start||!end)return undefined;
   const S=-1,T=-2,virtual=new Map<number,{to:number;cost:number}[]>([[S,[]],[T,[]]]),positions=new Map<number,LngLat>([[S,start.point],[T,end.point]]);
