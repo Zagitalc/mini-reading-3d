@@ -1,5 +1,5 @@
-import{distance,nearestOnLine}from'../shared/geo';import type{LngLat}from'../shared/types';
-export const STATIONS:Record<string,LngLat>={RDG:[-.9723182,51.4592197],RDW:[-.9907169,51.4546483],TLH:[-1.0296647,51.4716513],TWY:[-.8631386,51.47539],WTI:[-.8918298,51.4367674],WNS:[-.8779199,51.4307527],EAR:[-.9177114,51.4410298],RGP:[-1.0013637,51.4265936],THE:[-1.074364,51.4333628],WKM:[-.8429813,51.4119036],WGV:[-.8766558,51.4985546]};
+import{distance,nearestOnLine}from'../shared/geo';import{STATION_POSITIONS}from'../shared/rail-stations';import type{LngLat}from'../shared/types';
+export const STATIONS:Record<string,LngLat>=STATION_POSITIONS;
 type Node={p:LngLat;edges:{id:string;cost:number}[]};
 export class RailNetwork{nodes=new Map<string,Node>();cache=new Map<string,LngLat[]|null>();
  constructor(features:any[]){for(const f of features){if(f.properties?.railway!=='rail'||f.properties?.service||f.geometry?.type!=='LineString')continue;const coords=f.geometry.coordinates as LngLat[];for(let i=0;i<coords.length;i++){const id=coords[i].join(',');if(!this.nodes.has(id))this.nodes.set(id,{p:coords[i],edges:[]});if(i){const prev=coords[i-1].join(','),cost=distance(coords[i-1],coords[i]);this.nodes.get(prev)!.edges.push({id,cost});this.nodes.get(id)!.edges.push({id:prev,cost});}}}}

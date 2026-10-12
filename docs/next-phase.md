@@ -113,6 +113,14 @@ Now a train is shown at Reading from six minutes before it leaves, once Darwin s
 
 Limits: the platform footprint is the platform surface, so a train is drawn on or beside it, not on a particular track, and which end it faces is not known. A train joining from a station outside the eleven polled stations still shows only once it is standing at Reading, because its approach cannot be placed.
 
+### Pins for the stations around Reading
+
+Done 12 October. The ten other stations the rail refresh already polls (Reading West, Tilehurst, Twyford, Winnersh Triangle, Winnersh, Earley, Reading Green Park, Theale, Wokingham, Wargrave) get a pin that opens their next departures, with the same card as Reading station. They are listed in `shared/rail-stations.ts`, which is now the one table of station positions (`server/rail-network.ts` reads it).
+
+Cost: no extra provider requests, because the refresh already fetches every one of those boards each minute. The next eight departures per station are saved as one record (`rail-boards`, a single extra D1 row per refresh) and served by `/api/v1/rail-board?station=XXX`; no station means Reading, an unknown code is a 404. In the browser the pins are page elements only for stations in view, shown with the Trains layer from zoom 12.5 (`LAYER_ZOOM.railStations`), and a board is fetched only when a pin is opened. Search has a "Railway stations" group; the older "Station" places for the same stations are left out of Places so each appears once.
+
+Limits: no calling points beyond the next few departures, no service notices for these stations, and no 3D station model (only Reading has one). Platform numbers appear once Darwin shows them. Trains standing at these stations are still drawn at the station point, with no platform placement.
+
 ## Following phase — suggestions only
 
 The list below dates from the routes and landmark release. Items 1 and 3 have largely shipped and item 2 in part (Reading over time, without headways or bunching); the current order is in the section above.

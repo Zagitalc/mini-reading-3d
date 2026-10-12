@@ -1,9 +1,9 @@
 import type {ModeId} from './modes';
 // One search box over everything the map already holds. Each layer answers for its own data; this file holds the
 // shared rules: how text is compared, how well a result matches, and which groups come first in each mode.
-export const SEARCH_GROUPS=['landmark','place','route','stop','food','fuel','river'] as const;
+export const SEARCH_GROUPS=['landmark','place','route','stop','station','food','fuel','river'] as const;
 export type SearchGroup=typeof SEARCH_GROUPS[number];
-export const GROUP_TITLES:Record<SearchGroup,string>={landmark:'Landmarks',place:'Places',route:'Bus routes and rail corridors',stop:'Bus stops',food:'Food premises',fuel:'Fuel forecourts',river:'River gauges'};
+export const GROUP_TITLES:Record<SearchGroup,string>={landmark:'Landmarks',place:'Places',route:'Bus routes and rail corridors',stop:'Bus stops',station:'Railway stations',food:'Food premises',fuel:'Fuel forecourts',river:'River gauges'};
 /** The current mode's own layers come first; the rest keep a common order. */
 const LEADS:Record<ModeId,SearchGroup[]>={
  explore:['landmark','place'],transport:['route','stop'],drive:['fuel','place'],environment:['river','place'],eat:['food','place'],lab:[],

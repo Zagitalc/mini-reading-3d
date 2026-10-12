@@ -8,7 +8,7 @@ import { validateSns, confirmSns } from '../server/providers/sns';
 import { parseStreetManager } from '../server/providers/roadworks';
 import { parseFuel } from '../server/providers/fuel';
 import type { Env } from './env';
-import type { RailBoardResponse, StationBoard } from '../shared/rail-board';
+import { boardStation, type NearbyBoards, type RailBoardResponse, type StationBoard } from '../shared/rail-board';
 import { CloudStore } from './store';
 import { pollFeeds } from './poll';
 import { fuelHistoryFor, historyFor, recordHistory } from './history';
@@ -153,8 +153,12 @@ export default {
       if(path==='/api/v1/road-events')return json(snapshot(await store.active()));
       if(path==='/api/v1/rail-board'){
         // Reads the board saved by the scheduled rail refresh; viewers never trigger a provider call.
+        const station=boardStation(new URL(request.url).searchParams.get('station'));
+        if(!station)return json({error:'Unknown station'},404);
         const configured=!!(env.RDM_API_KEY||env.DARWIN_TOKEN);
-        return json({version:1,configured,board:configured?await store.state<StationBoard>('rail-board:RDG')??null:null} satisfies RailBoardResponse);
+        // Reading has its own saved board; the stations around it share one record from the same refresh.
+        const board=!configured?null:station==='RDG'?await store.state<StationBoard>('rail-board:RDG'):(await store.state<NearbyBoards>('rail-boards'))?.[station];
+        return json({version:1,configured,board:board??null} satisfies RailBoardResponse);
       }
       if(path==='/api/v1/traffic')return json(snapshot(env.TRAFFIC_FEED_URL?(await store.items<TrafficSegment>('traffic')).filter(fresh):[]));
       if(path==='/api/v1/vehicles'||path==='/api/v1/vehicle-state') {

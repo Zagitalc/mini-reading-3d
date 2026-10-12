@@ -78,8 +78,8 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
   await update('trains','Trains',(env.RDM_API_KEY||env.DARWIN_TOKEN) ? async () => {
     const geo = await asset<{features: unknown[]}>(env,'railways.json');
     const rail = new RailNetwork(geo.features);
-    const {items,routes,boards}=await fetchRailSnapshot({rdmKey:env.RDM_API_KEY,soapToken:env.DARWIN_TOKEN},rail);
-    return {items,routes,states:Object.fromEntries(Object.entries(boards).map(([station,board])=>[`rail-board:${station}`,board]))};
+    const {items,routes,boards,nearby}=await fetchRailSnapshot({rdmKey:env.RDM_API_KEY,soapToken:env.DARWIN_TOKEN},rail);
+    return {items,routes,states:{...Object.fromEntries(Object.entries(boards).map(([station,board])=>[`rail-board:${station}`,board])),...(Object.keys(nearby).length?{'rail-boards':nearby}:{})}};
   } : undefined);
   await update('traffic','Road traffic',!env.TOMTOM_API_KEY&&env.TRAFFIC_FEED_URL ? async () => ({items:await fetchTraffic(env.TRAFFIC_FEED_URL!,env.TRAFFIC_FEED_TOKEN)}) : undefined);
   await update('weather','Estimated weather',env.WEATHER_ENABLED==='true'?async()=>({items:await fetchWeather()}):undefined);

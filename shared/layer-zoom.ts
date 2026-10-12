@@ -10,6 +10,8 @@ export const LAYER_ZOOM={
  busLabels:13,
  routeLabels:13,
  riverGaugeLabels:13.5,
+ /** Pins for the railway stations around Reading (with the Trains layer). */
+ railStations:12.5,
  busStops:15,
  busStopLabels:17,
  /** Food premises: individual points, then their rating numbers. Below `foodPoints` the layer is not drawn. */

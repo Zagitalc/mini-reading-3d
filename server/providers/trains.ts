@@ -1,4 +1,4 @@
-import{XMLParser}from'fast-xml-parser';import{alongLine,bearing,fromLocal,lineLength,toLocal}from'../../shared/geo';import type{VehicleObservation,LngLat,NextCall}from'../../shared/types';import{RailNetwork,STATIONS}from'../rail-network';import{CAR_PITCH,carCount,carsShown}from'../../shared/train-cars';import{READING_PLATFORMS}from'../../shared/reading-platforms';import{BOARD_STATIONS,type RailDeparture,type StationBoard}from'../../shared/rail-board';
+import{XMLParser}from'fast-xml-parser';import{alongLine,bearing,fromLocal,lineLength,toLocal}from'../../shared/geo';import type{VehicleObservation,LngLat,NextCall}from'../../shared/types';import{RailNetwork,STATIONS}from'../rail-network';import{CAR_PITCH,carCount,carsShown}from'../../shared/train-cars';import{READING_PLATFORMS}from'../../shared/reading-platforms';import{BOARD_STATIONS,NEARBY_BOARD_SERVICES,type NearbyBoards,type RailDeparture,type StationBoard}from'../../shared/rail-board';import{NEARBY_STATIONS}from'../../shared/rail-stations';
 const arr=(v:any)=>v==null?[]:Array.isArray(v)?v:[v];const xml=(s:string)=>s.replace(/[<>&'\"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]!));
 export type RailCredentials = {rdmKey?:string;soapToken?:string};
 const RDM_ENDPOINT='https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepBoardWithDetails/';
@@ -39,18 +39,20 @@ export function summariseBoard(board:any,station:string):StationBoard{
    operator:text(s.operator)||'Operator not supplied',cancelled,...(reason?{reason}:{})});
  }
  const messages=arr(board.nrccMessages?.message??board.nrccMessages).map(m=>text(typeof m==='object'&&m?m.Value??m.value??m['#text']:m)).filter(Boolean).slice(0,3);
- return {schema:1,station,name:BOARD_STATIONS[station as keyof typeof BOARD_STATIONS]??station,generatedAt:new Date(board.generatedAt).toISOString(),services,messages,
+ return {schema:1,station,name:BOARD_STATIONS[station as keyof typeof BOARD_STATIONS]??NEARBY_STATIONS[station]??station,generatedAt:new Date(board.generatedAt).toISOString(),services,messages,
   source:'National Rail Darwin via Rail Data Marketplace',sourceUrl:'https://www.nationalrail.co.uk/developers/darwin-data-feeds/'};
 }
 
 export async function fetchRailSnapshot(credentials:RailCredentials,network:RailNetwork,now=Date.now()){
- const items=new Map<string,VehicleObservation>(),routes:Record<string,LngLat[]>={},boards:Record<string,StationBoard>={};
+ const items=new Map<string,VehicleObservation>(),routes:Record<string,LngLat[]>={},boards:Record<string,StationBoard>={},nearby:NearbyBoards={};
  let successes=0,lastError:unknown;
  for(const station of Object.keys(STATIONS)){
   try{
    const board=await fetchRailBoard(credentials,station),data=estimateBoard(board,station,network,now);successes++;
    // Keep boards from the same shared refresh; a board failing to summarise must not lose positions.
    if(station in BOARD_STATIONS){try{boards[station]=summariseBoard(board,station);}catch{}}
+   // The same fetch already covers the stations around Reading, so their next departures cost no extra requests.
+   if(station in NEARBY_STATIONS){try{const b=summariseBoard(board,station);nearby[station]={...b,services:b.services.slice(0,NEARBY_BOARD_SERVICES),messages:[]};}catch{}}
    for(const observation of data.observations){const previous=items.get(observation.id);
     if(!previous||Date.parse(observation.observedAt)>Date.parse(previous.observedAt)||(observation.observedAt===previous.observedAt&&observation.cancelled))items.set(observation.id,observation);
    }
@@ -62,7 +64,7 @@ export async function fetchRailSnapshot(credentials:RailCredentials,network:Rail
   }
  }
  if(!successes)throw lastError??Error('Rail unavailable');
- return {items:[...items.values()],routes,boards};
+ return {items:[...items.values()],routes,boards,nearby};
 }
 
 // A train that starts here is taken to be at its platform for the last few minutes before it leaves (once a platform is shown),
