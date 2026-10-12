@@ -1,4 +1,4 @@
-import{XMLParser}from'fast-xml-parser';import{alongLine,bearing,lineLength}from'../../shared/geo';import type{VehicleObservation,LngLat,NextCall}from'../../shared/types';import{RailNetwork,STATIONS}from'../rail-network';import{carCount}from'../../shared/train-cars';import{BOARD_STATIONS,type RailDeparture,type StationBoard}from'../../shared/rail-board';
+import{XMLParser}from'fast-xml-parser';import{alongLine,bearing,fromLocal,lineLength,toLocal}from'../../shared/geo';import type{VehicleObservation,LngLat,NextCall}from'../../shared/types';import{RailNetwork,STATIONS}from'../rail-network';import{CAR_PITCH,carCount,carsShown}from'../../shared/train-cars';import{READING_PLATFORMS}from'../../shared/reading-platforms';import{BOARD_STATIONS,type RailDeparture,type StationBoard}from'../../shared/rail-board';
 const arr=(v:any)=>v==null?[]:Array.isArray(v)?v:[v];const xml=(s:string)=>s.replace(/[<>&'\"]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;',"'":'&apos;','"':'&quot;'}[c]!));
 export type RailCredentials = {rdmKey?:string;soapToken?:string};
 const RDM_ENDPOINT='https://api1.raildata.org.uk/1010-live-departure-board-dep1_2/LDBWS/api/20220120/GetDepBoardWithDetails/';
@@ -65,13 +65,37 @@ export async function fetchRailSnapshot(credentials:RailCredentials,network:Rail
  return {items:[...items.values()],routes,boards};
 }
 
+// A train that starts here is taken to be at its platform for the last few minutes before it leaves (once a platform is shown),
+// and one that ends here for a few minutes after it arrives. Darwin gives no position for either.
+const WAIT_BEFORE_DEPARTURE=6*60000,WAIT_AFTER_ARRIVAL=4*60000;
+/** When a train standing at this station will leave (or be taken to have left), or null when it is not standing here now. */
+export function standingUntil(arrival:number|null,departure:number|null,now:number,platformShown:boolean,continues:boolean):number|null{
+ if(arrival!==null&&departure!==null)return arrival<=now&&now<=departure?departure:null;
+ if(departure!==null)return platformShown&&departure-WAIT_BEFORE_DEPARTURE<=now&&now<=departure?departure:null;
+ if(arrival!==null&&!continues)return arrival<=now&&now<=arrival+WAIT_AFTER_ARRIVAL?arrival+WAIT_AFTER_ARRIVAL:null;
+ return null;
+}
+/**
+ * Where a train standing at `station` is drawn. At Reading's numbered platforms it is centred on its platform and runs along it
+ * (the platform is also its route, so the cars line up); anywhere else it is at the station point and has no heading.
+ */
+export function standingPlace(station:string,platform:unknown,cars:number|undefined,id:string,routes:Record<string,LngLat[]>):{position:LngLat;bearing?:number;tripId?:string}{
+ const stop=station==='RDG'?READING_PLATFORMS[String(platform??'').trim()]:undefined;
+ if(!stop)return{position:STATIONS[station]};
+ const [x,y]=toLocal(stop.position),b=stop.bearing*Math.PI/180,dx=Math.sin(b),dy=Math.cos(b),half=stop.length/2;
+ const at=(d:number):LngLat=>fromLocal([x+dx*d,y+dy*d]);
+ routes[id]=[at(-half),at(half)];
+ // The lead car stands forward of the middle so the whole train is centred, up to the end of the platform.
+ return{position:at(Math.min(half,(carsShown(cars)-1)*CAR_PITCH/2)),bearing:stop.bearing,tripId:id};
+}
+
 // Resolve HH:mm around a dated observation in London, including midnight and BST.
 export function railTime(time:string,reference:number):number|null{if(!/^\d\d:\d\d$/.test(time))return null;const parts=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',hourCycle:'h23'}).formatToParts(new Date(reference));const p=Object.fromEntries(parts.map(p=>[p.type,p.value]));const wall=Date.UTC(+p.year,+p.month-1,+p.day,+p.hour,+p.minute),offset=wall-Math.floor(reference/60000)*60000;const [h,m]=time.split(':').map(Number);let result=Date.UTC(+p.year,+p.month-1,+p.day,h,m)-offset;while(result-reference>43200000)result-=86400000;while(result-reference< -43200000)result+=86400000;return result;}
 export function parseBoard(xmlText:string){const parsed=new XMLParser({removeNSPrefix:true,parseTagValue:false}).parse(xmlText);const body=parsed.Envelope?.Body;if(body?.Fault)throw Error('National Rail rejected the request');const response=body?.GetArrDepBoardWithDetailsResponse?.GetStationBoardResult;if(!response)throw Error('Unrecognised National Rail board');return response;}
 export function estimateBoard(board:any,station:string,network:RailNetwork,now=Date.now()):{observations:VehicleObservation[];routes:Record<string,LngLat[]>}{const observations:VehicleObservation[]=[],routes:Record<string,LngLat[]>={};const observedAt=board.generatedAt;if(!observedAt||!Number.isFinite(Date.parse(observedAt)))return{observations,routes};for(const s of arr(board.trainServices?.service)){const id=String(s.serviceID??'');if(!id)continue;const fleet=carCount(s.length),carField=fleet?{cars:fleet}:{};const cancelled=s.isCancelled===true||s.isCancelled==='true';if(cancelled){observations.push({id:`darwin:${id}`,kind:'train',...carField,position:STATIONS[station],observedAt,status:'estimated',cancelled:true,label:'Train',source:'National Rail Darwin'});continue;}
  const arrival=railTime(String(s.ata??(s.eta==='On time'?s.sta:s.eta)??s.sta??''),now),departure=railTime(String(s.atd??(s.etd==='On time'?s.std:s.etd)??s.std??''),now);
  const here=(at:number):NextCall=>({name:String(board.locationName??station),at:new Date(at).toISOString(),dwell:true,...(/^\d\d:\d\d$/.test(String(s.std??''))?{scheduled:String(s.std)}:{}),...(s.platform?{platform:String(s.platform)}:{})});
- if(arrival!==null&&departure!==null&&arrival<=now&&now<=departure){observations.push({id:`darwin:${id}`,kind:'train',...carField,position:STATIONS[station],observedAt,status:'estimated',stopUntil:new Date(departure).toISOString(),nextStop:here(departure),label:String(s.operator??'Train'),source:'National Rail Darwin'});continue;}
+ const until=standingUntil(arrival,departure,now,Boolean(s.platform),Boolean(text(s.std)));if(until!==null){const destination=String(arr(s.destination?.location)[0]?.locationName??'');observations.push({id:`darwin:${id}`,kind:'train',...carField,...standingPlace(station,s.platform,fleet,id,routes),observedAt,status:'estimated',stopUntil:new Date(until).toISOString(),...(departure!==null?{nextStop:here(until)}:{}),...(destination?{destination}:{}),label:String(s.operator??'Train'),source:'National Rail Darwin'});continue;}
  const calls=[...arr(s.previousCallingPoints?.callingPointList).flatMap(l=>arr(l.callingPoint)),{crs:station,locationName:board.locationName,platform:s.platform,st:s.std??s.sta,et:s.etd??s.eta,at:s.atd??s.ata},...arr(s.subsequentCallingPoints?.callingPointList).flatMap(l=>arr(l.callingPoint))];
  const timed=calls.map(c=>({crs:String(c.crs),name:String(c.locationName??c.crs),st:String(c.st??''),platform:c.platform?String(c.platform):undefined,time:railTime(String(c.at&&c.at!=='On time'?c.at:c.et&&c.et!=='On time'?c.et:c.st??''),Date.parse(observedAt))})).filter(c=>c.time!==null);
  let placed=false;for(let i=1;i<timed.length;i++){const a=timed[i-1],b=timed[i];if(!STATIONS[a.crs]||!STATIONS[b.crs]||a.time!>now||b.time!<now||b.time!<=a.time!)continue;const route=network.route(a.crs,b.crs);if(!route)continue;const len=lineLength(route),t=(now-a.time!)/(b.time!-a.time!),position=alongLine(route,t*len);routes[id]=route;observations.push({id:`darwin:${id}`,kind:'train',...carField,position,observedAt,status:'estimated',tripId:id,bearing:bearing(position,alongLine(route,Math.min(len,t*len+5))),speed:len/((b.time!-a.time!)/1000),label:String(s.operator??'Train'),destination:String(arr(s.destination?.location)[0]?.locationName??''),nextStop:{name:b.name,at:new Date(b.time!).toISOString(),...(/^\d\d:\d\d$/.test(b.st)?{scheduled:b.st}:{}),...(b.platform?{platform:b.platform}:{})},source:'National Rail Darwin',sourceUrl:'https://www.nationalrail.co.uk/developers/darwin-data-feeds/'});placed=true;break;}

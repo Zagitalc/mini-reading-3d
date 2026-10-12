@@ -23,7 +23,7 @@ test('a moving train carries its next timed call: the station, the time used to 
 
 test('RDM cancellations, unknown delays, future departures and replacement buses do not become moving trains',()=>{
  const services=[{...service,isCancelled:true},{...service,serviceID:'delayed',etd:'Delayed'},
-  {...service,serviceID:'future',std:'09:07'},{...service,serviceID:'bus',serviceType:'bus'}];
+  {...service,serviceID:'future',std:'09:30'},{...service,serviceID:'bus',serviceType:'bus'}];
  const data=estimateBoard(parseRdmBoard(board(services),'RDG'),'RDG',rail,now);
  assert.equal(data.observations.length,1);assert.equal(data.observations[0].cancelled,true);
 });

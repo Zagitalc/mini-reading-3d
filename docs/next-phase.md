@@ -103,7 +103,15 @@ This reverses the 3 October review's "no vehicle playback", so it needs a narrow
 
 Done 10 October. A train is drawn as linked cars (20 m bodies, 21 m apart) behind its estimated position, each car on the railway section the position was worked out from and pointing along the chord between its own two ends, so a long train bends round a curve. The count is Darwin's `length` for the service (`cars` on the observation); 0, missing or implausible (over 12) leaves it unset and three cars are drawn, which is what the Elizabeth line gets today. Cars are placed in `shared/train-cars.ts`, in the tracker, and drawn as instanced bodies (`RENDER_BUDGET.trainCars`).
 
-Limits: a train with no known railway section (one standing at a station, or one whose route could not be matched) is still a single body at its reported position, so a train changes shape as it arrives and leaves. Cars behind the start of a section run straight back along its first segment rather than along the previous section. At low zoom the spacing grows with the vehicle scale, like the rest of the vehicle. Tapping any car opens the train card; no formation is shown on the card.
+Limits: a train whose route could not be matched is still a single body at its reported position. Cars behind the start of a section run straight back along its first segment rather than along the previous section. At low zoom the spacing grows with the vehicle scale, like the rest of the vehicle. Tapping any car opens the train card; no formation is shown on the card.
+
+### Trains standing at Reading station
+
+Fixed 12 October after trains on the Reading board did not appear on the map. Two causes. First, the platform canopies are opaque slabs 5 m above the track, so a train under them was drawn but hidden from any tilted view; canopies are now see-through (`src/scene/georeferenced-landmarks.ts`). Second, a standing train was placed at the station point with no heading, and only trains with both an arrival and a departure time were treated as standing, so a train that starts at Reading (departure only) or ends there (arrival only) never appeared while it waited at the platform.
+
+Now a train is shown at Reading from six minutes before it leaves, once Darwin shows a platform, if it starts there, and for four minutes after it arrives, if it ends there (`standingUntil` in `server/providers/trains.ts`). Both windows are estimates, not observations: Darwin gives no position for either, so they carry the Estimated label. At Reading's fifteen numbered platforms the train is centred on the platform and runs along it, with its cars in line (`shared/reading-platforms.ts`, generated from the platform footprints by `scripts/derive-platform-stops.ts`; a test keeps the table in step with `public/data/landmark-components.json`). A platform not in the table, and every other station, keeps the station point.
+
+Limits: the platform footprint is the platform surface, so a train is drawn on or beside it, not on a particular track, and which end it faces is not known. A train joining from a station outside the eleven polled stations still shows only once it is standing at Reading, because its approach cannot be placed.
 
 ## Following phase — suggestions only
 

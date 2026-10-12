@@ -16,12 +16,14 @@ export function georeferencedLandmarks(components:LandmarkComponent[]){
  const facade=document.createElement('canvas');facade.width=128;facade.height=64;const ctx=facade.getContext('2d')!;ctx.fillStyle='#c3b6a6';ctx.fillRect(0,0,128,64);ctx.fillStyle='#789296';ctx.fillRect(0,18,128,28);ctx.fillStyle='#d2d0c3';for(let x=0;x<128;x+=16)ctx.fillRect(x,0,2,64);
  const wallTexture=new T.CanvasTexture(facade);wallTexture.colorSpace=T.SRGBColorSpace;wallTexture.wrapS=wallTexture.wrapT=T.RepeatWrapping;wallTexture.repeat.set(.07,.25);walls.map=wallTexture;
  const plainRoof=new T.MeshLambertMaterial({color:'#afb4b1'});
+ // Platform canopies are thin slabs over the tracks. Drawn solid they hide every train standing at the station, so they are see-through.
+ const canopy=roof.station.clone();canopy.transparent=true;canopy.opacity=.38;canopy.depthWrite=false;
  for(const c of components){
   const rings=c.rings.map(r=>r.map(p=>new T.Vector2(...toLocal(p))));
   const shape=new T.Shape(rings[0]);shape.holes=rings.slice(1).map(r=>new T.Path(r));
   const geometry=new T.ExtrudeGeometry(shape,{depth:c.height,bevelEnabled:false,steps:1});geometry.translate(0,0,c.base+.12);
-  const top=c.kind==='platform'?stone:c.landmark==='oracle'&&c.id!=='area/68649176'?plainRoof:roof[c.landmark as 'oracle'|'station'];
-  const side=c.kind==='platform'?stone:c.kind==='concourse'?glass:c.kind==='canopy'?roof.station:walls;
+  const top=c.kind==='canopy'?canopy:c.kind==='platform'?stone:c.landmark==='oracle'&&c.id!=='area/68649176'?plainRoof:roof[c.landmark as 'oracle'|'station'];
+  const side=c.kind==='platform'?stone:c.kind==='concourse'?glass:c.kind==='canopy'?canopy:walls;
   const mesh=new T.Mesh(geometry,[top,side]);mesh.userData={component:c.id,approximateHeights:true};root.add(mesh);
   // Thin raised roof level follows the same irregular boundary, including inner holes.
   if(c.kind==='building'&&c.landmark==='oracle'){
