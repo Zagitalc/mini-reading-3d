@@ -27,7 +27,7 @@ try{
  await expect(view).toContainText('Cheapest');await expect(view).toContainText('165.9p · Costco Reading members only');
  await expect(view).toContainText('Costco sells fuel to its members only');
  await expect(view.locator('.fuel-saving')).toContainText('Without a Costco membership, the cheapest is Tesco Extra at 173.9p, which saves £0.55');
- await expect(view).toContainText('1 price is left out because it was reported more than seven days ago');
+ await expect(view).toContainText('1 price is left out because its forecourt has reported nothing for over a week');
  await expect(view).toContainText('(motorway services)');
  // Tank of 55 litres: middle price of five current is 174.9p, so Costco's 9p a litre saves £4.95, and 33p under the motorway £18.15.
  await expect(view.locator('.fuel-saving')).toContainText('£4.95');await expect(view.locator('.fuel-saving')).toContainText('£18.15');
@@ -50,7 +50,7 @@ try{
  await expect(page.getByRole('button',{name:/New Kitchen/})).toBeVisible();await expect(page.getByRole('button',{name:/Hill School Kitchen/})).toHaveCount(0);await expect(page.getByRole('button',{name:/Corner Kitchen Supermarket/})).toHaveCount(0);await page.waitForTimeout(600);
  // A grey pump says why: the station card for a 21-day-old price names the age, is not compared with the median, and stays separate from a current one.
  await page.getByRole('searchbox',{name:'Search Mini Reading'}).fill('Old price');await page.getByRole('button',{name:/Old price garage/}).click();
- await expect(page.locator('#details')).toContainText('21 days old: it was last reported more than seven days ago');await expect(page.locator('#details')).toContainText('left out of the Reading comparison and shows grey');
+ await expect(page.locator('#details')).toContainText('21 days old: this forecourt has reported no prices for more than seven days');await expect(page.locator('#details')).toContainText('left out of the Reading comparison and shows grey');
  await expect(page.locator('#details')).not.toContainText('the Reading middle price');
  await page.waitForTimeout(1800);await page.screenshot({path:'test-results/fuel-old-label.png'});
  await page.getByRole('searchbox',{name:'Search Mini Reading'}).fill('Costco');await page.getByRole('button',{name:/Costco Reading/}).first().click();

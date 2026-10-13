@@ -1,11 +1,11 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {band,detours,litresPer100km,oldLong,oldShort,priceRows,priceStatus,spread,tripCost,PRICE_MAX_AGE_MS} from '../shared/fuel-compare';
+import {band,detours,litresPer100km,oldLong,oldShort,priceRows,priceStatus,spread,tripCost,SITE_ACTIVE_MS} from '../shared/fuel-compare';
 import type {FuelStation,LngLat} from '../shared/types';
 const now=Date.parse('2026-09-28T12:00:00Z');
 const station=(id:string,pence:number,position:LngLat=[-0.97,51.45],submittedAt='2026-09-28T08:00:00Z',quiet=false,brand='Test'):FuelStation=>({id,name:id,brand,postcode:'RG1',position,quiet,observedAt:'2026-09-28T09:00:00Z',source:'test',prices:{E10:{pence,submittedAt}}});
 test('the spread uses current prices only and prices a 55-litre tank',()=>{
- const old=new Date(now-PRICE_MAX_AGE_MS-3_600_000).toISOString();
+ const old=new Date(now-SITE_ACTIVE_MS-3_600_000).toISOString();
  const s=spread([station('a',139.9),station('b',147.9),station('c',142.9),station('stale',120.9,undefined,old),station('quiet',121.9,undefined,undefined,true),station('Reading West Services M4',199.9,undefined,'2026-09-23T08:00:00Z')],'E10',55,now);
  assert.deepEqual(s.current.map(r=>r.id),['a','c','b','Reading West Services M4'],'a five-day-old price still counts');
  assert.equal(s.current[3].motorway,true);
@@ -23,7 +23,7 @@ test('Costco is compared like any forecourt but flagged as members only',()=>{
  assert.deepEqual(s.current.map(r=>[r.id,r.membersOnly]),[['costco',true],['a',false],['c',false],['b',false]]);
  assert.equal(s.cheapest!.id,'costco');assert.equal(s.cheapestOpen!.id,'a','the cheapest anyone can use is named too');
  assert.equal(s.median,141.4);assert.equal(s.savingMedian,12.38);assert.equal(s.savingMedianOpen,0.83);
- const old=new Date(now-PRICE_MAX_AGE_MS-3_600_000).toISOString();
+ const old=new Date(now-SITE_ACTIVE_MS-3_600_000).toISOString();
  assert.deepEqual(spread([station('a',139.9),station('costco',118.9,undefined,old,false,'COSTCO')],'E10',55,now).old.map(r=>r.id),['costco'],'an old Costco price is set aside like any other');
  const plain=spread([station('a',139.9),station('b',147.9)],'E10',55,now);assert.equal(plain.cheapestOpen!.id,'a');assert.equal(plain.savingMedianOpen,plain.savingMedian);
  const onlyCostco=spread([station('costco',118.9,undefined,undefined,false,'COSTCO')],'E10',55,now);assert.equal(onlyCostco.cheapestOpen,undefined);assert.equal(onlyCostco.savingMedianOpen,0);
@@ -51,16 +51,22 @@ test('car against bus counts fuel both ways plus parking',()=>{
 
 test('price status is per grade and says why a price is left out',()=>{
  const now=Date.parse('2026-10-07T12:00:00Z'),ago=(d:number)=>new Date(now-d*86_400_000).toISOString();
- // Fresh diesel with an old E10 at the same site: the pump is current for one grade and old for the other.
- const site={quiet:false,prices:{B7S:{pence:203.9,submittedAt:ago(4)},E10:{pence:178.9,submittedAt:ago(9)}}};
+ // Forecourts file a price when it changes. Diesel filed 4 days ago shows the site is still reporting, so its
+ // unchanged 14-day-old E10 counts; a 35-day-old E5 does not.
+ const site={quiet:false,prices:{B7S:{pence:203.9,submittedAt:ago(4)},E10:{pence:178.9,submittedAt:ago(14)},E5:{pence:195.9,submittedAt:ago(35)}}};
  assert.deepEqual(priceStatus(site,'B7S',now),{state:'current'});
- const e10=priceStatus(site,'E10',now);assert.deepEqual(e10,{state:'old',reason:'age',days:9});
- assert.equal(oldShort(e10 as never),'9 days old');assert.match(oldLong(e10 as never,'E10'),/9 days old.*more than seven days/);
+ assert.deepEqual(priceStatus(site,'E10',now),{state:'current'});
+ const e5=priceStatus(site,'E5',now);assert.deepEqual(e5,{state:'old',reason:'age',days:35});
+ assert.equal(oldShort(e5 as never),'35 days old');assert.match(oldLong(e5 as never,'E5'),/35 days old.*more than 30 days/);
+ // A forecourt that has filed nothing for 9 days: every grade is old, counted from its last filing.
+ const silent=priceStatus({quiet:false,prices:{B7S:{pence:200,submittedAt:ago(9)},E10:{pence:176.9,submittedAt:ago(11)}}},'E10',now);
+ assert.deepEqual(silent,{state:'old',reason:'site',days:9});assert.equal(oldShort(silent as never),'9 days old');
+ assert.match(oldLong(silent as never,'E10'),/9 days old: this forecourt has reported no prices for more than seven days/);
  const quiet=priceStatus({quiet:true,prices:{E10:{pence:150,submittedAt:ago(1)}}},'E10',now);
  assert.deepEqual(quiet,{state:'old',reason:'quiet',days:1});assert.equal(oldShort(quiet as never),'quiet site');assert.match(oldLong(quiet as never,'E10'),/stopped reporting/);
  const none=priceStatus(site,'B7P',now);assert.equal(none.state==='old'&&none.reason,'none');assert.match(oldLong(none as never,'B7P'),/no Premium diesel price/);
  assert.equal(priceStatus({quiet:false,prices:{E10:{pence:150,submittedAt:ago(7)}}},'E10',now).state,'current','exactly seven days is still current');
  // It agrees with priceRows, which decides what the comparison uses.
- const rows=priceRows([{...site,id:'a',name:'A',brand:'A',postcode:'RG1',position:[-.97,51.45],observedAt:'',source:'t'} as never],'E10',now);
+ const rows=priceRows([{...site,id:'a',name:'A',brand:'A',postcode:'RG1',position:[-.97,51.45],observedAt:'',source:'t'} as never],'E5',now);
  assert.equal(rows.current.length,0);assert.equal(rows.old.length,1);
 });

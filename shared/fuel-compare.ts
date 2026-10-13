@@ -1,26 +1,40 @@
 import {distance} from './geo';
 import type {FuelStation,LngLat} from './types';
-/** Fuel sums for the map. Every figure keeps the submission time of each price it uses. A price older
- * than PRICE_MAX_AGE_MS, or from a site that has gone quiet, is kept out of comparisons because an old
- * price can look like a bargain. Members-only forecourts (Costco) are compared like any other but carry
+/** Fuel sums for the map. Every figure keeps the submission time of each price it uses. Forecourts must
+ * report a price when it changes, not when it stays the same, so a price filed a fortnight ago is usually
+ * still the price on the board. What tells a stale price is a forecourt that has stopped filing: a price is
+ * kept out of comparisons when its site has filed nothing for SITE_ACTIVE_MS, when the price itself is older
+ * than GRADE_MAX_AGE_MS, or when the source marks the site quiet, because an old price can look like a bargain. Members-only forecourts (Costco) are compared like any other but carry
  * a flag, so every place that shows their price can say that a membership is needed. */
 export const GRADE_NAMES:Record<string,string>={E10:'Petrol E10',E5:'Super unleaded E5',B7S:'Diesel',B7P:'Premium diesel'};
-export const PRICE_MAX_AGE_MS=7*86_400_000;
-/** Whether a station's price for one grade counts in comparisons, and if not, why. The reason is per grade: a forecourt can
- * report diesel today and an E10 price from last week, so one pump can be current for one grade and old for another. */
-export type PriceStatus={state:'current'}|{state:'old';reason:'none'|'quiet'|'age';days:number};
+/** A forecourt that has filed any price within this window is still reporting, so its unchanged prices count. */
+export const SITE_ACTIVE_MS=7*86_400_000;
+/** No price counts once it is this old, however busy its forecourt. */
+export const GRADE_MAX_AGE_MS=30*86_400_000;
+/** When the forecourt last filed a price for any grade, in milliseconds, or NaN when it has none. */
+export function lastFiled(s:Pick<FuelStation,'prices'>):number {
+ const times=Object.values(s.prices).map(p=>Date.parse(p.submittedAt)).filter(Number.isFinite);
+ return times.length?Math.max(...times):NaN;
+}
+/** Whether a station's price for one grade counts in comparisons, and if not, why: 'site' means the forecourt has filed
+ * nothing for over SITE_ACTIVE_MS (days counts from its last filing), 'age' that this price passed GRADE_MAX_AGE_MS. */
+export type PriceStatus={state:'current'}|{state:'old';reason:'none'|'quiet'|'site'|'age';days:number};
 export function priceStatus(s:Pick<FuelStation,'quiet'|'prices'>,grade:string,now=Date.now()):PriceStatus {
  const p=s.prices[grade];if(!p)return {state:'old',reason:'none',days:0};
- const age=now-Date.parse(p.submittedAt),days=Number.isFinite(age)?Math.floor(age/86_400_000):0;
+ const age=now-Date.parse(p.submittedAt),days=(ms:number)=>Math.floor(ms/86_400_000);
  if(!Number.isFinite(age))return {state:'old',reason:'none',days:0};
- if(age>PRICE_MAX_AGE_MS)return {state:'old',reason:'age',days};
- return s.quiet?{state:'old',reason:'quiet',days}:{state:'current'};
+ if(s.quiet)return {state:'old',reason:'quiet',days:days(age)};
+ const silent=now-lastFiled(s);
+ if(silent>SITE_ACTIVE_MS)return {state:'old',reason:'site',days:days(silent)};
+ if(age>GRADE_MAX_AGE_MS)return {state:'old',reason:'age',days:days(age)};
+ return {state:'current'};
 }
 /** Short wording for a map label: "9 days old" or "quiet site". */
-export const oldShort=(status:Extract<PriceStatus,{state:'old'}>)=>status.reason==='age'?`${status.days} days old`:status.reason==='quiet'?'quiet site':'no price';
+export const oldShort=(status:Extract<PriceStatus,{state:'old'}>)=>status.reason==='age'||status.reason==='site'?`${status.days} days old`:status.reason==='quiet'?'quiet site':'no price';
 /** Full wording for the station card, finishing "This price is …". */
 export const oldLong=(status:Extract<PriceStatus,{state:'old'}>,grade:string)=>
- status.reason==='age'?`${status.days} days old: it was last reported more than seven days ago`:status.reason==='quiet'?'from a site that has stopped reporting (no prices for at least 14 days)':`missing: this site has no ${GRADE_NAMES[grade]??grade} price`;
+ status.reason==='site'?`${status.days} days old: this forecourt has reported no prices for more than seven days`:
+ status.reason==='age'?`${status.days} days old: it was last reported more than 30 days ago`:status.reason==='quiet'?'from a site that has stopped reporting (no prices for at least 14 days)':`missing: this site has no ${GRADE_NAMES[grade]??grade} price`;
 /** Costco sells fuel to its members only; you need a membership card at the pump. */
 export const membersOnly=(s:{brand:string;name:string})=>/costco/i.test(`${s.brand} ${s.name}`);
 /** Motorway service areas price well above town forecourts; they are labelled so they read as outliers. */
@@ -45,7 +59,7 @@ export function priceRows(stations:FuelStation[],grade:string,now=Date.now()):{c
  const current:PriceRow[]=[],old:PriceRow[]=[];
  for(const s of stations){const p=s.prices[grade];if(!p)continue;const age=now-Date.parse(p.submittedAt);if(!Number.isFinite(age))continue;
   const row={id:s.id,name:s.name,brand:s.brand,postcode:s.postcode,position:s.position,pence:p.pence,submittedAt:p.submittedAt,ageHours:Math.max(0,Math.round(age/3_600_000)),motorway:motorway(s),membersOnly:membersOnly(s)};
-  (age>PRICE_MAX_AGE_MS||s.quiet?old:current).push(row);}
+  (priceStatus(s,grade,now).state==='old'?old:current).push(row);}
  const order=(a:PriceRow,b:PriceRow)=>a.pence-b.pence||a.name.localeCompare(b.name);
  return {current:current.sort(order),old:old.sort(order)};
 }

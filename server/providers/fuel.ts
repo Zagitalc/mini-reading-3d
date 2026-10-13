@@ -22,9 +22,24 @@ export function trimFuelToArea(input:unknown){
  const near=(r:unknown)=>{const s=r as {lat?:unknown;lon?:unknown};return typeof s?.lat==='number'&&typeof s?.lon==='number'&&inBounds([s.lon,s.lat]);};
  return {source_generated_at:data.source_generated_at,stations:data.stations.filter(near)};
 }
+/** How recently forecourts in a source file filed a price: the newest filing, and how many stations filed any grade
+ * within a day and within a week. Tells a mirror that has stopped taking new prices from forecourts that rarely file. */
+export function filingSummary(input:unknown,now=Date.now()){
+ const data=z.object({stations:z.array(z.unknown())}).parse(input);let newest=0,day=0,week=0;
+ for(const raw of data.stations){
+  const prices=(raw as {prices?:Record<string,{submitted_at?:unknown}>})?.prices??{};
+  const last=Math.max(0,...Object.values(prices).map(p=>typeof p?.submitted_at==='string'?Date.parse(p.submitted_at):0).filter(t=>t<=now+60_000));
+  if(!last)continue;newest=Math.max(newest,last);if(now-last<=86_400_000)day++;if(now-last<=7*86_400_000)week++;
+ }
+ return {stations:data.stations.length,newest:newest?new Date(newest).toISOString():undefined,day,week};
+}
+/** The whole national file, as published. */
+export async function fetchFuelNational():Promise<unknown> {
+ const r=await fetch(FUEL_NATIONAL_URL,{headers:{'User-Agent':FUEL_USER_AGENT},signal:AbortSignal.timeout(60_000)});if(!r.ok)throw Error(`Fuel HTTP ${r.status}`);return r.json();
+}
 /** The national file trimmed to the map; used by the GitHub fuel refresh and the local server. */
 export async function fetchFuelArea() {
- const r=await fetch(FUEL_NATIONAL_URL,{headers:{'User-Agent':FUEL_USER_AGENT},signal:AbortSignal.timeout(60_000)});if(!r.ok)throw Error(`Fuel HTTP ${r.status}`);return trimFuelToArea(await r.json());
+ return trimFuelToArea(await fetchFuelNational());
 }
 /** The Worker's own fallback: the small Reading town file, which misses a few forecourts in the area. */
 export async function fetchFuel() {

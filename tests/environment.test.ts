@@ -1,7 +1,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {parseWeather} from '../server/providers/weather';
-import {parseFuel,trimFuelToArea} from '../server/providers/fuel';
+import {parseFuel,trimFuelToArea,filingSummary} from '../server/providers/fuel';
 import {TrafficTiles,memoryTileCache,validTrafficTile} from '../server/providers/tomtom';
 import {matchBusRoute,type BusNetwork} from '../server/route-matcher';
 import {CADENCE,due,retryDelay} from '../shared/feed-policy';
@@ -39,4 +39,16 @@ test('the national fuel file is trimmed to the map on raw coordinates, keeping t
  const area=trimFuelToArea(input);assert.deepEqual(area.stations.map(x=>(x as {id:string}).id),['loddon'],'a Berkshire-filed forecourt inside the map is kept');
  assert.equal(area.source_generated_at,'2026-09-14T11:00:00.073000Z');assert.equal(parseFuel(area,now)[0].postcode,'RG6 7HN');
  assert.throws(()=>trimFuelToArea({stations:[]}));
+});
+test('the filing summary tells a stuck fuel mirror from forecourts that rarely file',()=>{
+ const now=Date.parse('2026-10-13T12:00:00Z'),at=(h:number)=>new Date(now-h*3_600_000).toISOString();
+ const file={stations:[
+  {id:'a',prices:{E10:{pence_per_litre:150,submitted_at:at(3)},B7:{pence_per_litre:160,submitted_at:at(300)}}},
+  {id:'b',prices:{E10:{pence_per_litre:151,submitted_at:at(100)}}},
+  {id:'c',prices:{E10:{pence_per_litre:152,submitted_at:at(290)}}},
+  {id:'d',prices:{}},
+  {id:'e',prices:{E10:{pence_per_litre:153,submitted_at:new Date(now+86_400_000).toISOString()}}},
+ ]};
+ assert.deepEqual(filingSummary(file,now),{stations:5,newest:at(3),day:1,week:2});
+ assert.deepEqual(filingSummary({stations:[]},now),{stations:0,newest:undefined,day:0,week:0});
 });
