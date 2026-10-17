@@ -29,6 +29,13 @@ export function scheduledDepartures(data:StopTimetable,now=Date.now(),hours=24,l
  }
  return result.sort((a,b)=>a.time-b.time||a.tripId.localeCompare(b.tripId)||a.sequence-b.sequence).slice(0,limit);
 }
+/** Where a journey is heading when it calls at this stop: the stop's own headsign (a loop's far side before it turns,
+ * such as Woodley for the 13 leaving Blagrave Street), and the journey's final destination when that differs. */
+export function headingAt(data:StopTimetable,tripId:string):{towards:string;then?:string}|undefined{
+ const index=data.trips.findIndex(t=>t.id===tripId);if(index<0)return undefined;
+ const trip=data.trips[index],call=data.times.find(t=>t[0]===index&&t[5]);
+ return call?.[5]&&call[5]!==trip.headsign?{towards:call[5],then:trip.headsign}:{towards:trip.headsign};
+}
 export function timetableExpired(index:Pick<StopIndex,'validUntil'|'timezone'>,now=Date.now()){return localDate(now,index.timezone)>index.validUntil;}
 
 export function timetableStatus(index:Pick<StopIndex,'validFrom'|'validUntil'|'timezone'>,now=Date.now()){

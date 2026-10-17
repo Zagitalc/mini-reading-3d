@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+// Both production crons: the minute run (trains, history) and the five-minute run (slow feeds).
+const tick=async w=>{await w.scheduled({cron:'*/5 * * * *'});return w.scheduled({cron:'* * * * *'});};
 import {readFile} from 'node:fs/promises';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 const calls={bus:0,busTrips:0,weather:0,fuel:0,traffic:0,rivers:0};
@@ -23,12 +25,12 @@ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{modules:true,scriptP
 try{
  const db=await mf.getD1Database('DB');for(const file of ['0001_initial.sql','0002_history.sql'])for(const s of (await readFile('migrations/'+file,'utf8')).replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  const get=path=>mf.dispatchFetch('http://local'+path);
- const worker=await mf.getWorker();const tick=await worker.scheduled({cron:'* * * * *'});assert.equal(tick.outcome,'ok');assert.equal(calls.bus,0,'global cron must not call the geo-restricted BODS API');
+ const worker=await mf.getWorker();const first=await tick(worker);assert.equal(first.outcome,'ok');assert.equal(calls.bus,0,'global cron must not call the geo-restricted BODS API');
  {const state=await (await get('/api/v1/vehicle-state')).json();assert.equal(state.data.length,1,'bus survives unavailable route geometry');assert.equal(state.data[0].timetableTripId,'VJfixture','GTFS-RT names the timetabled trip');}
  assert.equal((await (await get('/api/v1/weather')).json()).data.length,1);
  assert.equal((await (await get('/api/v1/fuel')).json()).data.length,1);
  const rivers=await (await get('/api/v1/rivers')).json();assert.deepEqual(rivers.data.map(i=>i.kind),['gauge','warning']);assert.equal(rivers.warningsCurrent,true);assert.equal(rivers.data[1].area.type,'MultiPolygon');
- await Promise.all([worker.scheduled({cron:'* * * * *'}),worker.scheduled({cron:'* * * * *'})]);assert.deepEqual(calls,{bus:1,busTrips:1,weather:1,fuel:1,traffic:0,rivers:4},'repeat cron must not refetch early (rivers: list, gauge, floods, one outline)');
+ await Promise.all([tick(worker),tick(worker)]);assert.deepEqual(calls,{bus:1,busTrips:1,weather:1,fuel:1,traffic:0,rivers:4},'repeat cron must not refetch early (rivers: list, gauge, floods, one outline)');
  assert.equal((await get('/api/v1/traffic-tiles/12/2036/1362')).status,200);assert.equal((await get('/api/v1/traffic-tiles/12/2036/1362')).status,200);assert.equal(calls.traffic,1,'cached tile must not spend quota');
  const usage=(await (await get('/api/v1/usage')).json());assert.equal(usage.trafficTileRequests,1);assert.equal(usage.trafficTileLimit,2);
  await db.prepare('UPDATE state SET body=? WHERE id=?').bind('{"count":2}','traffic-usage:'+new Date().toISOString().slice(0,7)).run();
@@ -45,7 +47,7 @@ try{
   const first=await (await get('/api/v1/history?days=1')).json(),minutes=first.hours.reduce((a,h)=>a+h.minutes,0);
   assert.ok(minutes>=1&&minutes<=2,'three cron runs across at most two minutes record at most two samples');assert.ok(first.recordingSince);
   assert.equal(first.fuel.length,1);assert.equal(first.fuel[0].grades.E10.cheapest,140.9);assert.equal(first.fuel[0].stations,undefined);
-  await db.prepare('UPDATE state SET body=? WHERE id=?').bind('0','history-lease').run();await worker.scheduled({cron:'* * * * *'});
+  await db.prepare('UPDATE state SET body=? WHERE id=?').bind('0','history-lease').run();await tick(worker);
   const later=(await (await get('/api/v1/history?days=1')).json()).hours.at(-1);
   assert.deepEqual(later.buses&&[later.buses.mean,later.buses.max],[1,1],'a bus refresh in the last two minutes is sampled');assert.equal(later.trains,null,'no rail key, no train sample');assert.equal(later.feeds.weather,1);
   assert.equal((await db.prepare('SELECT count(*) AS n FROM history_fuel').first()).n,1,'one fuel row per day');}
@@ -64,7 +66,7 @@ try{
   const before=calls.fuel;await db.prepare('UPDATE state SET body=? WHERE id=?').bind('0','poll-lease:fuel').run();
   const fuelState=JSON.parse((await db.prepare('SELECT body FROM state WHERE id=?').bind('fuel').first()).body);
   await db.prepare('UPDATE state SET body=? WHERE id=?').bind(JSON.stringify({...fuelState,lastAttempt:new Date(Date.now()-7*3600000).toISOString()}),'fuel').run();
-  await worker.scheduled({cron:'* * * * *'});assert.equal(calls.fuel,before,'the cron leaves fuel alone while uploads are recent');
+  await tick(worker);assert.equal(calls.fuel,before,'the cron leaves fuel alone while uploads are recent');
   assert.equal((await (await get('/api/v1/health')).json()).data.find(f=>f.id==='fuel').message,'Uploaded by the GitHub fuel refresh twice a day');}
  {// A fuel run cut short after taking its lease still shows on /health.
   const fuel=JSON.parse((await db.prepare('SELECT body FROM state WHERE id=?').bind('fuel').first()).body);

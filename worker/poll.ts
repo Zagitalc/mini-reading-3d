@@ -21,6 +21,15 @@ async function asset<T>(env: Env, name: string): Promise<T> {
   const data=await response.json();assets.set(name,data);return data as T;
 }
 
+// The rail graph is rebuilt from ~1 MB of GeoJSON, which is the largest single CPU cost of a cron run
+// and is identical every time, so it is built once per isolate (its route cache then persists too).
+let railNetwork:RailNetwork|undefined;
+async function rail(env:Env){
+  if(railNetwork)return railNetwork;
+  const geo=await asset<{features:unknown[]}>(env,'railways.json');
+  return railNetwork=new RailNetwork(geo.features);
+}
+
 export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','trains','traffic','weather','fuel','rivers']) {
   const store = new CloudStore(env.DB);
   async function update(id: FeedStatus['id'], label: string, fetcher?: () => Promise<{items: {id:string}[]; routes?: Record<string, LngLat[]>; states?: Record<string, unknown>}>) {
@@ -76,9 +85,7 @@ export async function pollFeeds(env: Env, feeds:FeedStatus['id'][]=['buses','tra
     return {items,routes};
   } : undefined);
   await update('trains','Trains',(env.RDM_API_KEY||env.DARWIN_TOKEN) ? async () => {
-    const geo = await asset<{features: unknown[]}>(env,'railways.json');
-    const rail = new RailNetwork(geo.features);
-    const {items,routes,boards,nearby}=await fetchRailSnapshot({rdmKey:env.RDM_API_KEY,soapToken:env.DARWIN_TOKEN},rail);
+    const {items,routes,boards,nearby}=await fetchRailSnapshot({rdmKey:env.RDM_API_KEY,soapToken:env.DARWIN_TOKEN},await rail(env));
     return {items,routes,states:{...Object.fromEntries(Object.entries(boards).map(([station,board])=>[`rail-board:${station}`,board])),...(Object.keys(nearby).length?{'rail-boards':nearby}:{})}};
   } : undefined);
   await update('traffic','Road traffic',!env.TOMTOM_API_KEY&&env.TRAFFIC_FEED_URL ? async () => ({items:await fetchTraffic(env.TRAFFIC_FEED_URL!,env.TRAFFIC_FEED_TOKEN)}) : undefined);

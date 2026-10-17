@@ -106,6 +106,8 @@ async function ingestFuel(request: Request, env: Env, store: CloudStore) {
   return json({accepted:true,stations:items.length});
 }
 
+/** Must match the second entry of `triggers.crons` in wrangler.jsonc. */
+const SLOW_CRON='*/5 * * * *';
 const tileServices=new WeakMap<object,TrafficTiles>();
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
@@ -186,8 +188,12 @@ export default {
       return json({error:'Unknown API endpoint'},404);
     }catch{return json({error:'Data service unavailable'},503);}
   },
-  async scheduled(_event: ScheduledController, env: Env, _ctx: ExecutionContext) {
-    await pollFeeds(env,['trains','traffic','weather','fuel','rivers']);
+  async scheduled(event: ScheduledController, env: Env, _ctx: ExecutionContext) {
+    // Two crons keep each invocation inside the free plan's 10 ms CPU budget: the slow feeds
+    // (each already gated by its own cadence) run on their own five-minute invocation, so they
+    // never add to the minute run that refreshes trains and samples history.
+    if(event.cron===SLOW_CRON){await pollFeeds(env,['traffic','weather','fuel','rivers']);return;}
+    await pollFeeds(env,['trains']);
     // History failures (for example, before its migration is applied) must never stop the live feeds.
     try{const store=new CloudStore(env.DB);await recordHistory(env,store,await feedHealth(store,env,false));}
     catch(error){console.warn('History sample failed',{reason:error instanceof Error?error.message:'unknown'});}

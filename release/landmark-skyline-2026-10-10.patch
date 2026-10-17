@@ -1,0 +1,231 @@
+diff --git a/docs/next-phase.md b/docs/next-phase.md
+index d4cfa9d4..333e080e 100644
+--- a/docs/next-phase.md
++++ b/docs/next-phase.md
+@@ -28,6 +28,8 @@ Bus routes and Train routes are independent static layers, initially off. Search
+ 
+ The Oracle follows its irregular mall footprint and separately identified riverside, cinema and parking components, including curved polygon ends. Geometry anchors are source coordinates, independent of label positions. No rectangle spans the Kennet. Roof patterns follow source footprint axes, not a guessed model rotation. Heights, facade glazing, roof profiles and skylight spacing remain approximate miniature details informed by the supplied screenshots; this is not a surveyed architectural model. Source building parts and platforms are retained by extraction for future refinement.
+ 
++Skyline set (10 October): The Blade, Thames Tower, Reading Minster and St Laurence's Church are modelled on their mapped footprints in `shared/skyline.ts` (drawn by `src/scene/skyline.ts`, about 12 extra meshes). They have no map pins or cards. The generic buildings they replace are skipped by id in the building worker and in the low-zoom overview layer, so regenerating the geography keeps them. Heights for The Blade (roof 59 m, mast 86 m) and Thames Tower (55 m) come from Wikipedia; Minster and St Laurence's heights are estimates, and the west-end tower position is assumed. Thames Tower's footprint is the nearest candidate to the article's coordinates (17 m; the next is 40 m), so it is the least certain match. Not yet modelled: Reading Gaol, Abbey Gateway, Forbury Hill.
++
+ ## Roadmap after the live-traffic map review (9 October 2026)
+ 
+ Source: a look at uklivetraffic.duckdns.org, a UK live-traffic map built with Next.js, MapLibre and OpenFreeMap. Two things are worth taking from it. The first is a warning: it puts a DfT yearly-average "busiest road" under a "Very busy now" headline and mentions that it is "not a live count" only in small print. The second is its local summary, which is a good idea even though its layout is not.
+@@ -40,7 +42,7 @@ What stays the same: the stack (Vite, MapLibre, Three.js, the Cloudflare Worker
+ 2. **Evidence labels** (small to medium; done 9 October). New, and placed first because items 3 and 4 below rely on it.
+ 3. **Layer zoom thresholds and a render budget** (small; done 9 October, see below). Placed before landmark models, which add draw calls.
+ 4. **Local summary for the area in view** (medium; done 10 October, see below).
+-5. Detailed landmark models (large). Already queued; moves down behind items 2 to 4.
++5. Detailed landmark models (large; first stage done 10 October: the "Skyline" set, see Landmark modelling limits). Already queued; moves down behind items 2 to 4.
+ 6. Multi-car trains (small). Unchanged; still waits for "build trains".
+ 7. **Replay the last hour** (medium, low priority).
+ 
+diff --git a/node_modules b/node_modules
+new file mode 120000
+index 00000000..edf3ff92
+--- /dev/null
++++ b/node_modules
+@@ -0,0 +1 @@
++/home/user/mini-reading-3d/node_modules
+\ No newline at end of file
+diff --git a/shared/skyline.ts b/shared/skyline.ts
+new file mode 100644
+index 00000000..922a6b77
+--- /dev/null
++++ b/shared/skyline.ts
+@@ -0,0 +1,33 @@
++import type {LngLat} from './types';
++
++/**
++ * Four tall or distinctive buildings modelled by hand on top of their mapped OpenStreetMap footprints.
++ * The footprints are copied from the bundled building chunks; heights and roof shapes are approximate.
++ * `height` is the main roof or eave level in metres; `source` says where a figure came from, or that it is a guess.
++ */
++export interface SkylineLandmark {
++ id:string;name:string;kind:'tower'|'church';
++ /** Building id in the chunks and map tiles, without the trailing part number. */
++ buildingId:string;ring:LngLat[];
++ height:number;
++ /** Tower: slim mast above the roof, to this height. Church: height of the west tower. */
++ top?:number;
++ source:string;heightSource:'cited'|'estimated';
++}
++
++export const SKYLINE:SkylineLandmark[]=[
++ {id:'blade',name:'The Blade',kind:'tower',buildingId:'area/65505346',ring:[[-0.9669065,51.4556034],[-0.9668554,51.4555309],[-0.9668282,51.4555384],[-0.9667491,51.4554262],[-0.966121,51.4555981],[-0.9661787,51.45568],[-0.9661263,51.4557184],[-0.9662148,51.4557205],[-0.9663067,51.4557171],[-0.9664287,51.4557054],[-0.9665045,51.4556958],[-0.9666058,51.4556766],[-0.9666802,51.4556599],[-0.9667437,51.455643],[-0.9667466,51.4556471],[-0.9669065,51.4556034]] as LngLat[],height:59,top:86,
++  source:'Roof 59 m and antenna spire 86 m, per Wikipedia (https://en.wikipedia.org/wiki/The_Blade,_Reading); footprint matched by the article coordinates 51.4556, -0.9664.',heightSource:'cited'},
++ {id:'thames-tower',name:'Thames Tower',kind:'tower',buildingId:'area/77499534',ring:[[-0.9730014,51.4582066],[-0.9729882,51.458031],[-0.9729758,51.4578655],[-0.9724184,51.4578817],[-0.9724441,51.4582243],[-0.972501,51.4582225],[-0.9729676,51.4582077],[-0.9730014,51.4582066]] as LngLat[],height:55,
++  source:'55 m, 15 floors, per Wikipedia (https://en.wikipedia.org/wiki/Thames_Tower); footprint chosen as the nearest to the article coordinates 51.4580, -0.9727 (17 m away; the next candidate is 40 m away).',heightSource:'cited'},
++ {id:'minster',name:'Reading Minster',kind:'church',buildingId:'area/96032369',ring:[[-0.9739828,51.4544837],[-0.9739639,51.4544117],[-0.9738562,51.4544226],[-0.9738424,51.45437],[-0.9737282,51.4543816],[-0.9737205,51.4543523],[-0.9736517,51.4543593],[-0.9736581,51.4543839],[-0.9733667,51.4544136],[-0.9733826,51.4544743],[-0.9733229,51.4544804],[-0.9733408,51.4545488],[-0.9734812,51.4545344],[-0.973493,51.4545794],[-0.9734402,51.4545848],[-0.9734471,51.4546112],[-0.9734962,51.4546062],[-0.9735065,51.4546456],[-0.9735956,51.4546366],[-0.9735882,51.4546084],[-0.97368,51.4545991],[-0.9738829,51.4545784],[-0.9738644,51.4545078],[-0.9738985,51.4545043],[-0.9738954,51.4544926],[-0.9739828,51.4544837]] as LngLat[],height:11,top:22,
++  source:'Footprint matched by the Historic England listing position 51.4544, -0.9736. Nave and tower heights are estimates; no height was found.',heightSource:'estimated'},
++ {id:'st-laurence',name:"St Laurence's Church",kind:'church',buildingId:'area/65531449',ring:[[-0.9696562,51.4564145],[-0.9696199,51.4562776],[-0.9694946,51.4562905],[-0.9689157,51.4563501],[-0.9689519,51.4564869],[-0.9696562,51.4564145]] as LngLat[],height:11,top:24,
++  source:"Footprint matched by the Historic England listing position 51.4564, -0.9693 (list entry 1113532). Nave and tower heights are estimates; the tower is placed at the west end by assumption.",heightSource:'estimated'}
++];
++
++export const SKYLINE_BUILDING_IDS=SKYLINE.map(l=>l.buildingId);
++/** True for a chunk or tile building id such as `area/65505346/0` that a skyline model replaces. */
++export const isSkylineBuilding=(id:string)=>SKYLINE_BUILDING_IDS.includes(id.split('/').slice(0,2).join('/'));
++/** Exact tile `id` values (building id plus part number) for the map style's overview filter; none has more than a few parts. */
++export const SKYLINE_TILE_IDS=SKYLINE_BUILDING_IDS.flatMap(id=>[0,1,2,3].map(n=>`${id}/${n}`));
+diff --git a/src/map/style.ts b/src/map/style.ts
+index 785ad5f0..7671c3c0 100644
+--- a/src/map/style.ts
++++ b/src/map/style.ts
+@@ -1,4 +1,5 @@
+ import type{Map,StyleSpecification,LayerSpecification}from'maplibre-gl';import{BOUNDS}from'../../shared/config';import{isDark,onThemeChange}from'../ui/theme';import{currentMode}from'../ui/modes';import{EMPHASIS,mixHex,resolveTarget}from'../../shared/basemap-emphasis';import type{ModeId}from'../../shared/modes';
++import {SKYLINE_TILE_IDS} from '../../shared/skyline';
+ import {LAYER_ZOOM} from '../../shared/layer-zoom';
+ /** Base map colours for light and dark mode; overlays keep their own colours. */
+ const PALETTE={
+@@ -47,7 +48,7 @@ export function mapStyle(dark=isDark(),mode:ModeId='explore'):StyleSpecification
+  {id:'rail-bed',type:'line',...source,filter:filter('rail'),paint:{'line-width':['interpolate',['linear'],['zoom'],11,1,16,5]}},
+  {id:'rail-lines',type:'line',...source,filter:filter('rail'),paint:{'line-width':1,'line-dasharray':[3,2]}},
+  {id:'building-footprints',type:'fill',...source,filter:filter('building'),paint:{'fill-opacity':.65}},
+- {id:'building-overview',type:'fill-extrusion',...source,maxzoom:LAYER_ZOOM.buildings3d,filter:['all',filter('building'),['==',['get','landmark'],'']],paint:{'fill-extrusion-height':['get','height'],'fill-extrusion-base':['coalesce',['get','minHeight'],0],'fill-extrusion-opacity':1}},
++ {id:'building-overview',type:'fill-extrusion',...source,maxzoom:LAYER_ZOOM.buildings3d,filter:['all',filter('building'),['==',['get','landmark'],''],['!',['in',['get','id'],['literal',SKYLINE_TILE_IDS]]]],paint:{'fill-extrusion-height':['get','height'],'fill-extrusion-base':['coalesce',['get','minHeight'],0],'fill-extrusion-opacity':1}},
+  {id:'road-labels',type:'symbol',...source,minzoom:LAYER_ZOOM.roadLabels,filter:['all',filter('road'),['has','name']],layout:{'symbol-placement':'line','text-field':['get','name'],'text-font':['Noto Sans Regular'],'text-size':12,'text-max-angle':30,'symbol-spacing':350},paint:{'text-halo-width':1.5}}
+  ];
+  for(const [id,property,value] of paints(tuned(dark,mode)))(layers.find(l=>l.id===id)!.paint as Record<string,unknown>)[property]=value;
+diff --git a/src/scene/buildings.worker.ts b/src/scene/buildings.worker.ts
+index 9365fa44..00641cfc 100644
+--- a/src/scene/buildings.worker.ts
++++ b/src/scene/buildings.worker.ts
+@@ -1,8 +1,8 @@
+-import {ShapeUtils,Vector2}from'three';import{toLocal}from'../../shared/geo';import type{Building}from'../../shared/types';
++import {ShapeUtils,Vector2}from'three';import{toLocal}from'../../shared/geo';import type{Building}from'../../shared/types';import{isSkylineBuilding}from'../../shared/skyline';
+ const palette=[[.68,.39,.27],[.73,.54,.40],[.84,.77,.63],[.50,.60,.61],[.66,.43,.36],[.77,.66,.49],[.48,.54,.49],[.80,.61,.50]];
+ export type MeshData={position:Float32Array;uv:Float32Array;color:Float32Array};
+ function build(buildings:Building[]){const pos:number[]=[],uv:number[]=[],colors:number[]=[],roof:number[]=[],roofColors:number[]=[];
+- for(const b of buildings){if(b.landmark)continue;const rings=b.rings.map(r=>r.slice(0,-1).map(toLocal));const outer=rings[0];if(outer.length<3)continue;const col=palette[b.colour],top=Math.max(b.height,b.minHeight+(b.kind==='roof'?.1:2)),bottom=b.minHeight;
++ for(const b of buildings){if(b.landmark||isSkylineBuilding(b.id))continue;const rings=b.rings.map(r=>r.slice(0,-1).map(toLocal));const outer=rings[0];if(outer.length<3)continue;const col=palette[b.colour],top=Math.max(b.height,b.minHeight+(b.kind==='roof'?.1:2)),bottom=b.minHeight;
+   const triangle=(a:number[],bb:number[],c:number[],dest=pos,cs=colors,color=col)=>{dest.push(...a,...bb,...c);cs.push(...color,...color,...color);};
+   for(const ring of rings){for(let i=0;i<ring.length;i++){const a=ring[i],c=ring[(i+1)%ring.length],w=Math.hypot(a[0]-c[0],a[1]-c[1])/8,h=(top-bottom)/8;triangle([a[0],a[1],bottom],[c[0],c[1],bottom],[c[0],c[1],top]);triangle([a[0],a[1],bottom],[c[0],c[1],top],[a[0],a[1],top]);uv.push(0,0,w,0,w,h,0,0,w,h,0,h);}}
+   const holes=rings.slice(1).map(r=>r.map(p=>new Vector2(...p))),contour=outer.map(p=>new Vector2(...p)),all=rings.flat();const faces=ShapeUtils.triangulateShape(contour,holes);
+diff --git a/src/scene/layer.ts b/src/scene/layer.ts
+index 6aebcc8f..ca5b89e6 100644
+--- a/src/scene/layer.ts
++++ b/src/scene/layer.ts
+@@ -1,10 +1,11 @@
+ import * as T from'three';import{MercatorCoordinate,type Map as MLMap,type CustomLayerInterface,type CustomRenderMethodInput}from'maplibre-gl';import{ORIGIN}from'../../shared/config';import{intersects}from'../../shared/geo';import type{Bounds,GeographyManifest}from'../../shared/types';import{buildingMaterial}from'./materials';import{createLandmarks}from'./landmarks';import type{MeshData}from'./buildings.worker';
+ import {LAYER_ZOOM,RENDER_BUDGET} from '../../shared/layer-zoom';
+ import {georeferencedLandmarks} from './georeferenced-landmarks';
++import {createSkyline} from './skyline';
+ import type {LandmarkComponent} from '../../shared/landmark-components';
+ export class ReadingScene implements CustomLayerInterface{
+  id='reading-3d';type='custom' as const;renderingMode='3d' as const;scene=new T.Scene();camera=new T.Camera();renderer!:T.WebGLRenderer;map!:MLMap;buildings=new T.Group();landmarks=createLandmarks();extras=new T.Group();ambient=new T.AmbientLight('#ffffff',1.6);sun=new T.DirectionalLight('#fff1d8',2.0);worker:Worker;chunks=new Map<string,T.Group>();pending=new Set<string>();failed=new Set<string>();wanted=new Set<string>();wallMaterial=buildingMaterial();roofMaterial=new T.MeshLambertMaterial({vertexColors:true,side:T.DoubleSide});enabled=true;disposed=false;animate?:()=>boolean;last=0;fps=60;frames=0;sample=0;maxChunks=RENDER_BUDGET.buildingChunks;onStats?:(stats:{fps:number;drawCalls:number;chunks:number;geometries:number})=>void;
+- constructor(public manifest:GeographyManifest,components:LandmarkComponent[]=[]){this.landmarks.add(georeferencedLandmarks(components));this.worker=new Worker(new URL('./buildings.worker.ts',import.meta.url),{type:'module'});this.worker.onmessage=({data})=>{this.pending.delete(data.id);if(data.error)this.failed.add(data.id);if(!this.wanted.has(data.id)||data.error||this.disposed){this.loadNext();return;}const g=new T.Group();for(const key of ['walls','roofs']as const){const d:MeshData=data[key];const geom=new T.BufferGeometry();geom.setAttribute('position',new T.BufferAttribute(d.position,3));geom.setAttribute('uv',new T.BufferAttribute(d.uv,2));geom.setAttribute('color',new T.BufferAttribute(d.color,3));geom.computeVertexNormals();geom.computeBoundingSphere();g.add(new T.Mesh(geom,key==='walls'?this.wallMaterial:this.roofMaterial));}this.chunks.set(data.id,g);this.buildings.add(g);this.map.triggerRepaint();this.loadNext();};}
++ constructor(public manifest:GeographyManifest,components:LandmarkComponent[]=[]){this.landmarks.add(georeferencedLandmarks(components),createSkyline());this.worker=new Worker(new URL('./buildings.worker.ts',import.meta.url),{type:'module'});this.worker.onmessage=({data})=>{this.pending.delete(data.id);if(data.error)this.failed.add(data.id);if(!this.wanted.has(data.id)||data.error||this.disposed){this.loadNext();return;}const g=new T.Group();for(const key of ['walls','roofs']as const){const d:MeshData=data[key];const geom=new T.BufferGeometry();geom.setAttribute('position',new T.BufferAttribute(d.position,3));geom.setAttribute('uv',new T.BufferAttribute(d.uv,2));geom.setAttribute('color',new T.BufferAttribute(d.color,3));geom.computeVertexNormals();geom.computeBoundingSphere();g.add(new T.Mesh(geom,key==='walls'?this.wallMaterial:this.roofMaterial));}this.chunks.set(data.id,g);this.buildings.add(g);this.map.triggerRepaint();this.loadNext();};}
+  onAdd(map:MLMap,gl:WebGLRenderingContext|WebGL2RenderingContext){this.map=map;this.renderer=new T.WebGLRenderer({canvas:map.getCanvas(),context:gl as WebGL2RenderingContext});this.renderer.autoClear=false;this.renderer.outputColorSpace=T.SRGBColorSpace;this.scene.add(this.ambient);this.sun.position.set(-1000,-1600,2400);this.scene.add(this.sun);this.scene.add(this.buildings,this.landmarks,this.extras);map.on('moveend',this.updateChunks);this.updateChunks();}
+  updateChunks=()=>{if(this.disposed)return;const b=this.map.getBounds(),bounds:Bounds=[b.getWest(),b.getSouth(),b.getEast(),b.getNorth()],c=this.map.getCenter();const eligible=this.map.getZoom()>=LAYER_ZOOM.buildings3d?this.manifest.chunks.filter(ch=>intersects(ch.bounds,bounds)).sort((a,b)=>Math.hypot((a.bounds[0]+a.bounds[2])/2-c.lng,(a.bounds[1]+a.bounds[3])/2-c.lat)-Math.hypot((b.bounds[0]+b.bounds[2])/2-c.lng,(b.bounds[1]+b.bounds[3])/2-c.lat)).slice(0,this.maxChunks):[];this.wanted=new Set(eligible.map(c=>c.id));for(const[id,g]of this.chunks)if(!this.wanted.has(id)){this.buildings.remove(g);g.traverse(o=>{if(o instanceof T.Mesh)o.geometry.dispose();});this.chunks.delete(id);}this.loadNext();};
+  loadNext(){if(this.disposed)return;for(const id of this.wanted){if(this.pending.size>=3)return;if(this.pending.has(id)||this.chunks.has(id)||this.failed.has(id))continue;const chunk=this.manifest.chunks.find(c=>c.id===id)!;this.pending.add(id);this.worker.postMessage({id,url:chunk.url});}}
+diff --git a/src/scene/skyline.ts b/src/scene/skyline.ts
+new file mode 100644
+index 00000000..3b2e42d2
+--- /dev/null
++++ b/src/scene/skyline.ts
+@@ -0,0 +1,63 @@
++import * as T from 'three';
++import {toLocal} from '../../shared/geo';
++import {SKYLINE,type SkylineLandmark} from '../../shared/skyline';
++
++const BASE=.12;
++type Point=[number,number];
++
++// Unit vector along the longest edge, flipped to point west, and the footprint's extent along it and across it.
++function orientation(ring:Point[]){
++ let angle=0,longest=0;
++ for(let i=1;i<ring.length;i++){const d=Math.hypot(ring[i][0]-ring[i-1][0],ring[i][1]-ring[i-1][1]);if(d>longest){longest=d;angle=Math.atan2(ring[i][1]-ring[i-1][1],ring[i][0]-ring[i-1][0]);}}
++ let ux=Math.cos(angle),uy=Math.sin(angle);if(ux>0){ux=-ux;uy=-uy;}
++ const along=ring.map(p=>p[0]*ux+p[1]*uy),across=ring.map(p=>-p[0]*uy+p[1]*ux);
++ return {ux,uy,min:Math.min(...along),max:Math.max(...along),lo:Math.min(...across),hi:Math.max(...across)};
++}
++
++function glassTexture(){
++ const canvas=document.createElement('canvas');canvas.width=64;canvas.height=64;const c=canvas.getContext('2d')!;
++ c.fillStyle='#9fb6ba';c.fillRect(0,0,64,64);c.fillStyle='#66848c';c.fillRect(0,10,64,34);c.fillStyle='#d6dcd8';c.fillRect(0,0,64,3);c.fillRect(0,0,3,64);
++ const texture=new T.CanvasTexture(canvas);texture.colorSpace=T.SRGBColorSpace;texture.wrapS=texture.wrapT=T.RepeatWrapping;texture.repeat.set(.06,.3);return texture;
++}
++
++export function createSkyline(){
++ const root=new T.Group(),mats=new Map<string,T.MeshLambertMaterial>();
++ const mat=(color:string)=>{if(!mats.has(color))mats.set(color,new T.MeshLambertMaterial({color}));return mats.get(color)!;};
++ const glass=new T.MeshLambertMaterial({map:glassTexture()}),roofTower=mat('#a9aeab'),flint=mat('#8f8d82'),slate=mat('#5d6663'),stone=mat('#b8b09a');
++ for(const l of SKYLINE){
++  const ring=l.ring.slice(0,-1).map(toLocal) as Point[],shape=new T.Shape(ring.map(p=>new T.Vector2(p[0],p[1])));
++  const group=new T.Group();group.userData={skyline:l.id,approximateHeights:true,heightSource:l.heightSource};
++  const solid=(depth:number,top:T.Material,side:T.Material)=>{const g=new T.ExtrudeGeometry(shape,{depth,bevelEnabled:false,steps:1});g.translate(0,0,BASE);return new T.Mesh(g,[top,side]);};
++  const cx=ring.reduce((s,p)=>s+p[0],0)/ring.length,cy=ring.reduce((s,p)=>s+p[1],0)/ring.length;
++  if(l.kind==='tower')tower(group,l,solid,[cx,cy],ring);else church(group,l,solid,ring);
++  root.add(group);
++ }
++ return root;
++
++ function tower(group:T.Group,l:SkylineLandmark,solid:(d:number,t:T.Material,s:T.Material)=>T.Mesh,[cx,cy]:Point,ring:Point[]){
++  group.add(solid(l.height,roofTower,glass));
++  const o=orientation(ring);
++  // Plant room on the roof, aligned to the building, and for the Blade a slim mast.
++  const w=(o.max-o.min)*.35,d=(o.hi-o.lo)*.35,box=new T.Mesh(new T.BoxGeometry(w,d,3.5),roofTower);
++  box.rotation.z=Math.atan2(o.uy,o.ux);box.position.set(cx,cy,BASE+l.height+1.75);group.add(box);
++  if(l.top&&l.top>l.height){const mast=new T.Mesh(new T.CylinderGeometry(.35,.7,l.top-l.height,6),mat('#c9ccc8'));mast.rotation.x=Math.PI/2;mast.position.set(cx,cy,BASE+l.height+(l.top-l.height)/2);group.add(mast);}
++ }
++
++ function church(group:T.Group,l:SkylineLandmark,solid:(d:number,t:T.Material,s:T.Material)=>T.Mesh,ring:Point[]){
++  const o=orientation(ring),angle=Math.atan2(o.uy,o.ux),mid=(o.lo+o.hi)/2,width=o.hi-o.lo;
++  const at=(along:number,across:number):Point=>[along*o.ux-across*o.uy,along*o.uy+across*o.ux];
++  group.add(solid(l.height,slate,flint));
++  // Ridge roof over the middle of the nave, kept inside the walls, from the east end to the tower.
++  const tower=Math.min(7.5,width*.6),ridgeStart=o.min+1,ridgeEnd=o.max-tower-.5,half=width*.28,rise=Math.min(4,width*.16);
++  const A=at(ridgeStart,mid-half),B=at(ridgeEnd,mid-half),C=at(ridgeEnd,mid+half),D=at(ridgeStart,mid+half),E=at(ridgeStart,mid),F=at(ridgeEnd,mid),z=BASE+l.height;
++  const v=(p:Point,h=0)=>[p[0],p[1],z+h];
++  const positions=[...v(A),...v(B),...v(F,rise),...v(A),...v(F,rise),...v(E,rise), ...v(E,rise),...v(F,rise),...v(C),...v(E,rise),...v(C),...v(D),
++   ...v(A),...v(E,rise),...v(D),...v(B),...v(C),...v(F,rise)];
++  const geometry=new T.BufferGeometry();geometry.setAttribute('position',new T.Float32BufferAttribute(positions,3));geometry.computeVertexNormals();
++  group.add(new T.Mesh(geometry,new T.MeshLambertMaterial({color:'#4f5957',side:T.DoubleSide})));
++  // West tower: a square block with a slab cap.
++  const tc=at(o.max-tower/2-.2,mid),height=l.top??l.height+10;
++  const block=new T.Mesh(new T.BoxGeometry(tower,tower,height),flint);block.rotation.z=angle;block.position.set(tc[0],tc[1],BASE+height/2);group.add(block);
++  const cap=new T.Mesh(new T.BoxGeometry(tower+1,tower+1,.8),stone);cap.rotation.z=angle;cap.position.set(tc[0],tc[1],BASE+height+.4);group.add(cap);
++ }
++}
+diff --git a/tests/skyline.test.ts b/tests/skyline.test.ts
+new file mode 100644
+index 00000000..75941fa3
+--- /dev/null
++++ b/tests/skyline.test.ts
+@@ -0,0 +1,36 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {readdirSync,readFileSync} from 'node:fs';
++import {SKYLINE,SKYLINE_TILE_IDS,isSkylineBuilding} from '../shared/skyline';
++import {distance} from '../shared/geo';
++import type {Building} from '../shared/types';
++
++const chunks=new Map<string,Building>();
++for(const file of readdirSync('public/data/chunks'))for(const b of JSON.parse(readFileSync(`public/data/chunks/${file}`,'utf8')) as Building[])chunks.set(b.id,b);
++
++test('each skyline footprint is the bundled building it names', ()=>{
++ for(const l of SKYLINE){
++  const b=chunks.get(`${l.buildingId}/0`);assert.ok(b,`${l.name}: ${l.buildingId} is not in the building chunks`);
++  assert.deepEqual(b.rings[0],l.ring,`${l.name}: footprint differs from the chunk`);
++ }
++});
++
++test('skyline models have sensible heights and say where they came from', ()=>{
++ for(const l of SKYLINE){
++  assert.ok(l.height>5&&l.height<100,l.name);
++  if(l.top)assert.ok(l.top>l.height,`${l.name}: top is below the roof`);
++  assert.ok(l.source.length>20,l.name);
++  if(l.heightSource==='cited')assert.match(l.source,/wikipedia/i,`${l.name}: cited height needs a named source`);
++ }
++});
++
++test('skyline buildings are recognised by chunk id and listed for the tile filter', ()=>{
++ assert.ok(isSkylineBuilding('area/65505346/0'));assert.ok(isSkylineBuilding('area/65505346/2'));assert.ok(!isSkylineBuilding('area/65505347/0'));
++ assert.equal(SKYLINE_TILE_IDS.length,SKYLINE.length*4);
++ assert.ok(SKYLINE_TILE_IDS.includes('area/96032369/0'));
++});
++
++test('skyline footprints sit where the cited coordinates say', ()=>{
++ const expected:Record<string,[number,number]>={blade:[-0.96643,51.45556],'thames-tower':[-0.97274,51.45796],minster:[-0.9736,51.4544],'st-laurence':[-0.9693,51.4564]};
++ for(const l of SKYLINE){const ring=l.ring,c:[number,number]=[ring.reduce((s,p)=>s+p[0],0)/ring.length,ring.reduce((s,p)=>s+p[1],0)/ring.length];assert.ok(distance(c,expected[l.id])<30,`${l.name} is ${Math.round(distance(c,expected[l.id]))} m from its cited position`);}
++});

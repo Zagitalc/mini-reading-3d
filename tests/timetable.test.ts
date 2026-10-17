@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {compileTimetable} from '../scripts/compile-timetable';
-import {serviceRuns,serviceOrigin,scheduledDepartures,parseGtfsTime,timetableExpired,type StopTimetable,type TimetableService} from '../shared/timetable';
+import {serviceRuns,serviceOrigin,scheduledDepartures,parseGtfsTime,timetableExpired,headingAt,type StopTimetable,type TimetableService} from '../shared/timetable';
 const service:TimetableService={start:'20260901',end:'20260930',weekdays:'1111100',exceptions:{'20260916':2,'20260919':1}};
 test('calendar weekdays, validity and added/removed service exceptions',()=>{
  assert.equal(serviceRuns(service,'20260915'),true);assert.equal(serviceRuns(service,'20260916'),false);assert.equal(serviceRuns(service,'20260919'),true);assert.equal(serviceRuns(service,'20260920'),false);assert.equal(serviceRuns(service,'20261001'),false);
@@ -35,4 +35,12 @@ test('stop-to-trip joins verify serving routes, preserve sequences and omit unti
  assert.equal(result.index.stops.length,1);assert.deepEqual(result.index.stops[0].routeIds,['R']);assert.equal(result.index.routes.unused,undefined);assert.equal(result.index.omitted.missingTimes,1);assert.equal(result.index.omitted.frequencyTrips,1);
  const stop=[...result.files.values()][0];assert.equal(stop.times.length,2);assert.equal(stop.times[0][1],90000);assert.equal(stop.times[0][2],4);assert.equal(stop.times[0][3],1);assert.equal(stop.times[1][4],1);assert.equal(serviceRuns(stop.services[0],'20260916'),true);
  files['trips.txt'][0].service_id='missing';assert.throws(()=>compileTimetable(f=>files[f]??[],{source:'Test',sourceUrl:'',licence:'',retrievedAt:''},'test'),/Missing route\/calendar/);
+});
+test('a loop bus leaving its stand is heading for the far side, then its final stop',()=>{
+ const data:StopTimetable={schema:1,stopId:'blagrave',timezone:'Europe/London',services:[service],
+  trips:[{id:'13',service:0,routeId:'r13',headsign:'Reading Station',direction:'0'},{id:'17',service:0,routeId:'r17',headsign:'Tilehurst',direction:'0'}],
+  times:[[0,36000,0,0,0,'Woodley'],[1,36060,4,0,0]]};
+ assert.deepEqual(headingAt(data,'13'),{towards:'Woodley',then:'Reading Station'});
+ assert.deepEqual(headingAt(data,'17'),{towards:'Tilehurst'},'an ordinary journey keeps its own destination');
+ assert.equal(headingAt(data,'missing'),undefined);
 });

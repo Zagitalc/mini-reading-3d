@@ -1,0 +1,426 @@
+diff --git a/docs/next-phase.md b/docs/next-phase.md
+index 333e080e..ea2313d2 100644
+--- a/docs/next-phase.md
++++ b/docs/next-phase.md
+@@ -44,7 +44,7 @@ What stays the same: the stack (Vite, MapLibre, Three.js, the Cloudflare Worker
+ 4. **Local summary for the area in view** (medium; done 10 October, see below).
+ 5. Detailed landmark models (large; first stage done 10 October: the "Skyline" set, see Landmark modelling limits). Already queued; moves down behind items 2 to 4.
+ 6. Multi-car trains (small). Unchanged; still waits for "build trains".
+-7. **Replay the last hour** (medium, low priority).
++7. **Replay the last hour** (medium, low priority; browser-only stage done 10 October, see below).
+ 
+ ### Evidence labels
+ 
+@@ -97,6 +97,8 @@ This reverses the 3 October review's "no vehicle playback", so it needs a narrow
+ 
+ **Depends on:** evidence labels (everything in a replay is labelled historical); the vehicle feed and movement tracker (`src/map/vehicle-feed.ts`, `src/movement`). Nothing else on this list depends on it.
+ 
++**Built (10 October, browser-only).** Tools > Replay plays back the bus and train snapshots this browser has already received, up to the last hour, through the same tracker as the live map (`shared/replay.ts`, `src/movement/replay-player.ts`, `src/map/replay.ts`). It needs at least two snapshots, which arrive about once a minute while Buses or Trains is on, and it is empty after a reload. A bar under the header carries play and pause, a time slider, 10×, 30× and 60× speed, a Historical badge, the length replayed ("Replaying 23 minutes of positions seen on this device. Not live.") and Back to live. Replayed vehicle cards say replay and Historical and hide the next-stop line, which is a live estimate. Not built: positions kept on the server, and a replay that survives a reload.
++
+ ## Following phase — suggestions only
+ 
+ The list below dates from the routes and landmark release. Items 1 and 3 have largely shipped and item 2 in part (Reading over time, without headways or bunching); the current order is in the section above.
+diff --git a/package.json b/package.json
+index 36443de8..d753956c 100644
+--- a/package.json
++++ b/package.json
+@@ -53,6 +53,7 @@
+     "test:places-browser": "node tests/places-fuel-browser.mjs",
+     "test:roadworks-zoom-browser": "node --import tsx tests/roadworks-zoom-browser.mjs",
+     "test:here-browser": "node tests/here-browser.mjs",
++    "test:replay-browser": "node tests/replay-browser.mjs",
+     "test:history-browser": "node --import tsx tests/history-browser.mjs",
+     "test:scenario-browser": "node tests/scenario-browser.mjs",
+     "data:gtfs:fetch": "node scripts/download-data.mjs --gtfs-only",
+diff --git a/shared/replay.ts b/shared/replay.ts
+new file mode 100644
+index 00000000..6e6b12f1
+--- /dev/null
++++ b/shared/replay.ts
+@@ -0,0 +1,31 @@
++import type {LngLat,VehicleObservation} from './types';
++
++/** How much history the replay keeps, how close two kept snapshots may be, and a hard cap on memory. */
++export const REPLAY_WINDOW=3_600_000,REPLAY_MIN_GAP=10_000,REPLAY_MAX_FRAMES=240,REPLAY_MIN_FRAMES=2;
++export interface ReplayFrame{at:number;vehicles:VehicleObservation[]}
++
++/**
++ * The vehicle snapshots one browser has already received. Nothing is stored or fetched: it holds up to the
++ * last hour since the page opened and is empty again after a reload.
++ */
++export class ReplayBuffer {
++ frames:ReplayFrame[]=[];
++ /** Journey shapes by trip id, merged over every snapshot, so replayed vehicles still follow their routes. */
++ routes:Record<string,LngLat[]>={};
++ push(vehicles:VehicleObservation[],at:number,routes:Record<string,LngLat[]>={}){
++  const last=this.frames.at(-1);
++  if(last&&at-last.at<REPLAY_MIN_GAP)return false;
++  this.frames.push({at,vehicles});
++  for(const v of vehicles)if(v.tripId&&routes[v.tripId])this.routes[v.tripId]=routes[v.tripId];
++  while(this.frames.length>1&&(at-this.frames[0].at>REPLAY_WINDOW||this.frames.length>REPLAY_MAX_FRAMES))this.frames.shift();
++  if(Object.keys(this.routes).length>600){const used=new Set(this.frames.flatMap(f=>f.vehicles.map(v=>v.tripId)));for(const id of Object.keys(this.routes))if(!used.has(id))delete this.routes[id];}
++  return true;
++ }
++ /** Index of the latest snapshot at or before `time`, or -1 before the first. */
++ indexAt(time:number){let lo=0,hi=this.frames.length-1,found=-1;while(lo<=hi){const mid=(lo+hi)>>1;if(this.frames[mid].at<=time){found=mid;lo=mid+1;}else hi=mid-1;}return found;}
++ get span(){return this.frames.length?{from:this.frames[0].at,to:this.frames.at(-1)!.at,count:this.frames.length}:undefined;}
++ get ready(){return this.frames.length>=REPLAY_MIN_FRAMES;}
++}
++
++/** "23 minutes", "1 minute", "under a minute". */
++export function replayLength(ms:number){const m=Math.round(ms/60000);return m<1?'under a minute':`${m} ${m===1?'minute':'minutes'}`;}
+diff --git a/src/main.ts b/src/main.ts
+index 548ed1e4..18c84530 100644
+--- a/src/main.ts
++++ b/src/main.ts
+@@ -9,7 +9,7 @@ async function start(){const [manifest,features]:[GeographyManifest,StaticFeatur
+  map.addControl(new maplibregl.NavigationControl({visualizePitch:true}),'top-right');map.addControl(new maplibregl.ScaleControl({unit:'metric'}),'bottom-left');connectShare(map,toast);if(shared)document.querySelector('.view-caption .eyebrow')!.textContent='SHARED VIEW';
+  const scene=new ReadingScene(manifest,componentData.components);let orbit=false,frame=0;const stopOrbit=()=>{orbit=false;cancelAnimationFrame(frame);document.querySelector('#orbit-view')!.setAttribute('aria-pressed','false');};map.on('dragstart',stopOrbit);
+  map.on('load',async()=>{map.addLayer(scene,'road-labels');connectHere(map,stopOrbit);document.querySelector<HTMLElement>('#loading')!.hidden=true;const footer=document.querySelector<HTMLElement>('#geography-status')!;footer.dataset.ok=`${manifest.stats.buildings.toLocaleString()} real building footprints`;footer.textContent=navigator.onLine?footer.dataset.ok:OFFLINE_MAP_NOTE;setFeedStatus('Live feeds not connected',false);
+-  const {connectLayers}=await import('./map/live-layers');await connectLayers(map,scene,features,manifest);const {connectRouteLayers}=await import('./map/route-layers');await connectRouteLayers(map);const {connectStopLayers}=await import('./map/stop-layers');await connectStopLayers(map);const {connectServiceExplorer}=await import('./map/service-explorer');await connectServiceExplorer();const {connectScenarios}=await import('./map/scenario-panel');await connectScenarios(map);const {connectDirectFinder}=await import('./map/direct-finder-panel');await connectDirectFinder(map);const {connectGraphicsTest}=await import('./map/graphics-test');connectGraphicsTest(map,scene);const {connectHistoryPanel}=await import('./map/history-panel');connectHistoryPanel();const {connectEnvironment}=await import('./map/environment-layers');await connectEnvironment(map,scene);const {connectPlaces}=await import('./map/places-layer');connectPlaces(map);
++  const {connectLayers}=await import('./map/live-layers');await connectLayers(map,scene,features,manifest);const {connectRouteLayers}=await import('./map/route-layers');await connectRouteLayers(map);const {connectStopLayers}=await import('./map/stop-layers');await connectStopLayers(map);const {connectServiceExplorer}=await import('./map/service-explorer');await connectServiceExplorer();const {connectScenarios}=await import('./map/scenario-panel');await connectScenarios(map);const {connectDirectFinder}=await import('./map/direct-finder-panel');await connectDirectFinder(map);const {connectGraphicsTest}=await import('./map/graphics-test');connectGraphicsTest(map,scene);const {connectHistoryPanel}=await import('./map/history-panel');connectHistoryPanel();const {connectReplay}=await import('./map/replay');connectReplay(map);const {connectEnvironment}=await import('./map/environment-layers');await connectEnvironment(map,scene);const {connectPlaces}=await import('./map/places-layer');connectPlaces(map);
+   onLinked('landmark',async(id,fly)=>{const l=LANDMARKS.find(l=>l.id===id),open=landmarkOpeners.get(id);if(!l||!open)return false;if(fly){stopOrbit();map.flyTo({center:l.position,zoom:17.7,pitch:60});}await open();return true;});
+  });
+  followColourScheme(map);map.on('error',e=>{if((e as {sourceId?:string}).sourceId==='tomtom-flow')return;console.error(e.error);document.querySelector('#geography-status')!.textContent=navigator.onLine?'Some map assets could not load':OFFLINE_MAP_NOTE;});const loadTimeout=setTimeout(()=>{const el=document.querySelector<HTMLElement>('#loading');if(el&&!el.hidden){el.innerHTML='<strong>The map is taking longer than expected</strong><span>Check the local server, then try reloading.</span><button onclick="location.reload()">Reload map</button>';}},20000);map.once('load',()=>clearTimeout(loadTimeout));
+diff --git a/src/map/live-layers.ts b/src/map/live-layers.ts
+index 0ecce1e4..ad5cde25 100644
+--- a/src/map/live-layers.ts
++++ b/src/map/live-layers.ts
+@@ -6,6 +6,7 @@ import {LAYER_ZOOM,RENDER_BUDGET} from '../../shared/layer-zoom';
+ import {evidenceBadge} from '../../shared/evidence';
+ import {fillOfflineCard,setFeedStatus} from '../ui/offline';
+ import {publishVehicles,vehiclesNeeded} from './vehicle-feed';
++import {replayPoses,isReplaying,replayClock,formatReplayTime} from './replay';
+ import {wantsVehicles,type ModeLayer} from '../../shared/modes';
+ import {registerSwitch} from '../ui/modes';
+ import {findNextBusStop} from './next-stop';
+@@ -14,7 +15,7 @@ import {publishFact} from '../ui/summary';
+ import{Marker,type Map,type GeoJSONSource}from'maplibre-gl';import type{ReadingScene}from'../scene/layer';import type{StaticFeatures,GeographyManifest,FeedStatus,VehicleObservation,RoadEvent,TrafficSegment,LngLat}from'../../shared/types';import{detail,escape,sourceFooter,toast}from'../ui/shell';import{VehicleTracker}from'../movement/tracker';import{VehicleMeshes}from'../scene/vehicles';import{RoadFurniture}from'../scene/road-furniture';import{eventDuration,formatDate}from'../../shared/road-events';import{registerMapTools}from'../ui/webmcp';
+ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFeatures,manifest:GeographyManifest){// Switches start as the shell drew them, from the chosen mode, so nothing is requested for a layer the mode leaves off.
+  const LAYERS=['buildings','buses','trains','traffic','roadworks','signs','cameras'] as const;
+- const state:Record<string,boolean>=Object.fromEntries(LAYERS.map(id=>[id,document.querySelector<HTMLInputElement>(`[data-layer=${id}]`)!.checked]));const tracker=new VehicleTracker(),vehicles=new VehicleMeshes(),furniture=new RoadFurniture(features);/* Offline, the last positions would sit on the map looking current, so no vehicles are drawn until the connection returns. */const livePoses=()=>navigator.onLine?tracker.poses():[];scene.extras.add(vehicles.group,furniture.group);let selectedBusRoute='';let poses=livePoses(),feeds:FeedStatus[]=[],events:RoadEvent[]=[],roadTraffic:TrafficSegment[]=[],routes:Record<string,LngLat[]>={},disposed=false,lastMarkers=0,timer:ReturnType<typeof setTimeout>;const markers=new globalThis.Map<string,Marker>();let vehicleTimer:ReturnType<typeof setInterval>;
++ const state:Record<string,boolean>=Object.fromEntries(LAYERS.map(id=>[id,document.querySelector<HTMLInputElement>(`[data-layer=${id}]`)!.checked]));const tracker=new VehicleTracker(),vehicles=new VehicleMeshes(),furniture=new RoadFurniture(features);/* Offline, the last positions would sit on the map looking current, so no vehicles are drawn until the connection returns. */const livePoses=()=>replayPoses()??(navigator.onLine?tracker.poses():[]);scene.extras.add(vehicles.group,furniture.group);let selectedBusRoute='';let poses=livePoses(),feeds:FeedStatus[]=[],events:RoadEvent[]=[],roadTraffic:TrafficSegment[]=[],routes:Record<string,LngLat[]>={},disposed=false,lastMarkers=0,timer:ReturnType<typeof setTimeout>;const markers=new globalThis.Map<string,Marker>();let vehicleTimer:ReturnType<typeof setInterval>;
+  const healthDetail=()=>{detail(`<span class="pill">Source & freshness</span><h2>Reading, with context</h2><p>Vehicle positions are shown only when source observations are available. Train positions are estimates.</p>${feeds.map(f=>`<section class="feed-card"><strong>${escape(f.label)}</strong> <span class="pill">${escape(f.state)}</span><p>${escape(f.message)}</p><small>${f.lastSuccess?'Last update '+escape(formatDate(f.lastSuccess)):'No observations received'}</small></section>`).join('')}<section class="feed-card" id="offline-card"></section><section class="feed-card"><strong>The map</strong><p>${manifest.stats.buildings.toLocaleString()} building footprints · ${features.cameras.length} mapped cameras. Most heights and all landmark architecture are approximate.</p><small>OSM snapshot ${escape(formatDate(manifest.sourceTimestamp,true))}</small></section><p>Dashed speed badges describe a road’s mapped limit. Solid badges mark mapped sign locations. Camera locations do not establish current operation.</p><p><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">© OpenStreetMap contributors · ODbL</a><br>Bus route geometry: Reading Buses · OGL 3.0</p><div class="legend"><span></span>Traffic: amber = slower, red = heavily delayed</div>`)
+   const card=document.querySelector<HTMLElement>('#offline-card');if(card)void fillOfflineCard(card);};
+  document.querySelector('#data-button')!.addEventListener('click',healthDetail);
+@@ -56,7 +57,7 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
+    el.innerHTML=`<span class="card-lead-label">Next stop</span>${n?`<strong>${escape(n.name)}</strong>${n.code?` <small class="card-lead-code">Stop ${escape(n.code)}</small>`:''}<span class="card-lead-time">Due about ${hhmm.format(n.expected)} · ${delayLabel(n.delaySeconds)}${n.last?' · last stop on the map':''}</span><small>From its position at ${hhmm.format(Date.parse(o.observedAt))}, against its own timetable</small>`:'<p class="card-lead-body">Not known: the bus is not on its journey’s road, or has passed its last stop on the map.</p>'}`;
+   },()=>{const el=cell();if(el)el.innerHTML='<span class="card-lead-label">Next stop</span><p class="card-lead-body">Not available: the timetable could not load.</p>';});
+  };
+- map.on('click',e=>{let closest=20,best:typeof poses[number]|undefined;for(const p of poses){if(!(p.observation.kind==='bus'?state.buses:state.trains))continue;const s=map.project(p.position),d=Math.hypot(s.x-e.point.x,s.y-e.point.y);if(d<closest){closest=d;best=p;}}if(best){const o=best.observation;detail(`<span class="pill">${o.kind==='bus'?'Bus':'Train'} · ${best.stale?'stale':o.status==='estimated'?'estimated position':'live observation'}</span>${evidenceBadge(o.status==='estimated'?'estimated':'observed')}<h2>${escape(o.label)}</h2><p>${escape(o.destination??'')}</p>${nextStopBlock(o)}<dl>${o.kind==='bus'?`<dt>Route match</dt><dd>${escape(o.routeMatch==='shared'?'Shared route section; branch uncertain':o.routeMatch==='trip'?'Matched journey':o.routeMatch==='direction'?'Matched route and direction':'Unmatched; showing reported position')}</dd>`:''}</dl>${o.routeGroupId?'<button id=show-bus-line class=status-button>Show bus line</button>':''}${o.kind==='train'?'<p class="explorer-note">Position interpolated along the railway between timed calling points.</p>':o.routeMatch?'<p class="explorer-note">The reported position is observed. The marker is drawn along the route between GPS fixes, so its exact spot is estimated.</p>':''}${sourceFooter([['Source',escape(o.source)],['Observed',escape(formatDate(o.observedAt))]])}`);document.querySelector('#show-bus-line')?.addEventListener('click',()=>document.dispatchEvent(new CustomEvent('reading-show-bus-route',{detail:o.routeGroupId})));fillBusNextStop(o);}});
++ map.on('click',e=>{let closest=20,best:typeof poses[number]|undefined;for(const p of poses){if(!(p.observation.kind==='bus'?state.buses:state.trains))continue;const s=map.project(p.position),d=Math.hypot(s.x-e.point.x,s.y-e.point.y);if(d<closest){closest=d;best=p;}}if(best){const o=best.observation;detail(`<span class="pill">${o.kind==='bus'?'Bus':'Train'} · ${isReplaying()?`replay, ${formatReplayTime(replayClock())}`:best.stale?'stale':o.status==='estimated'?'estimated position':'live observation'}</span>${evidenceBadge(isReplaying()?'historical':o.status==='estimated'?'estimated':'observed')}<h2>${escape(o.label)}</h2><p>${escape(o.destination??'')}</p>${isReplaying()?'':nextStopBlock(o)}<dl>${o.kind==='bus'?`<dt>Route match</dt><dd>${escape(o.routeMatch==='shared'?'Shared route section; branch uncertain':o.routeMatch==='trip'?'Matched journey':o.routeMatch==='direction'?'Matched route and direction':'Unmatched; showing reported position')}</dd>`:''}</dl>${o.routeGroupId?'<button id=show-bus-line class=status-button>Show bus line</button>':''}${o.kind==='train'?'<p class="explorer-note">Position interpolated along the railway between timed calling points.</p>':o.routeMatch?'<p class="explorer-note">The reported position is observed. The marker is drawn along the route between GPS fixes, so its exact spot is estimated.</p>':''}${sourceFooter([['Source',escape(o.source)],['Observed',escape(formatDate(o.observedAt))]])}`);document.querySelector('#show-bus-line')?.addEventListener('click',()=>document.dispatchEvent(new CustomEvent('reading-show-bus-route',{detail:o.routeGroupId})));fillBusNextStop(o);}});
+  async function get(url:string){const r=await fetch(url,{signal:AbortSignal.timeout(10000)});if(!r.ok)throw Error('API unavailable');return r.json();}
+  let slowUpdated=0,trafficUpdated=0,refreshing=false,again=false,kicked=false;
+  // A mode change flips several switches in one go; they share a single early refresh.
+@@ -65,7 +66,7 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
+   if(disposed||document.hidden||refreshing)return;refreshing=true;clearTimeout(timer);
+   const jobs:Promise<void>[]=[];
+   // Vehicle state is what makes the Worker poll BODS, so it is only asked for while buses or trains are shown, or a stop board wants live estimates.
+-  const vehicleRefresh=!wantsVehicles({buses:state.buses,trains:state.trains},vehiclesNeeded())?Promise.resolve():get('/api/v1/vehicle-state').then(v=>{if(disposed)return;routes=v.routes;tracker.ingest(v.data,Date.now(),routes);syncBuses();map.triggerRepaint();publishVehicles(v.data);}).catch(()=>{if(!disposed){publishVehicles(null);setFeedStatus('Vehicle updates unavailable',false);}});jobs.push(vehicleRefresh);
++  const vehicleRefresh=!wantsVehicles({buses:state.buses,trains:state.trains},vehiclesNeeded())?Promise.resolve():get('/api/v1/vehicle-state').then(v=>{if(disposed)return;routes=v.routes;tracker.ingest(v.data,Date.now(),routes);syncBuses();map.triggerRepaint();publishVehicles(v.data,Date.now(),v.routes);}).catch(()=>{if(!disposed){publishVehicles(null);setFeedStatus('Vehicle updates unavailable',false);}});jobs.push(vehicleRefresh);
+   jobs.push(vehicleRefresh.then(()=>get('/api/v1/health')).then(h=>{if(disposed)return;feeds=h.data;const live=feeds.filter(f=>f.state==='live').length;setFeedStatus(live?`${live} connected feeds`:'Live feeds not connected',live>0);for(const f of feeds){const el=document.querySelector(`#count-${f.id}`);if(el)el.textContent=f.state==='unavailable'?'—':String(f.count);}const traffic=feeds.find(f=>f.id==='traffic');if(!traffic?.message.includes('Tiles load'))document.querySelector('#traffic-availability')!.textContent=traffic?.state??'unavailable';}).catch(()=>{}));
+   if(Date.now()-slowUpdated>=CADENCE.roadworks){slowUpdated=Date.now();
+    jobs.push(get('/api/v1/road-events').then(e=>{if(disposed)return;events=e.data;const active=events.filter(x=>x.status==='active');publishFact('roadworks',{active:active.length,closures:active.filter(x=>x.kind==='closure').length,at:Date.now()});furniture.setEvents(events);refreshHere();(map.getSource('road-events') as GeoJSONSource).setData({type:'FeatureCollection',features:events.map(e=>({type:'Feature',geometry:e.geometry,properties:{id:e.id,kind:e.kind}}))});syncMarkers();}).catch(()=>{}));
+@@ -76,7 +77,7 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
+   await Promise.allSettled(jobs);refreshing=false;if(again&&!disposed){again=false;void refresh();return;}if(!disposed&&!document.hidden)timer=setTimeout(refresh,CADENCE.buses);
+  };
+  const visibility=()=>{clearTimeout(timer);if(!document.hidden){void refresh();map.triggerRepaint();}};document.addEventListener('visibilitychange',visibility);window.addEventListener('online',visibility);const connection=()=>{syncBuses();map.triggerRepaint();};window.addEventListener('offline',connection);window.addEventListener('online',connection);
+- const routeSelection=(e:Event)=>{selectedBusRoute=(e as CustomEvent<string>).detail;syncBuses();map.triggerRepaint();};document.addEventListener('reading-bus-route',routeSelection);
++ const replayChanged=()=>{syncBuses();map.triggerRepaint();};document.addEventListener('reading-replay',replayChanged);const routeSelection=(e:Event)=>{selectedBusRoute=(e as CustomEvent<string>).detail;syncBuses();map.triggerRepaint();};document.addEventListener('reading-bus-route',routeSelection);
+  document.addEventListener('reading-vehicles-needed',kick);
+  for(const id of LAYERS)setLayer(id,state[id]);
+  for(const id of LAYERS)registerSwitch(id as ModeLayer,document.querySelector<HTMLInputElement>(`[data-layer=${id}]`)!);
+@@ -90,5 +91,5 @@ export async function connectLayers(map:Map,scene:ReadingScene,features:StaticFe
+  });
+  map.on('moveend',syncMarkers);syncMarkers();void refresh();vehicleTimer=setInterval(()=>{tracker.prune();if(!document.hidden)syncBuses();if(tracker.tracks.size&&!document.hidden)map.triggerRepaint();},1000);
+  const unregister=registerMapTools({places:features.places,setLayer,getState:()=>({layers:{...state},feeds,center:map.getCenter().toArray(),zoom:map.getZoom(),rendering:{fps:Math.round(scene.fps),chunks:scene.chunks.size,failedChunks:scene.failed.size,geometries:scene.renderer.info.memory.geometries,drawCalls:scene.renderer.info.render.calls,trackedVehicles:tracker.tracks.size,visibleVehicles:poses.length,busInstances:vehicles.parts.find(p=>p.kind==='bus')?.mesh.count??0}}),navigate:async p=>{map.flyTo({center:p,zoom:16.8,pitch:58});await new Promise<void>(r=>map.once('moveend',()=>r()));}});
+- map.on('remove',()=>{disposed=true;document.removeEventListener('visibilitychange',visibility);window.removeEventListener('online',visibility);window.removeEventListener('offline',connection);window.removeEventListener('online',connection);document.removeEventListener('reading-bus-route',routeSelection);document.removeEventListener('reading-vehicles-needed',kick);clearTimeout(timer);clearInterval(vehicleTimer);markers.forEach(m=>m.remove());markers.clear();unregister();});
++ map.on('remove',()=>{disposed=true;document.removeEventListener('visibilitychange',visibility);document.removeEventListener('reading-replay',replayChanged);window.removeEventListener('online',visibility);window.removeEventListener('offline',connection);window.removeEventListener('online',connection);document.removeEventListener('reading-bus-route',routeSelection);document.removeEventListener('reading-vehicles-needed',kick);clearTimeout(timer);clearInterval(vehicleTimer);markers.forEach(m=>m.remove());markers.clear();unregister();});
+ }
+diff --git a/src/map/replay.ts b/src/map/replay.ts
+new file mode 100644
+index 00000000..d4e64725
+--- /dev/null
++++ b/src/map/replay.ts
+@@ -0,0 +1,65 @@
++import type {Map} from 'maplibre-gl';
++import {toolSlot,toast} from '../ui/shell';
++import {evidenceBadge} from '../../shared/evidence';
++import {ReplayBuffer,replayLength} from '../../shared/replay';
++import {ReplayPlayer} from '../movement/replay-player';
++import type {VehiclePose} from '../movement/tracker';
++import {subscribeVehicles} from './vehicle-feed';
++
++const clock=new Intl.DateTimeFormat('en-GB',{timeZone:'Europe/London',hour:'2-digit',minute:'2-digit',second:'2-digit'});
++const SPEEDS=[10,30,60];
++
++const buffer=new ReplayBuffer();
++let player:ReplayPlayer|undefined,time=0;
++
++/** The replayed positions at the replay clock, or undefined while the map is live. */
++export const replayPoses=():VehiclePose[]|undefined=>player?player.poses(time):undefined;
++export const isReplaying=()=>player!==undefined;
++export const replayClock=()=>time;
++export const formatReplayTime=(at:number)=>clock.format(at);
++const changed=()=>document.dispatchEvent(new Event('reading-replay'));
++
++/**
++ * Tools > "Replay": plays back the bus and train positions this browser has already received, up to the last hour.
++ * The buffer fills only while vehicles are being fetched (the Buses or Trains layer is on) and is empty after a reload.
++ */
++export function connectReplay(map:Map){
++ subscribeVehicles(update=>{if(update.vehicles)buffer.push(update.vehicles,update.at,update.routes);});
++ const section=document.createElement('section');section.className='route-control replay-control';
++ section.innerHTML='<button type="button" class="layer-row replay-open" aria-pressed="false"><span><i>↺</i>Replay<small>Buses and trains seen on this device</small></span><span aria-hidden="true">▶</span></button>';
++ toolSlot('replay').append(section);
++ const bar=document.createElement('div');bar.className='replay-bar';bar.hidden=true;bar.setAttribute('role','region');bar.setAttribute('aria-label','Replay of earlier vehicle positions');
++ bar.innerHTML=`<div class="replay-row"><button type="button" class="replay-play" aria-label="Play">▶</button><input type="range" class="replay-slider" aria-label="Replay time" min="0" max="1" step="1" value="0"><output class="replay-time" aria-live="off"></output><button type="button" class="replay-speed" aria-label="Replay speed"></button><button type="button" class="replay-live">Back to live</button></div><p class="replay-note">${evidenceBadge('historical')} <span class="replay-length"></span></p>`;
++ document.body.append(bar);
++ const open=section.querySelector<HTMLButtonElement>('.replay-open')!,play=bar.querySelector<HTMLButtonElement>('.replay-play')!,slider=bar.querySelector<HTMLInputElement>('.replay-slider')!,label=bar.querySelector<HTMLElement>('.replay-time')!,speedButton=bar.querySelector<HTMLButtonElement>('.replay-speed')!,length=bar.querySelector<HTMLElement>('.replay-length')!;
++ let playing=false,speed=SPEEDS[1],frame=0,last=0;
++ const show=()=>{
++  const span=buffer.span;if(!span)return;
++  slider.min=String(span.from);slider.max=String(span.to);slider.value=String(Math.round(time));
++  label.textContent=`${clock.format(time)} · ${replayLength(Date.now()-time)} ago`;
++  length.textContent=`Replaying ${replayLength(span.to-span.from)} of positions seen on this device. Not live.`;
++  play.textContent=playing?'❚❚':'▶';play.setAttribute('aria-label',playing?'Pause':'Play');speedButton.textContent=`${speed}×`;
++ };
++ const tick=(now:number)=>{
++  if(!player)return;
++  const span=buffer.span;
++  if(playing&&span){time=Math.min(span.to,time+(now-last)*speed);if(time>=span.to)playing=false;changed();}
++  last=now;show();frame=requestAnimationFrame(tick);
++ };
++ const start=()=>{
++  if(!buffer.ready){toast('Replay needs a minute or two of live positions first. Switch on Buses or Trains and wait.');return;}
++  player=new ReplayPlayer(buffer);time=buffer.span!.from;playing=true;last=performance.now();
++  bar.hidden=false;open.setAttribute('aria-pressed','true');document.body.classList.add('replaying');changed();show();frame=requestAnimationFrame(tick);
++ };
++ const stop=()=>{
++  cancelAnimationFrame(frame);player=undefined;playing=false;bar.hidden=true;open.setAttribute('aria-pressed','false');document.body.classList.remove('replaying');changed();
++ };
++ open.addEventListener('click',()=>player?stop():start());
++ bar.querySelector('.replay-live')!.addEventListener('click',stop);
++ play.addEventListener('click',()=>{const span=buffer.span;if(!span)return;if(!playing&&time>=span.to)time=span.from;playing=!playing;last=performance.now();show();});
++ speedButton.addEventListener('click',()=>{speed=SPEEDS[(SPEEDS.indexOf(speed)+1)%SPEEDS.length];show();});
++ slider.addEventListener('input',()=>{time=Number(slider.value);playing=false;changed();show();map.triggerRepaint();});
++ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&player&&!bar.hidden&&document.activeElement===document.body)stop();});
++ // Test hook: lets browser tests read how much has been buffered without waiting for real refreshes.
++ (window as unknown as {__replay?:unknown}).__replay={frames:()=>buffer.frames.length,time:()=>time,active:()=>player!==undefined};
++}
+diff --git a/src/map/vehicle-feed.ts b/src/map/vehicle-feed.ts
+index 2e481cad..b87e4a66 100644
+--- a/src/map/vehicle-feed.ts
++++ b/src/map/vehicle-feed.ts
+@@ -1,9 +1,9 @@
+-import type {VehicleObservation} from '../../shared/types';
++import type {LngLat,VehicleObservation} from '../../shared/types';
+ /** The latest vehicle refresh, shared between map layers. `vehicles` is null when the last refresh failed; `at` is the last success. */
+-export type VehicleUpdate={vehicles:VehicleObservation[]|null;at:number};
++export type VehicleUpdate={vehicles:VehicleObservation[]|null;at:number;routes?:Record<string,LngLat[]>};
+ let latest:VehicleUpdate|undefined;
+-export function publishVehicles(vehicles:VehicleObservation[]|null,now=Date.now()){
+- latest={vehicles,at:vehicles?now:latest?.at??0};
++export function publishVehicles(vehicles:VehicleObservation[]|null,now=Date.now(),routes?:Record<string,LngLat[]>){
++ latest={vehicles,at:vehicles?now:latest?.at??0,routes};
+  document.dispatchEvent(new CustomEvent('reading-vehicles',{detail:latest}));
+ }
+ /** Calls back with the latest refresh straight away, if there has been one, and then with each new one. */
+diff --git a/src/movement/replay-player.ts b/src/movement/replay-player.ts
+new file mode 100644
+index 00000000..dc906908
+--- /dev/null
++++ b/src/movement/replay-player.ts
+@@ -0,0 +1,22 @@
++import {ReplayBuffer,type ReplayFrame} from '../../shared/replay';
++import {VehicleTracker,type VehiclePose} from './tracker';
++
++/**
++ * Plays a ReplayBuffer through the same tracker as the live map, so replayed buses keep to their routes between
++ * snapshots. Moving forward feeds in each snapshot as its time passes; moving back starts again from the one before.
++ */
++export class ReplayPlayer {
++ private tracker=new VehicleTracker();private last:ReplayFrame|undefined;
++ constructor(private buffer:ReplayBuffer){}
++ poses(time:number):VehiclePose[]{
++  const frames=this.buffer.frames,target=this.buffer.indexAt(time);
++  if(target<0)return [];
++  let from=this.last?frames.indexOf(this.last)+1:0;
++  // Going back in time, or the last snapshot played has since left the buffer: start again.
++  if(this.last&&(this.last.at>frames[target].at||from===0)){this.tracker=new VehicleTracker();this.last=undefined;from=0;}
++  // Start from the snapshot before the target when jumping, so the second can animate from the first.
++  if(!this.last)from=Math.max(0,target-1);
++  for(let i=from;i<=target;i++){this.tracker.ingest(frames[i].vehicles,frames[i].at,this.buffer.routes);this.last=frames[i];}
++  return this.tracker.poses(time);
++ }
++}
+diff --git a/src/style.css b/src/style.css
+index 3d9db53c..fdf017b9 100644
+--- a/src/style.css
++++ b/src/style.css
+@@ -102,3 +102,13 @@ h3 .evidence{margin-left:4px;text-transform:uppercase}
+ /* The panel is now taller than a short window can show, so on desktop it scrolls as a whole and "Around here" scrolls within itself. */
+ @media(min-width:681px){.explore-panel{max-height:calc(100dvh - 140px);overflow-x:hidden;overflow-y:auto}.explore-panel #layers{max-height:none;overflow:visible}}
+ .here-card #here-body{max-height:min(320px,40dvh);overflow-y:auto}
++/* Replay of earlier vehicle positions (Tools > Replay): a slim bar under the header while it is on. */
++.replay-bar{position:fixed;z-index:14;top:108px;left:340px;right:96px;max-width:560px;margin:0 auto;padding:8px 12px;background:var(--paper);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);color:var(--ink)}
++.replay-bar[hidden]{display:none}
++.replay-row{display:flex;align-items:center;gap:8px}
++.replay-row button{min-height:36px;min-width:36px;padding:0 10px;border:1px solid var(--line);border-radius:10px;background:var(--fill);color:var(--ink);font-size:13px;font-weight:600}
++.replay-row .replay-live{background:var(--accent);border-color:var(--accent);color:#fff;white-space:nowrap}
++.replay-slider{flex:1;min-width:60px;accent-color:var(--accent)}
++.replay-time{font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted);white-space:nowrap}
++.replay-note{margin:6px 0 0;font-size:12px;line-height:1.4;color:var(--muted)}
++@media(max-width:680px){.replay-bar{top:96px;left:12px;right:12px;max-width:none}.replay-time{display:none}.replay-note{font-size:11px}}
+diff --git a/src/ui/shell.ts b/src/ui/shell.ts
+index 6817e69a..ba7eaef9 100644
+--- a/src/ui/shell.ts
++++ b/src/ui/shell.ts
+@@ -8,7 +8,7 @@ export function shell(){
+  document.querySelector('#app')!.innerHTML=`
+ <main id="map" aria-label="Interactive 3D map of Reading"></main>
+ <header class="topbar"><a class="brand" href="/" aria-label="Mini Reading home"><span class="brand-mark">r<span>3</span></span><span>mini <strong>reading</strong><small>A TOWN IN THREE DIMENSIONS</small></span></a><div class="top-divider"></div><span class="area-label">Berkshire, England</span><button id="data-button" class="status-button"><span class="status-dot"></span><span id="overall-status">Checking feeds</span><span>↗</span></button></header>
+-<aside class="explore-panel" aria-label="Map controls"><div class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Search Mini Reading" aria-label="Search Mini Reading" autocomplete="off" enterkeyhint="search"></div><div id="search-results" class="search-results" hidden></div>${modeBar()}<details id="here-card" class="mode-card here-card" open><summary>Around here</summary><div id="here-body"></div></details><div class="tools"><button id="tools-toggle" class="layer-row tools-toggle" aria-expanded="false" aria-controls="tools-list"><span><i>▦</i>Tools</span><span class="tools-caret" aria-hidden="true">▾</span></button><div id="tools-list" class="tools-list" hidden>${['evening','scenario','history','fuel','direct','graphics'].map(id=>`<div data-tool="${id}"></div>`).join('')}</div></div><div class="panel-heading"><span>EXPLORE READING</span><span class="heading-buttons"><button id="share-view" class="share-view" type="button" title="Share this view" aria-label="Share this view"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button><button id="theme-toggle" class="theme-toggle" type="button"></button><button id="collapse-layers" aria-label="Toggle map layers" aria-expanded="true">−</button></span></div><div id="layers">${group('miniature','The miniature',true,'<label class="layer-row"><span><i>▥</i>3D buildings</span><input type="checkbox" data-layer="buildings"'+on('buildings')+' role="switch"></label>')}${group('move','On the move',true,counted.slice(0,2).join(''))}${group('road','Traffic and roads',false,counted.slice(2).join('')+'<label class="layer-row"><span><i>◉</i>Speed limits</span><input type="checkbox" data-layer="signs"'+on('signs')+' role="switch"></label><label class="layer-row"><span><i>▣</i>Cameras</span><input type="checkbox" data-layer="cameras"'+on('cameras')+' role="switch"></label>')}${group('around','Around Reading',true,'')}${group('places','Useful places',false,'')}</div><div class="panel-foot"><span class="small-dot"></span><span id="geography-status">Loading Reading’s geography…</span></div></aside>
++<aside class="explore-panel" aria-label="Map controls"><div class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Search Mini Reading" aria-label="Search Mini Reading" autocomplete="off" enterkeyhint="search"></div><div id="search-results" class="search-results" hidden></div>${modeBar()}<details id="here-card" class="mode-card here-card" open><summary>Around here</summary><div id="here-body"></div></details><div class="tools"><button id="tools-toggle" class="layer-row tools-toggle" aria-expanded="false" aria-controls="tools-list"><span><i>▦</i>Tools</span><span class="tools-caret" aria-hidden="true">▾</span></button><div id="tools-list" class="tools-list" hidden>${['evening','scenario','history','replay','fuel','direct','graphics'].map(id=>`<div data-tool="${id}"></div>`).join('')}</div></div><div class="panel-heading"><span>EXPLORE READING</span><span class="heading-buttons"><button id="share-view" class="share-view" type="button" title="Share this view" aria-label="Share this view"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button><button id="theme-toggle" class="theme-toggle" type="button"></button><button id="collapse-layers" aria-label="Toggle map layers" aria-expanded="true">−</button></span></div><div id="layers">${group('miniature','The miniature',true,'<label class="layer-row"><span><i>▥</i>3D buildings</span><input type="checkbox" data-layer="buildings"'+on('buildings')+' role="switch"></label>')}${group('move','On the move',true,counted.slice(0,2).join(''))}${group('road','Traffic and roads',false,counted.slice(2).join('')+'<label class="layer-row"><span><i>◉</i>Speed limits</span><input type="checkbox" data-layer="signs"'+on('signs')+' role="switch"></label><label class="layer-row"><span><i>▣</i>Cameras</span><input type="checkbox" data-layer="cameras"'+on('cameras')+' role="switch"></label>')}${group('around','Around Reading',true,'')}${group('places','Useful places',false,'')}</div><div class="panel-foot"><span class="small-dot"></span><span id="geography-status">Loading Reading’s geography…</span></div></aside>
+ <div id="traffic-legend" class="traffic-legend">Traffic congestion <span class="traffic-scale"></span><small>Slow → Fast · <span id="traffic-availability">Checking feed</span></small></div><div class="places-dock" aria-label="Landmarks"><span class="dock-label">TAKE A CLOSER LOOK</span><div id="landmark-buttons"></div></div>
+ <div class="map-tools"><button id="home-view" title="Return to Reading station" aria-label="Reset view">⌂</button><button id="overview" title="Show greater Reading" aria-label="Show whole map">⤢</button><button id="tilt-view" title="Toggle 2D and 3D view" aria-label="Toggle 2D and 3D view">3D</button><button id="orbit-view" title="Orbit Reading" aria-label="Orbit Reading" aria-pressed="false">↻</button></div>
+ <div class="view-caption"><span class="eyebrow">READING STATION</span><span id="view-coordinates">51.4584° N · 0.9717° W</span></div>
+@@ -32,7 +32,7 @@ const group=(id:string,title:string,open:boolean,rows:string)=>`<details class="
+ /** The body of a layer group in the Explore panel, for a module to add its switches to. */
+ export const layerGroup=(id:'move'|'road'|'around'|'places')=>document.querySelector<HTMLElement>(`[data-group="${id}"]`)!;
+ /** The place in the Tools menu for a panel launcher. */
+-export const toolSlot=(id:'evening'|'scenario'|'history'|'fuel'|'direct'|'graphics')=>document.querySelector<HTMLElement>(`[data-tool="${id}"]`)!;
++export const toolSlot=(id:'evening'|'scenario'|'history'|'replay'|'fuel'|'direct'|'graphics')=>document.querySelector<HTMLElement>(`[data-tool="${id}"]`)!;
+ /** Phones get the details panel as a bottom sheet and the layers as a pull-down; only one is open at a time. */
+ const phone=()=>matchMedia('(max-width:680px)').matches;
+ function closeLayersSheet(){const panel=document.querySelector('.explore-panel')!;if(!panel.classList.contains('mobile-open'))return;panel.classList.remove('mobile-open');const b=document.querySelector('#collapse-layers')!;b.textContent='+';b.setAttribute('aria-expanded','false');}
+diff --git a/tests/replay-browser.mjs b/tests/replay-browser.mjs
+new file mode 100644
+index 00000000..d9ab4546
+--- /dev/null
++++ b/tests/replay-browser.mjs
+@@ -0,0 +1,51 @@
++import {chromium,expect} from '@playwright/test';
++// Tools > Replay: refuses until two snapshots are buffered, then replays them with a clear "historical" label and a way back to live.
++const base=process.env.APP_URL??'http://127.0.0.1:8790';
++const browser=await chromium.launch({executablePath:process.env.BROWSER_EXECUTABLE??'/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',headless:true});
++const slow={timeout:20000};
++const bus=(at,metres)=>({id:'bods:test',kind:'bus',position:[-0.9718+metres/69500,51.4589],observedAt:new Date(at).toISOString(),label:'17',status:'observed',source:'test'});
++try{
++ for(const [name,viewport] of [['desktop',{width:1300,height:900}],['phone',{width:390,height:800}]]){
++  const page=await browser.newPage({viewport}),errors=[];page.on('pageerror',e=>errors.push(e.message));
++  await page.route('**/api/v1/**',route=>{const key=new URL(route.request().url()).pathname.slice(8);
++   if(key.startsWith('traffic-tiles'))return route.fulfill({status:204});
++   const body=key==='config'?{tomtom:false,weather:false,fuel:false,rivers:false}:{version:1,data:[],routes:{}};
++   return route.fulfill({json:body});});
++  await page.goto(`${base}/?mode=transport&lat=51.4589&lng=-0.9718&zoom=16`);await page.locator('#loading').waitFor({state:'hidden'});
++  await page.waitForFunction(()=>window.__replay?.frames()>=1,null,{timeout:120000});
++  const openTools=async()=>{if(name==='phone'&&!await page.locator('.explore-panel.mobile-open').count())await page.locator('#collapse-layers').click();if(await page.locator('#tools-list').isHidden())await page.locator('#tools-toggle').click();};
++  await openTools();
++  const open=page.locator('.replay-open'),bar=page.locator('.replay-bar');
++  await open.scrollIntoViewIfNeeded();
++  // One empty snapshot is not enough to replay.
++  await open.click();await expect(page.locator('#toast')).toContainText('Replay needs',slow);await expect(bar).toBeHidden();
++  // Two more snapshots, a minute apart, with a bus moving 600 m.
++  const t=Date.now()+30_000;
++  await page.evaluate(([a,b])=>{for(const [at,v] of [[a.at,a.bus],[b.at,b.bus]])document.dispatchEvent(new CustomEvent('reading-vehicles',{detail:{vehicles:[v],at}}));},[{at:t,bus:bus(t,0)},{at:t+60_000,bus:bus(t+60_000,600)}]);
++  await expect.poll(()=>page.evaluate(()=>window.__replay.frames()),slow).toBe(3);
++  await openTools();await open.click();
++  await expect(bar).toBeVisible(slow);
++  await expect(page.locator('body')).toHaveClass(/replaying/);
++  await expect(bar.locator('.evidence.historical')).toBeVisible();
++  await expect(bar.locator('.replay-length')).toContainText('positions seen on this device');
++  await expect(bar.locator('.replay-length')).toContainText('Not live');
++  await expect(open).toHaveAttribute('aria-pressed','true');
++  const box=await bar.boundingBox();if(box.x<0||box.x+box.width>viewport.width+1)throw Error(`${name}: replay bar leaves the screen: ${JSON.stringify(box)}`);
++  // Speed cycles, play and pause, and the slider moves the replay clock.
++  const speed=bar.locator('.replay-speed');await expect(speed).toHaveText('30×');await speed.click();await expect(speed).toHaveText('60×');await speed.click();await speed.click();await expect(speed).toHaveText('30×');
++  const play=bar.locator('.replay-play');if(await play.getAttribute('aria-label')==='Pause')await play.click();await expect(play).toHaveAttribute('aria-label','Play');await play.click();await expect(play).toHaveAttribute('aria-label','Pause');await play.click();await expect(play).toHaveAttribute('aria-label','Play');
++  const slider=bar.locator('.replay-slider'),max=await slider.getAttribute('max'),min=await slider.getAttribute('min');
++  if(!(Number(max)>Number(min)))throw Error('slider has no range');
++  await slider.evaluate((el,v)=>{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));},max);
++  await expect.poll(()=>page.evaluate(()=>window.__replay.time()),slow).toBe(Number(max));
++  await slider.evaluate((el,v)=>{el.value=v;el.dispatchEvent(new Event('input',{bubbles:true}));},min);
++  await expect.poll(()=>page.evaluate(()=>window.__replay.time()),slow).toBe(Number(min));
++  // Back to live.
++  await bar.locator('.replay-live').click();
++  await expect(bar).toBeHidden();await expect(page.locator('body')).not.toHaveClass(/replaying/);await expect(open).toHaveAttribute('aria-pressed','false');
++  if(await page.evaluate(()=>window.__replay.active()))throw Error('replay still active');
++  if(errors.length)throw Error(`${name} page errors: ${errors.join('; ')}`);
++  await page.close();
++ }
++ console.log('Replay: waits for two snapshots, labelled historical, speed, pause, scrub, back to live and mobile width passed.');
++}finally{await browser.close();}
+diff --git a/tests/replay.test.ts b/tests/replay.test.ts
+new file mode 100644
+index 00000000..7943e4e9
+--- /dev/null
++++ b/tests/replay.test.ts
+@@ -0,0 +1,67 @@
++import test from 'node:test';
++import assert from 'node:assert/strict';
++import {ReplayBuffer,replayLength,REPLAY_MAX_FRAMES,REPLAY_MIN_GAP,REPLAY_WINDOW} from '../shared/replay';
++import {ReplayPlayer} from '../src/movement/replay-player';
++import {distance} from '../shared/geo';
++import type {LngLat,VehicleObservation} from '../shared/types';
++
++const T0=Date.parse('2026-10-10T12:00:00Z');
++const START:LngLat=[-0.97,51.45],metresEast=(m:number):LngLat=>[START[0]+m/69500,START[1]];
++const route:LngLat[]=[START,metresEast(2000)];
++const bus=(id:string,metres:number,at:number,extra:Partial<VehicleObservation>={}):VehicleObservation=>({id,kind:'bus',position:metresEast(metres),observedAt:new Date(at).toISOString(),label:'17',tripId:`trip-${id}`,status:'observed',source:'test',...extra} as VehicleObservation);
++
++test('the buffer keeps snapshots in order and ignores ones that arrive too close together',()=>{
++ const b=new ReplayBuffer();
++ assert.equal(b.span,undefined);assert.equal(b.ready,false);
++ assert.ok(b.push([],T0));assert.equal(b.push([],T0+REPLAY_MIN_GAP-1),false);assert.ok(b.push([],T0+60_000));
++ assert.equal(b.frames.length,2);assert.equal(b.ready,true);
++ assert.deepEqual(b.span,{from:T0,to:T0+60_000,count:2});
++ assert.equal(b.indexAt(T0-1),-1);assert.equal(b.indexAt(T0),0);assert.equal(b.indexAt(T0+59_999),0);assert.equal(b.indexAt(T0+60_000),1);assert.equal(b.indexAt(T0+9e9),1);
++});
++
++test('only the last hour is kept, and memory is capped',()=>{
++ const b=new ReplayBuffer();
++ for(let i=0;i<=80;i++)b.push([],T0+i*60_000);
++ assert.ok(b.span!.to-b.span!.from<=REPLAY_WINDOW);assert.equal(b.frames.length,61);
++ const many=new ReplayBuffer();for(let i=0;i<REPLAY_MAX_FRAMES+50;i++)many.push([],T0+i*REPLAY_MIN_GAP);
++ assert.equal(many.frames.length,REPLAY_MAX_FRAMES);
++});
++
++test('journey shapes are kept only for vehicles in the buffer',()=>{
++ const b=new ReplayBuffer();
++ b.push([bus('a',0,T0)],T0,{'trip-a':route,'trip-other':route});
++ assert.deepEqual(Object.keys(b.routes),['trip-a']);
++});
++
++test('replay lengths read naturally',()=>{
++ assert.equal(replayLength(20_000),'under a minute');assert.equal(replayLength(60_000),'1 minute');assert.equal(replayLength(23*60_000),'23 minutes');
++});
++
++test('a replayed bus moves along its route between two snapshots',()=>{
++ const b=new ReplayBuffer();
++ b.push([bus('a',0,T0)],T0,{'trip-a':route});b.push([bus('a',600,T0+60_000)],T0+60_000,{'trip-a':route});
++ const p=new ReplayPlayer(b);
++ assert.deepEqual(p.poses(T0-1),[]);
++ const first=p.poses(T0+1);assert.equal(first.length,1);assert.ok(distance(first[0].position,metresEast(0))<5);
++ const half=p.poses(T0+60_000+30_000);assert.equal(half.length,1);
++ assert.ok(Math.abs(distance(half[0].position,START)-300)<8,`expected about 300 m along, got ${distance(half[0].position,START)}`);
++ const end=p.poses(T0+60_000+60_000);assert.ok(Math.abs(distance(end[0].position,START)-600)<8);
++});
++
++test('scrubbing back plays the earlier position again and a vehicle appears only once seen',()=>{
++ const b=new ReplayBuffer();
++ b.push([bus('a',0,T0)],T0,{'trip-a':route});b.push([bus('a',600,T0+60_000),bus('b',1000,T0+60_000)],T0+60_000,{'trip-a':route,'trip-b':route});
++ const p=new ReplayPlayer(b);
++ assert.equal(p.poses(T0+90_000).length,2);
++ const back=p.poses(T0+5_000);assert.equal(back.length,1);assert.equal(back[0].observation.id,'a');assert.ok(distance(back[0].position,START)<5);
++ assert.equal(p.poses(T0+70_000).length,2);
++});
++
++test('a player survives its first snapshot leaving the buffer',()=>{
++ const b=new ReplayBuffer();
++ b.push([bus('a',0,T0)],T0,{'trip-a':route});b.push([bus('a',100,T0+60_000)],T0+60_000,{'trip-a':route});
++ const p=new ReplayPlayer(b);p.poses(T0+60_000);
++ b.push([bus('a',200,T0+REPLAY_WINDOW+120_000)],T0+REPLAY_WINDOW+120_000,{'trip-a':route});
++ assert.ok(b.frames[0].at>T0);
++ assert.doesNotThrow(()=>p.poses(b.span!.to));
++});

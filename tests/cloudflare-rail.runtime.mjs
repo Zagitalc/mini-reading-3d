@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+// Both production crons: the minute run (trains, history) and the five-minute run (slow feeds).
+const tick=async w=>{await w.scheduled({cron:'*/5 * * * *'});return w.scheduled({cron:'* * * * *'});};
 import {readFile} from 'node:fs/promises';
 import {Miniflare,convertV4MiniflareOptions} from 'miniflare';
 let calls=0,status=200;
@@ -12,7 +14,7 @@ const mf=new Miniflare(convertV4MiniflareOptions({workers:[{modules:true,scriptP
 try{
  const db=await mf.getD1Database('DB');for(const file of ['0001_initial.sql','0002_history.sql'])for(const s of(await readFile('migrations/'+file,'utf8')).replace(/^--.*$/gm,'').split(';').map(s=>s.trim()).filter(Boolean))await db.prepare(s).run();
  const worker=await mf.getWorker(),get=async path=>(await mf.dispatchFetch('http://local'+path)).json();
- await worker.scheduled({cron:'* * * * *'});assert.equal(calls,11);
+ await tick(worker);assert.equal(calls,11);
  const station=await get('/api/v1/rail-board');assert.equal(station.configured,true);assert.equal(station.board.station,'RDG');assert.equal(station.board.services.length,1);assert.equal(station.board.services[0].destination,'Reading West');
  {const near=await get('/api/v1/rail-board?station=TLH');assert.equal(near.board.station,'TLH');assert.equal(near.board.name,'Tilehurst');assert.equal(near.board.services.length,1);assert.equal(near.board.services[0].destination,'Reading');
   assert.equal((await get('/api/v1/rail-board?station=WKM')).board.services.length,0,'a quiet station has an empty board, not none');
@@ -21,12 +23,12 @@ try{
  assert.equal((await get('/api/v1/vehicle-routes')).routes['train-test'].length,3,'RDM-only configuration exposes paths');
  assert.equal((await get('/api/v1/health')).data.find(f=>f.id==='trains').state,'live');
  {const history=await get('/api/v1/history?days=1'),rail=history.hours.reduce((a,h)=>a+h.rail.departures,0);assert.equal(rail,1,'the station board departure is recorded once');assert.deepEqual(history.hours.find(h=>h.trains).trains,{minutes:1,mean:1,max:1});assert.equal(history.hours.find(h=>h.rail.departures).rail.onTime,1);}
- await Promise.all([worker.scheduled({cron:'* * * * *'}),worker.scheduled({cron:'* * * * *'}),get('/api/v1/vehicles'),get('/api/v1/rail-board')]);assert.equal(calls,11,'cron and viewers share cached rail snapshots');
+ await Promise.all([tick(worker),tick(worker),get('/api/v1/vehicles'),get('/api/v1/rail-board')]);assert.equal(calls,11,'cron and viewers share cached rail snapshots');
  const saved=JSON.parse((await db.prepare("SELECT body FROM state WHERE id='trains'").first()).body);
  await db.prepare("UPDATE state SET body=? WHERE id='trains'").bind(JSON.stringify({...saved,lastAttempt:new Date(Date.now()-3600000).toISOString()})).run();
  await db.prepare("UPDATE state SET body='0' WHERE id='poll-lease:trains'").run();status=401;
- await worker.scheduled({cron:'* * * * *'});assert.equal(calls,12,'one rejected key does not trigger eleven rejected requests');
+ await tick(worker);assert.equal(calls,12,'one rejected key does not trigger eleven rejected requests');
  const health=(await get('/api/v1/health')).data.find(f=>f.id==='trains');assert.equal(health.state,'stale');assert.equal(health.message,'Rail provider returned HTTP 401');
- await worker.scheduled({cron:'* * * * *'});assert.equal(calls,12,'failed requests back off');
+ await tick(worker);assert.equal(calls,12,'failed requests back off');
  console.log('RDM Worker: estimates, station board, route visibility, shared polling, authentication failure and backoff passed.');
 }finally{await mf.dispose();}
