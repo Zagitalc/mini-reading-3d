@@ -1,0 +1,1 @@
+{"schema":1,"stopId":"035090200001","timezone":"Europe/London","services":[{"start":"20261024","end":"20261024","weekdays":"1111111","exceptions":{}}],"trips":[{"id":"VJc3ed3075d117068ede84c50f9513261d611ea652","service":0,"routeId":"38955","headsign":"Carlile Gardens","direction":"0"}],"times":[[0,63600,27,1,0]]}
