@@ -99,7 +99,7 @@
     "miniflare": "^5.20260915.0-alpha",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "vite": "8.2.2",
+    "vite": "8.2.4",
     "wrangler": "^4.132.0"
   }
 }

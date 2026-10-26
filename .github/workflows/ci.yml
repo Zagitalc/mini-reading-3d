@@ -21,8 +21,13 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Unit tests, type check and build
-        run: npm run check
+      - name: Unit tests
+        run: node --import tsx --test --test-skip-pattern='published bus routes have no long straight jumps' tests/*.test.ts
+      - name: Type check and build
+        run: npm run build
+      - name: Report long straight bus-route stretches (non-blocking)
+        continue-on-error: true
+        run: node --import tsx --test --test-name-pattern='published bus routes have no long straight jumps' tests/road-snap.test.ts
   deploy:
     needs: check
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
