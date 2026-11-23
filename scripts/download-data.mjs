@@ -1,7 +1,9 @@
-import{mkdir,writeFile,rm}from'node:fs/promises';
+import{mkdir,mkdtemp,writeFile,rm}from'node:fs/promises';
 import{createWriteStream}from'node:fs';
+import{join}from'node:path';
 import{Readable}from'node:stream';
 import{pipeline}from'node:stream/promises';
+import{setTimeout as delay}from'node:timers/promises';
 import{subsetGtfs,zipCsvReader,zipGtfs}from'./gtfs-subset.mjs';
 await mkdir('raw',{recursive:true});
 const headers={'User-Agent':'MiniReading3D/0.1 (+https://github.com/Zagitalc/mini-reading-3d)','Accept':'application/zip, application/octet-stream, */*'};
@@ -28,14 +30,35 @@ async function publisherGtfs(){
  return {bytes:new Uint8Array(await r.arrayBuffer()),url:latest};
 }
 
+async function bodsArchive(regional){
+ // Two six-minute attempts leave time for validation and deployment in the 20-minute job.
+ for(let attempt=1;attempt<=2;attempt++){
+  try{
+   const r=await get(bods,360_000);
+   if(!r.ok||!r.body){
+    await r.body?.cancel();
+    throw Error(`BODS GTFS: HTTP ${r.status} from ${new URL(r.url).hostname}`);
+   }
+   // Stream to disk so the regional archive stays out of memory.
+   await pipeline(Readable.fromWeb(r.body),createWriteStream(regional));
+   return zipCsvReader(regional);
+  }catch(error){
+   await rm(regional,{force:true});
+   if(attempt===2)throw error;
+   console.warn(`BODS GTFS download or archive check failed; retrying in 5 seconds: ${error.message}`);
+   await delay(5_000);
+  }
+ }
+}
+
 async function bodsGtfs(){
- const regional='raw/bods-region-gtfs.zip';
- const r=await get(bods,600000);
- if(!r.ok||!r.body)throw Error(`BODS GTFS: HTTP ${r.status} from ${new URL(r.url).hostname}`);
- // Stream to disk: the regional archive is too large to buffer comfortably.
- await pipeline(Readable.fromWeb(r.body),createWriteStream(regional));
- try{return zipGtfs(await subsetGtfs(zipCsvReader(regional),{noc:'RBUS',name:/^Reading (Buses|Transport)\b/i}));}
- finally{await rm(regional,{force:true});}
+ const directory=await mkdtemp('raw/bods-');
+ try{
+  const readCsv=await bodsArchive(join(directory,'regional-gtfs.zip'));
+  return zipGtfs(await subsetGtfs(readCsv,{noc:'RBUS',name:/^Reading (Buses|Transport)\b/i}));
+ }finally{
+  await rm(directory,{recursive:true,force:true});
+ }
 }
 
 async function downloadGtfs(){
