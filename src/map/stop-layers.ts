@@ -42,15 +42,26 @@ export async function connectStopLayers(map:Map){
   const renderLast=(data:StopTimetable,element:HTMLElement,now:number)=>{
    const start=currentServiceDate(now,index.timezone),dates=[0,1,2,3,4,5,6].map(i=>addDays(start<index.validFrom?index.validFrom:start,i)).filter(d=>d<=index.validUntil);
    if(!dates.length){element.innerHTML='<p class="schedule-notice">This timetable snapshot has expired. Last departures are unavailable until an updated feed is published.</p>';return;}
-   if(!lastDate||!dates.includes(lastDate))lastDate=dates[0];
-   const result=lastDepartures(data,index,lastDate),label=(id:string)=>index.routes[id]?.label??id;
+   const selectedDate=dates.find(date=>date===lastDate)??dates[0];
+   lastDate=selectedDate;
+   const result=lastDepartures(data,index,selectedDate),label=(id:string)=>index.routes[id]?.label??id;
    const groups=result.groups.sort((a,b)=>compareRouteLabels(label(a.routeId),label(b.routeId))||a.direction.localeCompare(b.direction)||a.last.time-b.last.time);
    const ambiguous=new Set(groups.map(g=>`${g.routeId}|${g.headsign}`).filter((k,i,all)=>all.indexOf(k)!==i));
-   const picker=`<label class="service-date-picker">Service date<select>${dates.map(d=>`<option value="${d}"${d===lastDate?' selected':''}>${escape(serviceDay(d))}${d===start?' (tonight)':''}</option>`).join('')}</select></label>`;
    const rows=groups.map(g=>{const departed=g.last.time<now,next=g.next;
     return `<li class="last-departure${departed?' departed':''}"><time datetime="${new Date(g.last.time).toISOString()}">${clock.format(g.last.time)}<small>${escape(day.format(g.last.time))}${g.afterMidnight?' · after midnight':''}</small></time><div><strong>${escape(label(g.routeId))}</strong> ${escape(g.headsign)}${ambiguous.has(`${g.routeId}|${g.headsign}`)?` <small>Timetable direction ${escape(g.direction||'not supplied')}</small>`:''}<small>${departed?'Already departed · ':''}Last of ${g.count} ${g.count===1?'departure':'departures'} · ${g.last.approximate?'approximate timetable time':'scheduled'}</small><small>${next?`Next: ${clock.format(next.time)} ${escape(day.format(next.time))} (service date ${dateLabel(next.serviceDate)})${next.time-g.last.time<90*60000?'. Service continues through the night; this is where one service date hands over to the next, not a last bus.':''}`:result.nextCovered?'No departures to this destination on the following service date.':'Following service date is outside this timetable snapshot.'}</small></div></li>`;}).join('');
-   element.innerHTML=`${picker}<p class="departure-window">Final scheduled boarding departure for each route, direction and destination on service date ${dateLabel(lastDate)}, computed from the whole timetable. Times after midnight still belong to this service date. Scheduled times, not live predictions: cancellations and delays are not included.</p>${groups.length?`<ol class="departures last-departures">${rows}</ol><small>A short working to a different destination is listed separately. Source: ${escape(index.source)} GTFS${index.version?`, dataset ${escape(index.version)}`:''}.</small>`:'<p>No scheduled boarding departures on this service date in this snapshot.</p>'}`;
-   element.querySelector('select')!.addEventListener('change',e=>{lastDate=(e.currentTarget as HTMLSelectElement).value;render();});
+   element.innerHTML=`<label class="service-date-picker">Service date<select></select></label><p class="departure-window">Final scheduled boarding departure for each route, direction and destination on service date <span class="selected-service-date"></span>, computed from the whole timetable. Times after midnight still belong to this service date. Scheduled times, not live predictions: cancellations and delays are not included.</p>${groups.length?`<ol class="departures last-departures">${rows}</ol><small>A short working to a different destination is listed separately. Source: ${escape(index.source)} GTFS${index.version?`, dataset ${escape(index.version)}`:''}.</small>`:'<p>No scheduled boarding departures on this service date in this snapshot.</p>'}`;
+   element.querySelector('.selected-service-date')!.textContent=dateLabel(selectedDate);
+   const select=element.querySelector('select')!;
+   for(const date of dates){
+    select.add(new Option(serviceDay(date)+(date===start?' (tonight)':''),date,false,date===selectedDate));
+   }
+   select.addEventListener('change',()=>{
+    const value=select.value;
+    lastDate=dates.find(date=>date===value)??dates[0];
+    const hadFocus=document.activeElement===select;
+    renderLast(data,element,Date.now());
+    if(hadFocus)element.querySelector('select')?.focus();
+   });
   };
   const loadJourneys=(stop:BusStop)=>{
    const urls=stop.routeIds.flatMap(id=>index.routes[id]?.journeysUrl?[[id,index.routes[id].journeysUrl!] as const]:[]);
