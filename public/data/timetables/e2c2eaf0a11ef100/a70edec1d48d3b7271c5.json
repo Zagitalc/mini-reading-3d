@@ -1,0 +1,1 @@
+{"schema":1,"stopId":"035084260002","timezone":"Europe/London","services":[{"start":"20261201","end":"20261201","weekdays":"1111111","exceptions":{"20261201":1}}],"trips":[{"id":"VJe6b9f133b1507caa346e076efefdfea69be600b4","service":0,"routeId":"38959","headsign":"Earley Gate, University","direction":"0"}],"times":[[0,81360,28,0,0]]}
