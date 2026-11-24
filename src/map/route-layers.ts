@@ -1,6 +1,7 @@
 import type {Map,ExpressionSpecification} from 'maplibre-gl';
 import {LAYER_ZOOM} from '../../shared/layer-zoom';
 import {detail,escape,layerGroup,sourceFooter} from '../ui/shell';
+import {isCompactMap} from '../ui/map-sheets';
 import {routeMatches,uniqueRoutes,mapRouteLabel,type StaticRoute} from '../../shared/static-routes';
 import {sameLabel} from '../../shared/share-view';
 import {currentSelection,onLinked,setSelection} from '../ui/share';
@@ -46,7 +47,7 @@ export async function connectRouteLayers(map:Map){
    // A shared link names the route by its label; with no camera in the link, the map frames the whole route.
    for(const r of routes)showRoute.set(r,fly=>{
     if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}choose(r.id);
-    const points=r.coordinates.flat();if(fly&&points.length){const lng=points.map(p=>p[0]),lat=points.map(p=>p[1]);map.fitBounds([[Math.min(...lng),Math.min(...lat)],[Math.max(...lng),Math.max(...lat)]],{padding:innerWidth>680?{top:125,left:330,right:430,bottom:130}:40,pitch:30,duration:1200});}
+    const points=r.coordinates.flat();if(fly&&points.length){const lng=points.map(p=>p[0]),lat=points.map(p=>p[1]);map.fitBounds([[Math.min(...lng),Math.min(...lat)],[Math.max(...lng),Math.max(...lat)]],{padding:isCompactMap()?{top:80,left:24,right:60,bottom:Math.round(Math.min(innerHeight*.41,360))+12}:{top:125,left:330,right:430,bottom:130},pitch:30,duration:1200});}
    });
    onLinked(mode==='bus'?'route':'rail',(label,fly)=>{const r=routes.find(r=>sameLabel(r.label,label));if(!r)return false;showRoute.get(r)!(fly);return true;});
   }catch{section.querySelector('.route-loading')!.textContent='Route snapshot unavailable';}

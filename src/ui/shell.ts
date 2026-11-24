@@ -1,30 +1,58 @@
 import {connectTheme} from './theme';
 import {connectModeBar,modeBar,modeDefault} from './modes';
 import {clearSelection} from './share';
+import {closeMapMenu, connectMapSheets, resetDetailsSheet} from './map-sheets';
 export const icons={layers:'▱',bus:'▰',train:'▥',roadworks:'△',traffic:'≋',signs:'◉',cameras:'▣',buildings:'▥'};
 export function shell(){
  const on=(id:string)=>modeDefault(id as Parameters<typeof modeDefault>[0])?' checked':'';
  const counted=[['buses','▰','Live buses'],['trains','▥','Live trains'],['traffic','≋','Traffic congestion'],['roadworks','△','Roadworks & closures']].map(([id,icon,label])=>`<label class="layer-row"><span><i>${icon}</i>${label}<small id="count-${id}">—</small></span><input type="checkbox" data-layer="${id}"${on(id)} role="switch"></label>`);
  document.querySelector('#app')!.innerHTML=`
 <main id="map" aria-label="Interactive 3D map of Reading"></main>
-<header class="topbar"><a class="brand" href="/" aria-label="Mini Reading home"><span class="brand-mark">r<span>3</span></span><span>mini <strong>reading</strong><small>A TOWN IN THREE DIMENSIONS</small></span></a><div class="top-divider"></div><span class="area-label">Berkshire, England</span><button id="data-button" class="status-button"><span class="status-dot"></span><span id="overall-status">Checking feeds</span><span>↗</span></button></header>
-<aside class="explore-panel" aria-label="Map controls"><div class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Search Mini Reading" aria-label="Search Mini Reading" autocomplete="off" enterkeyhint="search"></div><div id="search-results" class="search-results" hidden></div>${modeBar()}<details id="here-card" class="mode-card here-card" open><summary>Around here</summary><div id="here-body"></div></details><div class="tools"><button id="tools-toggle" class="layer-row tools-toggle" aria-expanded="false" aria-controls="tools-list"><span><i>▦</i>Tools</span><span class="tools-caret" aria-hidden="true">▾</span></button><div id="tools-list" class="tools-list" hidden>${['evening','scenario','history','replay','fuel','direct','graphics'].map(id=>`<div data-tool="${id}"></div>`).join('')}</div></div><div class="panel-heading"><span>EXPLORE READING</span><span class="heading-buttons"><button id="share-view" class="share-view" type="button" title="Share this view" aria-label="Share this view"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button><button id="theme-toggle" class="theme-toggle" type="button"></button><button id="collapse-layers" aria-label="Toggle map layers" aria-expanded="true">−</button></span></div><div id="layers">${group('miniature','The miniature',true,'<label class="layer-row"><span><i>▥</i>3D buildings</span><input type="checkbox" data-layer="buildings"'+on('buildings')+' role="switch"></label>')}${group('move','On the move',true,counted.slice(0,2).join(''))}${group('road','Traffic and roads',false,counted.slice(2).join('')+'<label class="layer-row"><span><i>◉</i>Speed limits</span><input type="checkbox" data-layer="signs"'+on('signs')+' role="switch"></label><label class="layer-row"><span><i>▣</i>Cameras</span><input type="checkbox" data-layer="cameras"'+on('cameras')+' role="switch"></label>')}${group('around','Around Reading',true,'')}${group('places','Useful places',false,'')}</div><div class="panel-foot"><span class="small-dot"></span><span id="geography-status">Loading Reading’s geography…</span></div></aside>
+<header class="topbar">
+ <a class="brand" href="/" aria-label="Mini Reading home"><span class="brand-mark">r<span>3</span></span><span>mini <strong>reading</strong><small>A TOWN IN THREE DIMENSIONS</small></span></a>
+ <div class="top-divider"></div><span class="area-label">Berkshire, England</span>
+ <button id="data-button" class="status-button"><span class="status-dot"></span><span id="overall-status">Checking feeds</span><span>↗</span></button>
+ <div class="mobile-map-actions">
+  <button id="mobile-search" type="button" aria-controls="map-menu">Search</button>
+  <button id="mobile-menu-toggle" type="button" aria-controls="map-menu" aria-expanded="false">Menu</button>
+ </div>
+</header>
+<aside id="map-menu" class="explore-panel" aria-label="Map controls">
+ <div class="mobile-sheet-header"><button id="menu-handle" class="sheet-handle" type="button" aria-label="Close map settings"></button><h2 id="mobile-menu-title" tabindex="-1">Map settings</h2><button id="close-map-menu" class="mobile-sheet-close" type="button">Close</button>
+ </div>
+ <div class="map-menu-content">
+  <div class="search-wrap"><span>⌕</span><input id="search" type="search" placeholder="Search Mini Reading" aria-label="Search Mini Reading" autocomplete="off" enterkeyhint="search"></div><div id="search-results" class="search-results" hidden></div>
+  ${modeBar()}
+  <details id="here-card" class="mode-card here-card" open><summary>Around here</summary><div id="here-body"></div></details>
+  <div class="tools"><button id="tools-toggle" class="layer-row tools-toggle" aria-expanded="false" aria-controls="tools-list"><span><i>▦</i>Tools</span><span class="tools-caret" aria-hidden="true">▾</span></button><div id="tools-list" class="tools-list" hidden>${['evening','scenario','history','replay','fuel','direct','graphics'].map(id=>`<div data-tool="${id}"></div>`).join('')}</div></div>
+  <div class="panel-heading"><span class="desktop-layers-title">EXPLORE READING</span><span class="mobile-layers-title">Layers</span><span class="heading-buttons"><button id="share-view" class="share-view" type="button" title="Share this view" aria-label="Share this view"><svg viewBox="0 0 24 24" width="17" height="17" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 15V3M7.5 7.5 12 3l4.5 4.5M5 12v7a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-7"/></svg></button><button id="theme-toggle" class="theme-toggle" type="button"></button><button id="collapse-layers" aria-label="Toggle map layers" aria-controls="layers" aria-expanded="true">−</button></span></div>
+  <div id="layers">${group('miniature','The miniature',true,'<label class="layer-row"><span><i>▥</i>3D buildings</span><input type="checkbox" data-layer="buildings"'+on('buildings')+' role="switch"></label>')}${group('move','On the move',true,counted.slice(0,2).join(''))}${group('road','Traffic and roads',false,counted.slice(2).join('')+'<label class="layer-row"><span><i>◉</i>Speed limits</span><input type="checkbox" data-layer="signs"'+on('signs')+' role="switch"></label><label class="layer-row"><span><i>▣</i>Cameras</span><input type="checkbox" data-layer="cameras"'+on('cameras')+' role="switch"></label>')}${group('around','Around Reading',true,'')}${group('places','Useful places',false,'')}</div>
+  <div class="panel-foot"><span class="small-dot"></span><span id="geography-status">Loading Reading’s geography…</span></div>
+  <details class="mobile-landmarks"><summary>Landmarks</summary><div id="mobile-landmark-slot"></div></details>
+  <div class="mobile-menu-extras" id="mobile-map-extras" role="group" aria-label="More map controls"></div>
+ </div>
+</aside>
 <div id="traffic-legend" class="traffic-legend">Traffic congestion <span class="traffic-scale"></span><small>Slow → Fast · <span id="traffic-availability">Checking feed</span></small></div><div class="places-dock" aria-label="Landmarks"><span class="dock-label">TAKE A CLOSER LOOK</span><div id="landmark-buttons"></div></div>
 <div class="map-tools"><button id="home-view" title="Return to Reading station" aria-label="Reset view">⌂</button><button id="overview" title="Show greater Reading" aria-label="Show whole map">⤢</button><button id="tilt-view" title="Toggle 2D and 3D view" aria-label="Toggle 2D and 3D view">3D</button><button id="orbit-view" title="Orbit Reading" aria-label="Orbit Reading" aria-pressed="false">↻</button></div>
+<button id="mobile-mode" class="mobile-mode" type="button" aria-controls="map-menu" aria-expanded="false"></button>
 <div class="view-caption"><span class="eyebrow">READING STATION</span><span id="view-coordinates">51.4584° N · 0.9717° W</span></div>
 <div class="bottom-note"><span>Drag to explore</span><span>Right-drag to tilt</span><span>Scroll to zoom</span></div>
-<div id="toast" role="status" hidden></div><div id="pick-bar" class="pick-bar" role="status" hidden><span id="pick-text"></span><button id="pick-cancel" type="button">Cancel</button></div><aside id="details" class="details-panel" aria-label="Map details" tabindex="-1" hidden><button id="sheet-handle" class="sheet-handle" aria-label="Show more of the panel" aria-expanded="false"></button><button id="close-details" class="close-button" aria-label="Close details">×</button><div id="details-content"></div></aside>
+<div id="toast" role="status" hidden></div><div id="pick-bar" class="pick-bar" role="status" hidden><span id="pick-text"></span><button id="pick-cancel" type="button">Cancel</button></div><aside id="details" class="details-panel" aria-label="Map details" tabindex="-1" hidden><button id="sheet-handle" class="sheet-handle" type="button" aria-label="Show more of the panel" aria-expanded="false"></button><button id="close-details" class="close-button" type="button" aria-label="Close details"><span class="desktop-close-glyph" aria-hidden="true">×</span><span class="mobile-close-label" aria-hidden="true">Close</span></button><div id="details-content"></div></aside>
 <div id="loading" class="loading"><span class="loader"></span><strong>Building your little Reading</strong><span>Real streets. A different perspective.</span></div>
 `;
  connectTheme(document.querySelector('#theme-toggle')!);connectModeBar();
- if(phone()){const toggle=document.querySelector('#collapse-layers')!;toggle.textContent='+';toggle.setAttribute('aria-expanded','false');}
- document.querySelector('#close-details')!.addEventListener('click',()=>{document.querySelector<HTMLElement>('#details')!.hidden=true;});document.addEventListener('keydown',e=>{if(e.key==='Escape'&&cancelPick){cancelPick();return;}if(e.key==='Escape'){document.querySelector<HTMLElement>('#details')!.hidden=true;document.querySelector<HTMLElement>('#search-results')!.hidden=true;}});
- document.querySelector('#collapse-layers')!.addEventListener('click',e=>{const el=document.querySelector<HTMLElement>('#layers')!,panel=document.querySelector('.explore-panel')!,b=e.currentTarget as HTMLElement;if(phone()){const open=panel.classList.toggle('mobile-open');el.hidden=false;if(open)document.querySelector<HTMLElement>('#details')!.hidden=true;b.textContent=open?'−':'+';b.setAttribute('aria-expanded',String(open));}else{el.hidden=!el.hidden;b.textContent=el.hidden?'+':'−';b.setAttribute('aria-expanded',String(!el.hidden));}});
- connectSheetHandle();
+ connectMapSheets(()=>{if(!cancelPick)return false;cancelPick();return true;});
+ const layers=document.querySelector<HTMLElement>('#layers')!;
+ const layerToggle=document.querySelector<HTMLButtonElement>('#collapse-layers')!;
+ layerToggle.addEventListener('click',()=>{
+  layers.hidden=!layers.hidden;
+  layerToggle.textContent=layers.hidden?'+':'−';
+  layerToggle.setAttribute('aria-expanded',String(!layers.hidden));
+ });
  document.querySelector('#pick-cancel')!.addEventListener('click',()=>cancelPick?.());
  const tools=document.querySelector<HTMLElement>('#tools-list')!,toolsToggle=document.querySelector<HTMLElement>('#tools-toggle')!;
  const showTools=(open:boolean)=>{tools.hidden=!open;toolsToggle.setAttribute('aria-expanded',String(open));};
- toolsToggle.addEventListener('click',()=>{const open=tools.hidden;showTools(open);if(open&&phone())closeLayersSheet();});
+ toolsToggle.addEventListener('click',()=>showTools(tools.hidden));
  // A tool's own click handler runs first, then the menu closes behind the panel it opened.
  tools.addEventListener('click',e=>{if((e.target as Element).closest('button'))showTools(false);});
 }
@@ -33,40 +61,24 @@ const group=(id:string,title:string,open:boolean,rows:string)=>`<details class="
 export const layerGroup=(id:'move'|'road'|'around'|'places')=>document.querySelector<HTMLElement>(`[data-group="${id}"]`)!;
 /** The place in the Tools menu for a panel launcher. */
 export const toolSlot=(id:'evening'|'scenario'|'history'|'replay'|'fuel'|'direct'|'graphics')=>document.querySelector<HTMLElement>(`[data-tool="${id}"]`)!;
-/** Phones get the details panel as a bottom sheet and the layers as a pull-down; only one is open at a time. */
-const phone=()=>matchMedia('(max-width:680px)').matches;
-function closeLayersSheet(){const panel=document.querySelector('.explore-panel')!;if(!panel.classList.contains('mobile-open'))return;panel.classList.remove('mobile-open');const b=document.querySelector('#collapse-layers')!;b.textContent='+';b.setAttribute('aria-expanded','false');}
 /** Where a card's data came from and how fresh it is, as one quiet footer under the facts that matter. Values are HTML, already escaped. */
 export const sourceFooter=(rows:[string,string][])=>`<dl class="card-source">${rows.map(([k,v])=>`<dt>${k}</dt><dd>${v}</dd>`).join('')}</dl>`;
 export function escape(s:unknown){return String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]!));}
-/** Replaces the details panel. Whatever card was there leaves the shared link; a module that wants its card in the link
- * calls setSelection after this. */
-/** The phone bottom sheet's bar: tap to toggle, or drag it up to expand, down to shrink, and well down from the short sheet to close. */
-function connectSheetHandle(){
- const panel=document.querySelector<HTMLElement>('#details')!,handle=document.querySelector<HTMLElement>('#sheet-handle')!;
- const setExpanded=(open:boolean)=>{panel.classList.toggle('expanded',open);handle.setAttribute('aria-expanded',String(open));handle.setAttribute('aria-label',open?'Show less of the panel':'Show more of the panel');};
- let drag:{id:number;y:number;height:number;moved:boolean}|undefined,dragged=false;
- handle.addEventListener('click',()=>{if(dragged){dragged=false;return;}setExpanded(!panel.classList.contains('expanded'));});
- handle.addEventListener('pointerdown',e=>{dragged=false;if(!phone())return;drag={id:e.pointerId,y:e.clientY,height:panel.getBoundingClientRect().height,moved:false};handle.setPointerCapture(e.pointerId);});
- handle.addEventListener('pointermove',e=>{
-  if(!drag||e.pointerId!==drag.id)return;const dy=e.clientY-drag.y;if(!drag.moved&&Math.abs(dy)<8)return;
-  drag.moved=true;panel.style.transition='none';panel.style.maxHeight=`${Math.max(80,Math.min(innerHeight-86,drag.height-dy))}px`;
- });
- const end=(e:PointerEvent)=>{
-  if(!drag||e.pointerId!==drag.id)return;const {moved,height,y}=drag,dy=e.clientY-y;drag=undefined;
-  panel.style.transition='';panel.style.maxHeight='';if(!moved)return;dragged=true;
-  const wasExpanded=panel.classList.contains('expanded');
-  if(dy<-40)setExpanded(true);
-  else if(dy>40){if(wasExpanded)setExpanded(false);else if(height-dy<innerHeight*.25)panel.hidden=true;}
- };
- handle.addEventListener('pointerup',end);handle.addEventListener('pointercancel',end);
+/** Replaces the details card. A caller can then set a new shared selection. */
+export function detail(html:string){
+ clearSelection();
+ const panel=document.querySelector<HTMLElement>('#details')!;
+ if(panel.hidden)resetDetailsSheet();
+ document.querySelector('#details-content')!.innerHTML=html;
+ closeMapMenu();
+ panel.hidden=false;
+ panel.focus({preventScroll:true});
 }
-export function detail(html:string){clearSelection();document.querySelector('#details-content')!.innerHTML=html;const el=document.querySelector<HTMLElement>('#details')!;if(phone())closeLayersSheet();el.hidden=false;el.focus({preventScroll:true});}
 export function toast(text:string){const el=document.querySelector<HTMLElement>('#toast')!;el.textContent=text;el.hidden=false;setTimeout(()=>el.hidden=true,4500);}
 let cancelPick:(()=>void)|null=null;
 /** Hides the panels while the next map tap picks a point, with a bar that says what to tap. Returns the function to call once the tap arrives; Cancel or Escape calls `cancel` instead. */
 export function startPick(text:string,cancel:()=>void){
- const bar=document.querySelector<HTMLElement>('#pick-bar')!;document.querySelector('#pick-text')!.textContent=text;bar.hidden=false;document.body.classList.add('picking');closeLayersSheet();
+ const bar=document.querySelector<HTMLElement>('#pick-bar')!;document.querySelector('#pick-text')!.textContent=text;bar.hidden=false;document.body.classList.add('picking');closeMapMenu();
  const done=()=>{bar.hidden=true;document.body.classList.remove('picking');cancelPick=null;};
  cancelPick=()=>{cancel();done();};return done;
 }

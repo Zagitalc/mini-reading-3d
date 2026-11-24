@@ -1,5 +1,6 @@
 import type {Map} from 'maplibre-gl';
 import {toolSlot,toast} from '../ui/shell';
+import {closeMapMenu} from '../ui/map-sheets';
 import {evidenceBadge} from '../../shared/evidence';
 import {ReplayBuffer,replayLength} from '../../shared/replay';
 import {ReplayPlayer} from '../movement/replay-player';
@@ -49,6 +50,7 @@ export function connectReplay(map:Map){
  const start=()=>{
   if(!buffer.ready){toast('Replay needs a minute or two of live positions first. Switch on Buses or Trains and wait.');return;}
   player=new ReplayPlayer(buffer);time=buffer.span!.from;playing=true;last=performance.now();
+  closeMapMenu(true);
   bar.hidden=false;open.setAttribute('aria-pressed','true');document.body.classList.add('replaying');changed();show();frame=requestAnimationFrame(tick);
  };
  const stop=()=>{

@@ -30,7 +30,7 @@ try{
   await page.route('**/data/timetables/fixture/journeys.json',r=>r.fulfill({json:journeys}));
   await page.route('**/api/**',r=>{const u=r.request().url();r.fulfill({json:u.includes('/config')?{tomtom:false,weather:false,fuel:false}:u.includes('vehicle-state')?{version:1,data:[bus],routes:{}}:{version:1,data:[],routes:{}}});});
   await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});await expect(page.locator('#bus-stops-toggle')).toBeEnabled({timeout:60000});
-  if(name==='mobile')await page.locator('#collapse-layers').click();
+  if(name==='mobile'){await page.locator('#mobile-menu-toggle').click();await page.locator('#collapse-layers').click();}
   await page.locator('.stop-control summary').click();await page.getByRole('searchbox',{name:'Find a bus stop'}).fill(stop.id);await page.getByRole('button',{name:`${stop.name} · ${stop.code}`,exact:true}).click();
   const live=page.locator('.live-departures');
   await expect(live.locator('.departures.live li')).toHaveCount(1);

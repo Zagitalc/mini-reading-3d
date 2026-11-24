@@ -18,7 +18,7 @@ try{
   await page.clock.setFixedTime(now);
   await page.route('**/api/**',r=>{const u=r.request().url();if(u.includes('/rail-board')){boardRequests++;return r.fulfill({json:board(generatedAt)});}return r.fulfill({json:u.includes('/config')?{tomtom:false,weather:false,fuel:false}:{version:1,data:[],routes:{}}});});
   await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});await expect(page.locator('#bus-stops-toggle')).toBeEnabled({timeout:60000});
-  if(label==='mobile')await page.locator('#collapse-layers').click();
+  if(label==='mobile'){await page.locator('#mobile-menu-toggle').click();await page.locator('#collapse-layers').click();}
   await page.locator('.stop-control summary').click();await page.getByRole('searchbox',{name:'Find a bus stop'}).fill(stopId);await page.locator('.stop-results button').first().click();
   await page.getByRole('button',{name:'Last departures'}).click();
   await expect(page.locator('.last-departures li').first()).toBeVisible();
@@ -29,8 +29,7 @@ try{
   const nextDayRows=await page.locator('.last-departures li').count();
   await mkdir('test-results',{recursive:true});await page.screenshot({path:`test-results/last-departures-${label}.png`});
   await page.locator('#close-details').click();
-  // Since 29 September a phone closes the layers sheet itself when a card opens; only close it if it is still open.
-  if(label==='mobile'&&await page.locator('.explore-panel.mobile-open').count())await page.locator('#collapse-layers').click();
+  if(label==='mobile'){await page.locator('#mobile-menu-toggle').click();await page.locator('.mobile-landmarks summary').click();}
   await page.getByRole('button',{name:'↗ Station'}).click();await page.waitForTimeout(2500);
   await page.locator('.landmark-pin[aria-label="Reading station"]').click();
   await expect(page.locator('#details h2')).toHaveText('Reading station');

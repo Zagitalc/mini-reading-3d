@@ -3,6 +3,7 @@ import {evidenceBadge} from '../../shared/evidence';
 import {freshObservation} from '../../shared/feed-policy';
 import {currentMode} from './modes';
 import {escape} from './shell';
+import {isCompactMap} from './map-sheets';
 import {subscribeVehicles} from '../map/vehicle-feed';
 // The card under the mode buttons. Layers publish a small digest of what they already hold (`publishFact`); the card
 // only reads those digests, so it never starts a request of its own and never keeps a layer's feed running.
@@ -17,7 +18,7 @@ export function publishFact<K extends keyof Facts>(key:K,value:Facts[K]){
 export function connectSummary(){
  const card=document.querySelector<HTMLDetailsElement>('#mode-card')!,title=card.querySelector<HTMLElement>('#mode-card-title')!,body=card.querySelector<HTMLElement>('#mode-card-body')!;
  // A phone's panel is short; the card starts folded there and keeps whatever the viewer chooses afterwards.
- if(matchMedia('(max-width:680px)').matches)card.open=false;
+ if(isCompactMap())card.open=false;
  let last='';
  draw=()=>{
   const s=summarise(currentMode(),facts);

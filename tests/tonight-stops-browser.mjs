@@ -26,10 +26,11 @@ async function boot(viewport,partial=false){
   return route.fulfill({json:timetable(id)});
  });
  await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});await expect(page.locator('#bus-stops-toggle')).toBeEnabled();
- if(viewport.width<600)await page.locator('#collapse-layers').click();
+ if(viewport.width<600){await page.locator('#mobile-menu-toggle').click();await page.locator('#collapse-layers').click();}
  await page.locator('.stop-control summary').click();
  const select=async id=>{
   if(await page.locator('#details').isVisible())await page.locator('#close-details').click();
+  if(viewport.width<600&&await page.locator('#map-menu').isHidden())await page.locator('#mobile-menu-toggle').click();
   const selected=stops.find(s=>s.id===id);
   await page.getByRole('searchbox',{name:'Find a bus stop'}).fill(selected.name);
   await page.getByRole('button',{name:`${selected.name} · ${selected.code}`,exact:true}).click();
