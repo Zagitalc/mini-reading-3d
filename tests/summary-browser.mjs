@@ -59,7 +59,7 @@ const card=page=>page.locator('#mode-card-body');
  if(errors.length)throw Error(errors.join('\n'));await page.close();}
 // Phone: the card starts folded, opens on tap, and the choice survives a refresh of the figures.
 {const {page,errors}=await open('/?mode=transport',{viewport:{width:390,height:844}});
- await page.locator('#collapse-layers').click();
+ await page.locator('#mobile-menu-toggle').click();
  await expect(page.locator('#mode-card')).not.toHaveAttribute('open','');
  await page.locator('#mode-card-title').click();await expect(card(page)).toContainText('3 buses on 2 routes');
  await page.screenshot({path:shots+'/summary-phone.png'});

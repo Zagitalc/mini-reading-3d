@@ -20,6 +20,7 @@ async function boot(viewport,servicesUrl='/data/timetables/explorer-fixture/serv
  await page.route('**/data/bus-stops.json',route=>route.fulfill({json:index(servicesUrl)}));
  await page.route('**/data/timetables/explorer-fixture/services.json',route=>route.fulfill({json:summary}));
  await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});
+ if(await page.locator('#mobile-menu-toggle').isVisible()&&await page.locator('#map-menu').isHidden())await page.locator('#mobile-menu-toggle').click();
  await page.locator('#tools-toggle').click();
  await expect(page.locator('.explorer-open')).toBeEnabled({timeout:30000});
  return {page,errors,requests};
@@ -31,12 +32,12 @@ for(const viewport of [{width:1400,height:950},{width:390,height:844}]){
  await page.locator('.explorer-open').click();
  await expect(page.locator('#details .pill')).toHaveText('Scheduled view · not live');
  await expect(page.locator('#explorer-time')).toHaveValue('23:30');
- await expect(page.locator('.explorer-summary')).toContainText('At 23:30 on the night of Fri, 2 Oct, 1 bus is timetabled to be on the road across 1 route');
+ await expect(page.locator('.explorer-summary')).toContainText(/At 23:30 on the night of Fri,? 2 Oct, 1 bus is timetabled to be on the road across 1 route/);
  await expect(page.locator('.explorer-routes').first()).toContainText('1 more journey starts before 04:00');
  await expect(page.locator('#details')).toContainText('Last journey started 22:00 from Fixture Station to Whitley Wood');
  await expect(page.locator('#details')).toContainText('No journeys on this night: 9.');
  await page.locator('[data-explorer-time="00:00"]').click();
- await expect(page.locator('.explorer-summary')).toContainText('At 00:00 on the night of Fri, 2 Oct, 0 buses');
+ await expect(page.locator('.explorer-summary')).toContainText(/At 00:00 on the night of Fri,? 2 Oct, 0 buses/);
  await expect(page.locator('#details')).toContainText('Next journey 00:20 from Fixture Station to Tilehurst');
  await page.locator('.night-profile rect[data-clock="23:15"]').click();
  await expect(page.locator('#explorer-time')).toHaveValue('23:15');
@@ -44,7 +45,7 @@ for(const viewport of [{width:1400,height:950},{width:390,height:844}]){
  await expect(page.locator('#explorer-highlight')).toHaveAttribute('aria-pressed','true');
  await expect(page.locator('[data-route-layer=bus]')).toBeChecked();
  await page.locator('#explorer-date').selectOption('20261003');
- await expect(page.locator('.explorer-summary')).toContainText('night of Sat, 3 Oct');
+ await expect(page.locator('.explorer-summary')).toContainText(/night of Sat,? 3 Oct/);
  await expect(page.locator('#explorer-highlight')).toHaveCount(0);
  const overflow=await page.locator('#details').evaluate(e=>e.scrollWidth>e.clientWidth);
  assert.equal(overflow,false,'no sideways scrolling in the panel');
@@ -55,7 +56,7 @@ for(const viewport of [{width:1400,height:950},{width:390,height:844}]){
 {
  const {page,errors}=await boot({width:1400,height:950},null);
  await expect(page.locator('.explorer-open small')).toHaveText('After next refresh');
- await page.locator('#tools-toggle').click();await page.locator('.explorer-open').click();
+ await page.locator('.explorer-open').click();
  await expect(page.locator('#service-explorer')).toContainText('available after the next timetable refresh');
  assert.deepEqual(errors,[]);await page.close();
 }

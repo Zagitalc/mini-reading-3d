@@ -5,6 +5,7 @@ import {fromLocal,toLocal} from '../../shared/geo';
 import type {LngLat} from '../../shared/types';
 import {currentMode} from './modes';
 import {escape} from './shell';
+import {isCompactMap} from './map-sheets';
 // "Around here" under the mode card: what the switched-on layers hold near the middle of the map, or near a spot the
 // viewer has pinned. Layers register a provider for their own data (as they do for search), so this file never fetches
 // anything and never switches a layer or a feed on. Selecting an item moves the map to it and opens its usual card.
@@ -25,7 +26,7 @@ export function ring(centre:LngLat,radius:number,steps=64):LngLat[] {
 export function connectHere(map:MLMap,beforeJump:()=>void=()=>{}){
  const card=document.querySelector<HTMLDetailsElement>('#here-card')!,body=card.querySelector<HTMLElement>('#here-body')!;
  // Like the mode card, folded at first on a phone.
- if(matchMedia('(max-width:680px)').matches)card.open=false;
+ if(isCompactMap())card.open=false;
  let pinned:{centre:LngLat;radius:number}|undefined,shown:HereItem[]=[],last='',timer:ReturnType<typeof setTimeout>|undefined;
  map.addSource('here-area',{type:'geojson',data:{type:'FeatureCollection',features:[]}});
  map.addLayer({id:'here-area',type:'line',source:'here-area',paint:{'line-color':'#2d6a5a','line-width':2,'line-dasharray':[3,2]}});

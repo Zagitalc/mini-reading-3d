@@ -24,6 +24,7 @@ async function open(viewport={width:1440,height:1000}){
  return {page,errors};
 }
 async function openFinder(page){
+ if(await page.locator('#mobile-menu-toggle').isVisible()&&await page.locator('#map-menu').isHidden())await page.locator('#mobile-menu-toggle').click();
  if(await page.locator('#tools-list').isHidden())await page.locator('#tools-toggle').click();
  await page.locator('.direct-open').click();
 }

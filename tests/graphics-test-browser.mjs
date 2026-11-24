@@ -15,6 +15,7 @@ async function open(viewport){
 try{
  for(const [label,viewport] of [['desktop',{width:1440,height:1000}],['mobile',{width:390,height:844}]]){
   const {page,errors}=await open(viewport);
+  if(await page.locator('#mobile-menu-toggle').isVisible()&&await page.locator('#map-menu').isHidden())await page.locator('#mobile-menu-toggle').click();
   if(await page.locator('#tools-list').isHidden())await page.locator('#tools-toggle').click();
   await page.locator('.graphics-open').click();
   await expect(page.locator('#graphics-view .graphics-device')).toContainText('Map canvas');

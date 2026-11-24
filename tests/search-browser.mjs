@@ -72,9 +72,9 @@ const groups=page=>page.locator('#search-results .search-group h3').allTextConte
  if(errors.length)throw Error(errors.join('\n'));await page.close();}
 // Phone: results fit and a result closes the list.
 {const {page,errors}=await open('/?mode=transport',{width:390,height:844});
- await box(page).fill('station');await expect(page.locator('#search-results button').first()).toBeVisible();
+ await page.locator('#mobile-search').click();await box(page).fill('station');await expect(page.locator('#search-results button').first()).toBeVisible();
  await page.screenshot({path:shots+'/search-phone.png'});
- await page.locator('#search-results button').first().click();await expect(page.locator('#search-results')).toBeHidden();
+ await page.locator('#search-results button').first().click();await expect(page.locator('#search-results')).toBeHidden();await expect(page.locator('#map-menu')).toBeHidden();
  if(errors.length)throw Error(errors.join('\n'));await page.close();}
 await browser.close();
 console.log('Search browser checks passed');

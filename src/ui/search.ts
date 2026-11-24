@@ -1,6 +1,7 @@
 import {GROUP_TITLES,groupOrder,type SearchGroup} from '../../shared/search';
 import {currentMode} from './modes';
 import {escape} from './shell';
+import {closeMapMenu} from './map-sheets';
 // The search box at the top of the panel. Each layer registers a provider for its own data once that data is ready, so
 // nothing here fetches or holds map data; groups are ordered by the current mode.
 export type SearchHit={title:string;detail?:string;open:()=>void};
@@ -32,7 +33,7 @@ export function connectSearch(){
    section.innerHTML=`<h3>${escape(GROUP_TITLES[g])}</h3>`;
    const shown=expanded.has(g)?hits:hits.slice(0,SHOWN);
    for(const hit of shown){const b=document.createElement('button');b.type='button';b.innerHTML=`${escape(hit.title)}${hit.detail?`<small>${escape(hit.detail)}</small>`:''}`;
-    b.addEventListener('click',()=>{results.hidden=true;input.value=hit.title;last=hit.title;hit.open();});section.append(b);}
+    b.addEventListener('click',()=>{results.hidden=true;input.value=hit.title;last=hit.title;hit.open();closeMapMenu(true);});section.append(b);}
    if(shown.length<hits.length){const more=document.createElement('button');more.type='button';more.className='search-more';
     more.textContent=`Show ${hits.length-shown.length} more ${GROUP_TITLES[g].toLowerCase()}`;
     more.addEventListener('click',()=>{expanded.add(g);const at=shown.length;void search().then(()=>results.querySelector<HTMLElement>(`[aria-label="${GROUP_TITLES[g]}"]`)?.querySelectorAll<HTMLButtonElement>('button')[at]?.focus());});section.append(more);}

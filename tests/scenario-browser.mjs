@@ -11,6 +11,7 @@ async function boot(viewport){
  page.on('pageerror',e=>errors.push(e.message));
  await page.route('**/api/**',route=>route.fulfill({json:route.request().url().includes('/config')?{tomtom:false,weather:false,fuel:false}:{version:1,data:[],routes:{}}}));
  await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});
+ if(await page.locator('#mobile-menu-toggle').isVisible()&&await page.locator('#map-menu').isHidden())await page.locator('#mobile-menu-toggle').click();
  await page.locator('#tools-toggle').click();
  await expect(page.locator('.scenario-open')).toBeEnabled({timeout:30000});
  return {page,errors};

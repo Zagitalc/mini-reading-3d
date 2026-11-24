@@ -10,13 +10,13 @@ const report=[];
 try{
  for(const [label,width,height]of [['desktop',1440,1000],['mobile',390,844]]){
   const page=await browser.newPage({viewport:{width,height}}),errors=[],requests=[];
-  // A phone closes the layers sheet when a card opens (since 29 September), so it is reopened to reach the search results.
-  const pick=async()=>{if(label==='mobile'&&!await page.locator('.explore-panel.mobile-open').count())await page.locator('#collapse-layers').click();await page.getByRole('button',{name:`${stop.name} · ${stop.code}`,exact:true}).click();};
+  // Opening a stop card dismisses the mobile menu. Reopen it to return to the stop search.
+  const pick=async()=>{if(label==='mobile'&&!await page.locator('.explore-panel.mobile-open').count())await page.locator('#mobile-menu-toggle').click();await page.getByRole('button',{name:`${stop.name} · ${stop.code}`,exact:true}).click();};
   page.on('pageerror',e=>errors.push(e.message));page.on('request',r=>{if(r.url().includes('/data/timetables/')&&!r.url().includes('/journeys-'))requests.push(r.url());});// Route journey files (for live estimates, since 28 September) load beside the stop timetable; only the timetable counts here.
   await page.clock.setFixedTime(offsetDate(index.validFrom,2));
   await page.route('**/api/**',r=>r.fulfill({json:r.request().url().includes('/config')?{tomtom:false,weather:false,fuel:false}:{version:1,data:[],routes:{}}}));
   await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});await expect(page.locator('#bus-stops-toggle')).toBeEnabled();
-  if(label==='mobile')await page.locator('#collapse-layers').click();
+  if(label==='mobile'){await page.locator('#mobile-menu-toggle').click();await page.locator('#collapse-layers').click();}
   await page.locator('.stop-control summary').click();await page.getByRole('searchbox',{name:'Find a bus stop'}).fill(stop.id);await page.getByRole('button',{name:`${stop.name} · ${stop.code}`,exact:true}).click();
   await expect(page.locator('#details h2')).toHaveText(stop.name);await expect(page.locator('#stop-departures .departures li').first()).toBeVisible();await expect(page.locator('#stop-departures')).toContainText('Scheduled times, not live predictions');await expect(page.locator('#details-content')).toContainText(`${labelDate(index.validFrom)}–${labelDate(index.validUntil)}`);
   const count=await page.locator('.departures li').count();if(count!==12)throw Error(`Expected 12 departures; got ${count}`);

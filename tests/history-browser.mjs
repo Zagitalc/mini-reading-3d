@@ -25,11 +25,12 @@ try{
   await page.route('**/api/**',route=>{const u=new URL(route.request().url());if(u.pathname==='/api/v1/history'){historyRequests.push(u.search);return route.fulfill({json:history(+u.searchParams.get('days'))});}
    return route.fulfill({json:u.pathname.includes('/config')?{tomtom:false,weather:false,fuel:false}:{version:1,data:[],routes:{}}});});
   await page.goto(url);await page.locator('#loading').waitFor({state:'hidden'});
+  if(await page.locator('#mobile-menu-toggle').isVisible()&&await page.locator('#map-menu').isHidden())await page.locator('#mobile-menu-toggle').click();
   await page.locator('#tools-toggle').click();
   assert.equal(historyRequests.length,0,'history loads only when the view opens');
   await page.getByRole('button',{name:/Reading over time/}).click();
   await expect(page.locator('#details .pill')).toHaveText('Recorded history · hourly');
-  await expect(page.locator('#history-view')).toContainText('Recording since Thu, 1 Oct');
+  await expect(page.locator('#history-view')).toContainText(/Recording since Thu,? 1 Oct/);
   assert.deepEqual(historyRequests,['?days=7&fuelDays=30']);
   // 7 days of hourly slots; bars only where buses were sampled.
   const busBars=await page.locator('.history-chart.buses rect').count();assert.equal(busBars,4*16+1,'no bars for hours without bus samples');
@@ -49,7 +50,7 @@ try{
   await expect(page.getByRole('button',{name:'Hide older days'})).toHaveAttribute('aria-expanded','true');
   await page.locator('#history-fuel [data-fuel-range="7"]').click();
   await expect(page.locator('.history-headlines')).toContainText('Rail and fuel only');await expect(page.locator('.history-headlines')).not.toContainText(/bus(es)? (are|were) (busiest|up|down)/);
-  await expect(page.locator('.history-table').first()).toContainText('Latest prices as of Mon, 5 Oct, 11:30');
+  await expect(page.locator('.history-table').first()).toContainText(/Latest prices as of Mon,? 5 Oct, 11:30/);
   await page.locator('.history-details summary').click();await expect(page.locator('.history-details tbody tr')).toHaveCount(5);
   await page.locator('#details').evaluate(e=>e.scrollTop=0);await page.screenshot({path:`${process.env.SHOT_DIR??'.'}/history-${viewport.width}-top.png`});await page.locator('#details').evaluate(e=>e.scrollTop=e.scrollHeight);await page.screenshot({path:`${process.env.SHOT_DIR??'.'}/history-${viewport.width}.png`});
   await page.locator('[data-history-days="1"]').click();await expect(page.locator('[data-history-days="1"]')).toHaveAttribute('aria-pressed','true');

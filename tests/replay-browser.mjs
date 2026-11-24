@@ -13,7 +13,7 @@ try{
    return route.fulfill({json:body});});
   await page.goto(`${base}/?mode=transport&lat=51.4589&lng=-0.9718&zoom=16`);await page.locator('#loading').waitFor({state:'hidden'});
   await page.waitForFunction(()=>window.__replay?.frames()>=1,null,{timeout:120000});
-  const openTools=async()=>{if(name==='phone'&&!await page.locator('.explore-panel.mobile-open').count())await page.locator('#collapse-layers').click();if(await page.locator('#tools-list').isHidden())await page.locator('#tools-toggle').click();};
+  const openTools=async()=>{if(name==='phone'&&!await page.locator('.explore-panel.mobile-open').count())await page.locator('#mobile-menu-toggle').click();if(await page.locator('#tools-list').isHidden())await page.locator('#tools-toggle').click();};
   await openTools();
   const open=page.locator('.replay-open'),bar=page.locator('.replay-bar');
   await open.scrollIntoViewIfNeeded();
