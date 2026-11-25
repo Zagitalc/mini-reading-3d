@@ -2,6 +2,7 @@ import {readFileSync,readdirSync,existsSync} from 'node:fs';
 import {VectorTile} from '@mapbox/vector-tile';
 import {PbfReader} from 'pbf';
 import {distance} from '../shared/geo';
+import {clipLine} from '../shared/static-routes';
 import type {LngLat} from '../shared/types';
 
 /**
@@ -13,6 +14,7 @@ const DRIVABLE=new Set(['motorway','motorway_link','trunk','trunk_link','primary
 const PENALTY:Record<string,number>={service:1.6,living_street:1.2,residential:1.05};
 const M_LNG=69400,M_LAT=111200,JOIN=1.5,BRIDGE=3,ATTACH=60;
 export const LONG_GAP=120;
+export const MAX_BUS_DISPLAY_GAP=350;
 
 interface Edge{a:number;b:number;cost:number;length:number}
 const metres=(p:LngLat)=>[p[0]*M_LNG,p[1]*M_LAT] as const;
@@ -125,4 +127,28 @@ export function snapLine(network:RoadNetwork,line:LngLat[]){
   out.push(b);
  }
  return {line:out,snapped,left};
+}
+
+/** Repair derived lines at the map boundary and omit long joins whose road path is unknown. */
+export function derivedBusDisplayLines(line:LngLat[],roads?:Pick<RoadNetwork,'route'>):LngLat[][]{
+ const lines:LngLat[][]=[];
+ for(const clipped of clipLine(line)){
+  const repaired:LngLat[]=[clipped[0]];
+  for(let i=1;i<clipped.length;i++){
+   const a=clipped[i-1],b=clipped[i];
+   if(distance(a,b)>=MAX_BUS_DISPLAY_GAP)repaired.push(...(roads?.route(a,b)??[]));
+   repaired.push(b);
+  }
+  // A road path may briefly leave the map. Preserve those exits and re-entries.
+  for(const part of clipLine(repaired)){
+   let start=0;
+   for(let i=1;i<part.length;i++){
+    if(distance(part[i-1],part[i])<MAX_BUS_DISPLAY_GAP)continue;
+    if(i-start>1)lines.push(part.slice(start,i));
+    start=i;
+   }
+   if(part.length-start>1)lines.push(part.slice(start));
+  }
+ }
+ return lines;
 }

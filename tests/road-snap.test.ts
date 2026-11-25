@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
-import {RoadNetwork,snapLine} from '../scripts/road-snap';
+import {derivedBusDisplayLines,MAX_BUS_DISPLAY_GAP,RoadNetwork,snapLine} from '../scripts/road-snap';
 import {distance,lineLength} from '../shared/geo';
 import type {LngLat} from '../shared/types';
 
@@ -27,8 +27,22 @@ test('short gaps are not touched', {skip:!roads},()=>{
  assert.deepEqual(snapLine(roads!,line).line,line);
 });
 
+test('derived bus overlays look for a road path after clipping a stop outside the map', ()=>{
+ const outside:LngLat=[-1.085,51.44],end:LngLat=[-1.074,51.44];
+ const boundary:LngLat=[-1.08,51.44],via:LngLat=[-1.077,51.4405];
+ assert.deepEqual(derivedBusDisplayLines([outside,end],{route(a,b){
+  assert.deepEqual([a,b],[boundary,end]);
+  return [via];
+ }}),[[boundary,via,end]]);
+});
+
+test('derived bus overlays keep the segments on both sides of an unresolved gap', ()=>{
+ const before:LngLat[]=[[-.977,51.446],[-.977,51.447]],after:LngLat[]=[[-.977,51.457],[-.977,51.458]];
+ assert.deepEqual(derivedBusDisplayLines([...before,...after]),[before,after]);
+});
+
 test('published bus routes have no long straight jumps inside the map', ()=>{
  const routes=JSON.parse(readFileSync('public/data/bus-routes.json','utf8')) as {label:string;coordinates:LngLat[][]}[];
  for(const route of routes)for(const line of route.coordinates)for(let i=1;i<line.length;i++)
-  assert.ok(distance(line[i-1],line[i])<350,`route ${route.label} jumps ${Math.round(distance(line[i-1],line[i]))} m at ${line[i-1]}`);
+  assert.ok(distance(line[i-1],line[i])<MAX_BUS_DISPLAY_GAP,`route ${route.label} jumps ${Math.round(distance(line[i-1],line[i]))} m at ${line[i-1]}`);
 });

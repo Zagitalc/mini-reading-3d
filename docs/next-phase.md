@@ -40,7 +40,7 @@ What stays the same: the stack (Vite, MapLibre, Three.js, the Cloudflare Worker 
 
 ### Order
 
-1. Fix the two failing browser tests (history-browser and direct-finder-browser). Already queued; unchanged.
+1. **History and direct-finder browser checks** (passed on desktop and mobile). Follow-up transport verification repaired long derived route lines after clipping and left gaps where no road path was available.
 2. **Evidence labels** (small to medium; done 9 October). New, and placed first because items 3 and 4 below rely on it.
 3. **Layer zoom thresholds and a render budget** (small; done 9 October, see below). Placed before landmark models, which add draw calls.
 4. **Local summary for the area in view** (medium; done 10 October, see below).
