@@ -30,6 +30,10 @@ const groups=page=>page.locator('#search-results .search-group h3').allTextConte
  await page.locator('#search-results button',{hasText:'Route 17'}).first().click();
  await expect(page.locator('#details-content h2')).toHaveText('17');await expect(page.locator('[data-route-layer=bus]')).toBeChecked();
  if(new URL(page.url()).searchParams.get('route')!=='17')throw Error('route search did not reach the shared link');
+ await box(page).fill('3');
+ await page.locator('#search-results button',{hasText:/^Route 3(?!\d)/}).first().click();
+ await expect(page.locator('#details-content h2')).toHaveText('3');
+ await expect(page.getByLabel('Bus routes selector').locator('option:checked')).toHaveText(/^3 ·/);
  // A word search spans groups; Tesco finds the forecourt and food premises.
  await box(page).fill('tesco');
  await expect(page.locator('#search-results [aria-label="Fuel forecourts"] button').first()).toContainText('Tesco Napier Road');
@@ -75,6 +79,10 @@ const groups=page=>page.locator('#search-results .search-group h3').allTextConte
  await page.locator('#mobile-search').click();await box(page).fill('station');await expect(page.locator('#search-results button').first()).toBeVisible();
  await page.screenshot({path:shots+'/search-phone.png'});
  await page.locator('#search-results button').first().click();await expect(page.locator('#search-results')).toBeHidden();await expect(page.locator('#map-menu')).toBeHidden();
+ await page.locator('#mobile-search').click();await box(page).fill('90');
+ await page.locator('#search-results button',{hasText:/^Route 90(?!\d)/}).first().click();
+ await expect(page.locator('#details-content h2')).toHaveText('90');
+ await expect(page.getByLabel('Bus routes selector').locator('option:checked')).toHaveText(/^90 ·/);
  if(errors.length)throw Error(errors.join('\n'));await page.close();}
 await browser.close();
 console.log('Search browser checks passed');

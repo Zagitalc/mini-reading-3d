@@ -25,25 +25,37 @@ export async function connectRouteLayers(map:Map){
    map.addLayer({id:`${mode}-route-lines`,type:'line',source:`${mode}-routes`,layout:{visibility:'none','line-cap':'round','line-join':'round'},paint:{'line-color':['get','colour'],'line-width':3.5,'line-opacity':.9}},before);
    map.addLayer({id:`${mode}-route-labels`,type:'symbol',source:`${mode}-routes`,minzoom:LAYER_ZOOM.routeLabels,layout:{visibility:'none','symbol-placement':'line','text-field':['get','label'],'text-font':['Noto Sans Regular'],'text-size':11,'symbol-spacing':280},paint:{'text-color':['get','colour'],'text-halo-color':'#fffdf7','text-halo-width':2}},before);
    const select=section.querySelector('select')!,search=section.querySelector<HTMLInputElement>('input[type=search]')!,toggle=section.querySelector<HTMLInputElement>('input[type=checkbox]')!;
+   const parts=['outline','lines','labels'];
+   const filterBusRoute=(id:string)=>{for(const part of parts)map.setFilter(`bus-route-${part}`,id?['==',['get','id'],id]:null);};
    const list=()=>{select.replaceChildren();const all=new Option('All routes','');select.append(all);for(const r of routes.filter(r=>routeMatches(r,search.value)))select.append(new Option(`${r.label}${r.operator?' · '+r.operator:''}`,r.id));select.value=group.selected;};
    const choose=(id:string)=>{
-    group.selected=id;select.value=id;if(mode==='bus')document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:group.enabled?id:''}));
-    const opacity:ExpressionSpecification=['case',['any',['literal',!id],['==',['get','id'],id]],.95,.13];
+    const kind=mode==='bus'?'route':'rail',r=routes.find(r=>r.id===id);
+    group.selected=id;
+    if(r&&!routeMatches(r,search.value)){search.value='';list();}
+    select.value=id;
+    if(mode==='bus'){
+     filterBusRoute(id);
+     document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:group.enabled?id:''}));
+    }
+    const opacity:ExpressionSpecification|number=mode==='bus'?.95:['case',['any',['literal',!id],['==',['get','id'],id]],.95,.13];
     for(const part of ['outline','lines'])map.setPaintProperty(`${mode}-route-${part}`,'line-opacity',opacity);
     map.setPaintProperty(`${mode}-route-labels`,'text-opacity',opacity);
-    const kind=mode==='bus'?'route':'rail',r=routes.find(r=>r.id===id);if(!r){if(currentSelection()?.kind===kind)setSelection(undefined);return;}
+    if(!r){if(currentSelection()?.kind===kind)setSelection(undefined);return;}
     detail(`<span class="pill">${mode==='bus'?'Bus route':'Railway infrastructure corridor'}</span><h2>${escape(r.label)}</h2>${mode==='rail'?'<p>Physical railway corridor. This does not establish passenger services or operator coverage.</p>':''}<dl>${r.operator?`<dt>Operator</dt><dd>${escape(r.operator)}</dd>`:''}<dt>${mode==='bus'?'Available destinations':'Mapped endpoints'}</dt><dd>${r.destinations.map(escape).join('<br>')||'Not supplied'}</dd></dl>${sourceFooter([['Source',`<a href="${escape(r.sourceUrl)}" target="_blank" rel="noopener">${escape(r.source)}</a>`],['Snapshot',escape(r.snapshot.slice(0,10))],['Colour',escape(r.colourSource)]])}`);
     setSelection({kind,id:r.label});
    };
    Object.assign(group,{choose});
    if(mode==='bus'){const show=(e:Event)=>{toggle.checked=true;toggle.dispatchEvent(new Event('change'));choose((e as CustomEvent<string>).detail);};document.addEventListener('reading-show-bus-route',show);map.on('remove',()=>document.removeEventListener('reading-show-bus-route',show));}
    // The evening timetable explorer highlights the routes it has scheduled; null restores every route.
-   if(mode==='bus'){const scheduled=(e:Event)=>{const ids=(e as CustomEvent<string[]|null>).detail;if(ids&&!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}
-    group.selected='';select.value='';const opacity:ExpressionSpecification|number=ids?['case',['in',['get','id'],['literal',ids]],.95,.1]:.95;
+   if(mode==='bus'){const scheduled=(e:Event)=>{const ids=(e as CustomEvent<string[]|null>).detail;if(!ids&&group.selected)return;
+    group.selected='';select.value='';filterBusRoute('');
+    if(currentSelection()?.kind==='route')setSelection(undefined);
+    if(ids&&!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}else document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:''}));
+    const opacity:ExpressionSpecification|number=ids?['case',['in',['get','id'],['literal',ids]],.95,.1]:.95;
     for(const part of ['outline','lines'])map.setPaintProperty(`${mode}-route-${part}`,'line-opacity',opacity);map.setPaintProperty(`${mode}-route-labels`,'text-opacity',ids?['case',['in',['get','id'],['literal',ids]],1,0]:1);};
     document.addEventListener('reading-scheduled-routes',scheduled);map.on('remove',()=>document.removeEventListener('reading-scheduled-routes',scheduled));}
    search.addEventListener('input',list);select.addEventListener('change',()=>choose(select.value));section.querySelector('button')!.addEventListener('click',()=>{search.value='';list();choose('');});list();
-   toggle.disabled=false;section.querySelector('.route-loading')!.remove();toggle.addEventListener('change',()=>{group.enabled=toggle.checked;if(mode==='bus')document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:group.enabled?group.selected:''}));section.querySelector<HTMLElement>('.route-options')!.hidden=!toggle.checked;for(const part of ['outline','lines','labels'])map.setLayoutProperty(`${mode}-route-${part}`,'visibility',toggle.checked?'visible':'none');});
+   toggle.disabled=false;section.querySelector('.route-loading')!.remove();toggle.addEventListener('change',()=>{group.enabled=toggle.checked;if(mode==='bus')document.dispatchEvent(new CustomEvent('reading-bus-route',{detail:group.enabled?group.selected:''}));section.querySelector<HTMLElement>('.route-options')!.hidden=!toggle.checked;for(const part of parts)map.setLayoutProperty(`${mode}-route-${part}`,'visibility',toggle.checked?'visible':'none');});
    // A shared link names the route by its label; with no camera in the link, the map frames the whole route.
    for(const r of routes)showRoute.set(r,fly=>{
     if(!toggle.checked){toggle.checked=true;toggle.dispatchEvent(new Event('change'));}choose(r.id);

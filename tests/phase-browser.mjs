@@ -31,8 +31,21 @@ try{
   const merc=p=>[(p[0]+180)/360,(1-Math.asinh(Math.tan(p[1]*Math.PI/180))/Math.PI)/2],c=merc(state.center);
   return [...points.values()].filter(v=>v.ids.size>1).map(v=>{const p=merc(v.p),dx=(p[0]-c[0])*world,dy=(p[1]-c[1])*world;return {x:720+dx*Math.cos(b)+dy*Math.sin(b),y:500-dx*Math.sin(b)+dy*Math.cos(b)};}).filter(p=>p.x>350&&p.x<1100&&p.y>200&&p.y<780).slice(0,100);
  });
- let overlap=false;for(const p of candidates){await page.mouse.click(p.x,p.y);if(await page.locator('#route-choices').count()){overlap=true;await page.locator('#route-choices button').first().click();break;}}
- if(!overlap)throw Error('No overlapping route chooser opened');await page.locator('#close-details').click();await page.locator('.route-control:has([data-route-layer=bus])').getByRole('button',{name:'All routes',exact:true}).click();await page.locator('#tilt-view').click();await page.waitForTimeout(1000);
+ let overlap;for(const p of candidates){await page.mouse.click(p.x,p.y);if(await page.locator('#route-choices').count()){overlap=p;break;}}
+ if(!overlap)throw Error('No overlapping route chooser opened');
+ const choice=page.locator('#route-choices button').first(),selectedLabel=(await choice.innerText()).replace('Bus · ','');
+ await choice.click();
+ const detailsHeading=page.locator('#details-content h2');
+ await expect(detailsHeading).toHaveText(selectedLabel);
+ await page.locator('#close-details').click();
+ // The exact same spot should only pick the focused route until All routes is restored.
+ await page.waitForTimeout(800);
+ await page.mouse.click(overlap.x,overlap.y);await expect(detailsHeading).toHaveText(selectedLabel);
+ await page.locator('#close-details').click();
+ await page.locator('.route-control:has([data-route-layer=bus])').getByRole('button',{name:'All routes',exact:true}).click();
+ await page.waitForTimeout(800);
+ await page.mouse.click(overlap.x,overlap.y);await expect(detailsHeading).toHaveText('Choose a route');
+ await page.locator('#close-details').click();await page.locator('#tilt-view').click();await page.waitForTimeout(1000);
  await page.locator('[data-route-layer=rail]').check();await page.getByRole('searchbox',{name:'Search train routes'}).fill('Earley');
  await page.getByLabel('Train routes selector',{exact:true}).selectOption('wokingham');await expect(page.getByText('Physical railway corridor.',{exact:false})).toBeVisible();await page.locator('#close-details').click();
  await page.locator('[data-layer=buses]').uncheck();await page.locator('[data-layer=trains]').uncheck();await expect(page.locator('[data-route-layer=bus]')).toBeChecked();await expect(page.locator('[data-route-layer=rail]')).toBeChecked();
