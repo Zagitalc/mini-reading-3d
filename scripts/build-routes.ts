@@ -2,9 +2,11 @@ import {busBrands} from '../shared/bus-style';
 import {readFile,writeFile,mkdir} from 'node:fs/promises';
 import {clipLine,deduplicate,fallbackColour,type StaticRoute} from '../shared/static-routes';
 import {RailNetwork,STATIONS} from '../server/rail-network';
+import {derivedBusDisplayLines,RoadNetwork} from './road-snap';
 import type {LngLat} from '../shared/types';
 const dest=process.env.GEOGRAPHY_OUTPUT??'raw/staging';await mkdir(dest,{recursive:true});
 const bus=JSON.parse(await readFile(process.env.BUS_NETWORK_INPUT??'public/data/bus-network.json','utf8'));
+const roads=Object.keys(bus.shapes).some(id=>id.startsWith('derived:'))?RoadNetwork.fromTiles():undefined;
 // Operator colour names verified against Reading Buses' current route pages/network map.
 // Hex values are miniature-palette approximations, not official brand specifications.
 const branded=busBrands;
@@ -13,7 +15,8 @@ const buses:StaticRoute[]=bus.routes.map((r:Record<string,string>)=>{
  return {id:r.route_id,label:r.route_short_name,operator:bus.source,destinations:[...new Set(trips.map((t:Record<string,string>)=>t.trip_headsign).filter(Boolean))].sort(),
   kind:'bus',colour:brand?.[0]??fallbackColour(r.route_id),colourSource:brand?`Operator ${brand[1]} branding; display shade approximate. https://www.reading-buses.co.uk/maps/15 (checked 2026-09-05)`:'Deterministic FNV-1a palette fallback; not an operator colour',
   source:bus.source+' GTFS shapes',sourceUrl:bus.sourceUrl,snapshot:bus.retrievedAt,
-  coordinates:deduplicate([...new Set<string>(trips.map((t:Record<string,string>)=>t.shape_id))].sort().flatMap(id=>clipLine(bus.shapes[id]))) };
+  coordinates:deduplicate([...new Set<string>(trips.map((t:Record<string,string>)=>t.shape_id))].sort().flatMap(id=>
+   id.startsWith('derived:')?derivedBusDisplayLines(bus.shapes[id],roads):clipLine(bus.shapes[id]))) };
 });
 await writeFile(`${dest}/bus-routes.json`,JSON.stringify(buses));
 if(process.argv.includes('--bus-only'))process.exit(0);
